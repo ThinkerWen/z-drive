@@ -20,7 +20,7 @@ from app.core.security import (
 from app.models.image import Image, ImageAccessLog, ImageStats
 
 
-class ImageBedService:
+class GalleryService:
     def __init__(self, settings: Settings) -> None:
         self.settings = settings
 

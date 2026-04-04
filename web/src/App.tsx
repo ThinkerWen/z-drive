@@ -472,7 +472,7 @@ export default function App() {
     return (
       <div className="mx-auto flex min-h-screen w-full max-w-7xl items-center justify-center px-4 py-8 sm:px-8">
         <section className="soft-panel w-full max-w-md rounded-3xl p-7">
-          <p className="text-xs font-semibold uppercase tracking-[0.24em] text-primary/90">Z-Drive Imagebed</p>
+          <p className="text-xs font-semibold uppercase tracking-[0.24em] text-primary/90">Z-Drive Gallery</p>
           <h2 className="mt-3 text-2xl font-semibold">管理员登录</h2>
           <p className="mt-1 text-sm text-muted-foreground">请输入管理凭据后进入工作台。</p>
           <form className="mt-5 space-y-3" onSubmit={handleLogin}>
@@ -504,7 +504,7 @@ export default function App() {
       <header className="glass-panel rounded-3xl p-7 sm:p-8">
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.24em] text-primary/90">Z-Drive Imagebed</p>
+            <p className="text-xs font-semibold uppercase tracking-[0.24em] text-primary/90">Z-Drive Gallery</p>
             <h1 className="mt-3 text-3xl font-semibold tracking-tight sm:text-4xl">图床管理</h1>
             <p className="mt-2 max-w-2xl text-sm text-muted-foreground">
               供个人用户使用，面向生产环境的一体化图床能力。

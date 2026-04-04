@@ -9,8 +9,8 @@ from fastapi.staticfiles import StaticFiles
 
 from app.api.routes.cloud import router as cloud_router, service as cloud_service
 from app.api.routes.frontend import create_frontend_router
+from app.api.routes.gallery import gallery_router, public_router, service
 from app.api.routes.health import router as health_router
-from app.api.routes.imagebed import image_router, public_router, service
 from app.core.config import get_settings
 from app.core.logging import logger, setup_logging
 from app.db.session import init_db
@@ -57,7 +57,7 @@ if static_dir.exists():
 
 app.include_router(health_router)
 app.include_router(public_router)
-app.include_router(image_router)
+app.include_router(gallery_router)
 app.include_router(cloud_router)
 
 

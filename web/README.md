@@ -1,6 +1,6 @@
 # z-drive web
 
-Frontend workspace for z-drive imagebed management.
+Frontend workspace for z-drive gallery management.
 
 ## Development
 

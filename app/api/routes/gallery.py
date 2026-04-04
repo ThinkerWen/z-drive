@@ -10,12 +10,12 @@ from app.core.config import get_settings
 from app.core.security import create_admin_token, decode_admin_token
 from app.db.session import get_db
 from app.schemas.image import DeleteImageRequest, ImageInfoResponse, LoginRequest, UpdateImageRequest
-from app.services.imagebed import ImageBedService
+from app.services.gallery import GalleryService
 
-public_router = APIRouter(tags=["imagebed"])
-image_router = APIRouter(prefix="/gallery", tags=["imagebed"])
+public_router = APIRouter(tags=["gallery"])
+gallery_router = APIRouter(prefix="/gallery", tags=["gallery"])
 settings = get_settings()
-service = ImageBedService(settings)
+service = GalleryService(settings)
 
 
 def _base_url(request: Request) -> str:
@@ -126,7 +126,7 @@ async def view_image(request: Request, file_key: str, sign: str = "", db: Sessio
         raise HTTPException(status_code=403, detail=str(exc)) from exc
 
 
-@image_router.post("/upload")
+@gallery_router.post("/upload")
 async def upload_image(
     request: Request,
     file: UploadFile = File(...),
@@ -140,7 +140,7 @@ async def upload_image(
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 
-@image_router.post("/upload/multiple")
+@gallery_router.post("/upload/multiple")
 async def upload_multiple(
     request: Request,
     files: list[UploadFile] = File(...),
@@ -158,7 +158,7 @@ async def upload_multiple(
     return {"total": len(files), "results": results}
 
 
-@image_router.get("/file/{file_key}")
+@gallery_router.get("/file/{file_key}")
 async def get_image_file(request: Request, file_key: str, sign: str = "", db: Session = Depends(get_db)) -> Response:
     try:
         return _build_original_file_response(request, db, file_key, sign)
@@ -168,7 +168,7 @@ async def get_image_file(request: Request, file_key: str, sign: str = "", db: Se
         raise HTTPException(status_code=403, detail=str(exc)) from exc
 
 
-@image_router.get("/info/{file_key}")
+@gallery_router.get("/info/{file_key}")
 async def get_image_info(request: Request, file_key: str, sign: str = "", db: Session = Depends(get_db)) -> dict:
     try:
         short_code, _ = _split_file_key(file_key)
@@ -193,7 +193,7 @@ async def get_image_info(request: Request, file_key: str, sign: str = "", db: Se
         raise HTTPException(status_code=403, detail=str(exc)) from exc
 
 
-@image_router.get("/download/{file_key}")
+@gallery_router.get("/download/{file_key}")
 async def download_image(request: Request, file_key: str, sign: str = "", db: Session = Depends(get_db)) -> Response:
     try:
         return _build_original_file_response(request, db, file_key, sign)
@@ -203,7 +203,7 @@ async def download_image(request: Request, file_key: str, sign: str = "", db: Se
         raise HTTPException(status_code=403, detail=str(exc)) from exc
 
 
-@image_router.get("/list")
+@gallery_router.get("/list")
 async def list_images(
     request: Request,
     page: int = 1,
@@ -217,12 +217,12 @@ async def list_images(
     return payload
 
 
-@image_router.get("/stats")
+@gallery_router.get("/stats")
 async def stats(db: Session = Depends(get_db), _: str = Depends(_admin_token_or_401)) -> dict:
     return service.get_stats(db)
 
 
-@image_router.delete("/delete/{short_code}")
+@gallery_router.delete("/delete/{short_code}")
 async def delete_image(short_code: str, db: Session = Depends(get_db), _: str = Depends(_admin_token_or_401)) -> dict:
     try:
         service.delete_image(db, short_code)
@@ -231,7 +231,7 @@ async def delete_image(short_code: str, db: Session = Depends(get_db), _: str = 
         raise HTTPException(status_code=404, detail=str(exc)) from exc
 
 
-@image_router.post("/login")
+@gallery_router.post("/login")
 async def login(payload: LoginRequest) -> JSONResponse:
     if payload.username != settings.admin_username or payload.password != settings.admin_password:
         raise HTTPException(status_code=401, detail="用户名或密码错误")
@@ -241,14 +241,14 @@ async def login(payload: LoginRequest) -> JSONResponse:
     return response
 
 
-@image_router.get("/logout")
+@gallery_router.get("/logout")
 async def logout() -> RedirectResponse:
     response = RedirectResponse(url="/gallery/login", status_code=302)
     response.delete_cookie("z_drive_admin_token", path="/")
     return response
 
 
-@image_router.get("/api/list")
+@gallery_router.get("/api/list")
 async def manage_list(
     request: Request,
     page: int = 1,
@@ -261,7 +261,7 @@ async def manage_list(
     return service.list_images(db, page, page_size, file_type, query, _base_url(request))
 
 
-@image_router.post("/api/update")
+@gallery_router.post("/api/update")
 async def manage_update(payload: UpdateImageRequest, db: Session = Depends(get_db), _: str = Depends(_admin_token_or_401)) -> dict:
     try:
         image = service.update_image_access_mode(db, payload.shortcode, payload.access_mode or "none", payload.sign)
@@ -272,7 +272,7 @@ async def manage_update(payload: UpdateImageRequest, db: Session = Depends(get_d
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 
-@image_router.post("/api/delete")
+@gallery_router.post("/api/delete")
 async def manage_delete(payload: DeleteImageRequest, db: Session = Depends(get_db), _: str = Depends(_admin_token_or_401)) -> dict:
     try:
         service.delete_image(db, payload.shortcode)
@@ -281,7 +281,7 @@ async def manage_delete(payload: DeleteImageRequest, db: Session = Depends(get_d
         raise HTTPException(status_code=404, detail=str(exc)) from exc
 
 
-@image_router.post("/api/upload")
+@gallery_router.post("/api/upload")
 async def manage_upload(
     request: Request,
     file: UploadFile = File(...),
@@ -293,7 +293,7 @@ async def manage_upload(
     return service.build_upload_payload(image, _base_url(request), sign)
 
 
-@image_router.post("/api/upload/multiple")
+@gallery_router.post("/api/upload/multiple")
 async def manage_upload_multiple(
     request: Request,
     files: list[UploadFile] = File(...),
@@ -311,6 +311,6 @@ async def manage_upload_multiple(
     return {"total": len(files), "results": results}
 
 
-@image_router.get("/api/stats")
+@gallery_router.get("/api/stats")
 async def manage_stats(db: Session = Depends(get_db), _: str = Depends(_admin_token_or_401)) -> dict:
     return service.get_stats(db)
