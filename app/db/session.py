@@ -31,6 +31,8 @@ def get_db() -> Generator:
 
 
 def init_db() -> None:
+    from app.models.cloud_item import DriveItem  # noqa: F401
+    from app.models.cloud_share import DriveShare, DriveShareAccessLog  # noqa: F401
     from app.models.image import Image, ImageAccessLog, ImageStats  # noqa: F401
 
     Base.metadata.create_all(bind=engine)
