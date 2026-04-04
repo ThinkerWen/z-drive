@@ -1,0 +1,195 @@
+@import url("https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&display=swap");
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --background: 38 43% 97%;
+  --foreground: 215 31% 15%;
+  --card: 40 38% 99%;
+  --card-foreground: 215 31% 15%;
+  --border: 30 24% 84%;
+  --input: 32 30% 86%;
+  --ring: 22 93% 56%;
+  --primary: 22 95% 55%;
+  --primary-foreground: 210 40% 99%;
+  --secondary: 38 35% 93%;
+  --secondary-foreground: 215 29% 20%;
+  --muted: 33 35% 91%;
+  --muted-foreground: 215 15% 43%;
+  --accent: 195 75% 40%;
+  --accent-foreground: 210 40% 99%;
+  --radius: 0.95rem;
+  --glow-1: 249, 115, 22;
+  --glow-2: 14, 165, 233;
+  --bg-top: 255, 255, 255;
+  --bg-bottom: 253, 246, 236;
+  --dot: 22, 29, 37;
+}
+
+:root[data-theme="ocean"] {
+  --primary: 199 89% 48%;
+  --ring: 199 89% 48%;
+  --accent: 186 85% 40%;
+  --glow-1: 14, 165, 233;
+  --glow-2: 20, 184, 166;
+  --bg-bottom: 236, 250, 252;
+}
+
+:root[data-theme="forest"] {
+  --primary: 146 70% 34%;
+  --ring: 146 70% 34%;
+  --accent: 84 63% 40%;
+  --glow-1: 34, 197, 94;
+  --glow-2: 163, 230, 53;
+  --bg-bottom: 241, 250, 241;
+}
+
+:root[data-theme="rose"] {
+  --primary: 350 84% 52%;
+  --ring: 350 84% 52%;
+  --accent: 280 73% 52%;
+  --glow-1: 244, 63, 94;
+  --glow-2: 168, 85, 247;
+  --bg-bottom: 255, 240, 246;
+}
+
+:root[data-theme="midnight"] {
+  --background: 228 26% 8%;
+  --foreground: 210 36% 95%;
+  --card: 226 24% 11%;
+  --card-foreground: 210 40% 96%;
+  --border: 224 20% 26%;
+  --input: 224 20% 23%;
+  --ring: 196 95% 60%;
+  --primary: 196 88% 56%;
+  --primary-foreground: 228 24% 9%;
+  --secondary: 226 20% 16%;
+  --secondary-foreground: 210 40% 96%;
+  --muted: 226 16% 15%;
+  --muted-foreground: 218 12% 70%;
+  --accent: 260 88% 66%;
+  --accent-foreground: 228 24% 9%;
+  --glow-1: 20, 184, 166;
+  --glow-2: 59, 130, 246;
+  --bg-top: 10, 14, 26;
+  --bg-bottom: 5, 8, 18;
+  --dot: 255, 255, 255;
+}
+
+* {
+  @apply border-border;
+}
+
+body {
+  @apply bg-background text-foreground antialiased;
+  font-family: "IBM Plex Sans", sans-serif;
+  min-height: 100vh;
+  overflow-x: hidden;
+  background-image: radial-gradient(
+      circle at 4% -12%,
+      rgba(var(--glow-1), 0.22),
+      transparent 38%
+    ),
+    radial-gradient(circle at 104% -6%, rgba(var(--glow-2), 0.2), transparent 34%),
+    linear-gradient(180deg, rgba(var(--bg-top), 0.92), rgba(var(--bg-bottom), 0.95));
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  font-family: "Space Grotesk", sans-serif;
+}
+
+#root {
+  position: relative;
+}
+
+#root::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  background-image: radial-gradient(rgba(var(--dot), 0.08) 0.55px, transparent 0.55px);
+  background-size: 14px 14px;
+  mask-image: linear-gradient(to bottom, rgba(0, 0, 0, 0.55), transparent 78%);
+}
+
+.glass-panel {
+  background: linear-gradient(140deg, rgba(255, 255, 255, 0.9), rgba(255, 255, 255, 0.66));
+  border: 1px solid rgba(255, 255, 255, 0.72);
+  box-shadow: 0 14px 42px rgba(91, 60, 25, 0.12);
+  backdrop-filter: blur(10px);
+}
+
+:root[data-theme="midnight"] .glass-panel {
+  background: linear-gradient(140deg, rgba(18, 24, 41, 0.86), rgba(16, 22, 35, 0.66));
+  border: 1px solid rgba(66, 84, 117, 0.45);
+  box-shadow: 0 14px 42px rgba(2, 6, 23, 0.55);
+}
+
+.soft-panel {
+  background: rgba(255, 255, 255, 0.82);
+  border: 1px solid rgba(236, 221, 197, 0.9);
+  box-shadow: 0 10px 24px rgba(129, 90, 47, 0.08);
+}
+
+:root[data-theme="midnight"] .soft-panel {
+  background: rgba(12, 19, 35, 0.82);
+  border: 1px solid rgba(86, 109, 153, 0.36);
+  box-shadow: 0 10px 24px rgba(2, 6, 23, 0.4);
+}
+
+.table-row {
+  transition: background-color 180ms ease;
+}
+
+.table-row:nth-child(even) {
+  background: rgba(250, 245, 236, 0.68);
+}
+
+.table-row:hover {
+  background: rgba(255, 233, 205, 0.72);
+}
+
+:root[data-theme="midnight"] .table-row:nth-child(even) {
+  background: rgba(30, 41, 59, 0.46);
+}
+
+:root[data-theme="midnight"] .table-row:hover {
+  background: rgba(51, 65, 85, 0.65);
+}
+
+:root[data-theme="midnight"] [class*="bg-white"] {
+  background-color: rgba(14, 22, 39, 0.84) !important;
+}
+
+:root[data-theme="midnight"] [class*="border-white"] {
+  border-color: rgba(86, 109, 153, 0.4) !important;
+}
+
+:root[data-theme="midnight"] [class*="shadow-"] {
+  box-shadow: 0 12px 28px rgba(2, 6, 23, 0.45) !important;
+}
+
+:root[data-theme="midnight"] input,
+:root[data-theme="midnight"] select,
+:root[data-theme="midnight"] textarea {
+  background: rgba(17, 26, 45, 0.9) !important;
+  border-color: rgba(81, 104, 146, 0.45) !important;
+  color: #e6edf7 !important;
+}
+
+:root[data-theme="midnight"] input::placeholder,
+:root[data-theme="midnight"] textarea::placeholder {
+  color: #94a3b8 !important;
+}
+
+:root[data-theme="midnight"] .copy-value,
+:root[data-theme="midnight"] .font-mono {
+  color: #cfe2ff;
+}

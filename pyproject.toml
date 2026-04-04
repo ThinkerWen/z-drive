@@ -1,0 +1,17 @@
+[project]
+name = "z-drive"
+version = "0.1.0"
+requires-python = ">=3.10"
+dependencies = [
+    "fastapi>=0.135.3",
+    "uvicorn>=0.43.0",
+    "jinja2>=3.1.6",
+    "python-multipart>=0.0.20",
+    "sqlalchemy>=2.0.38",
+    "pydantic-settings>=2.8.1",
+    "PyJWT>=2.10.1",
+    "Pillow>=11.1.0",
+]
+
+[project.scripts]
+z-drive = "main:main"

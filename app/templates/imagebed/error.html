@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>z-drive | 访问失败</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+      min-height: 100vh;
+      padding: 24px;
+      color: #1f2937;
+      background:
+        radial-gradient(circle at 8% -10%, rgba(249, 115, 22, 0.18), transparent 34%),
+        radial-gradient(circle at 98% 0%, rgba(14, 165, 233, 0.14), transparent 36%),
+        #f8f6f1;
+    }
+    .page {
+      min-height: calc(100vh - 48px);
+      width: min(640px, 100%);
+      margin: 0 auto;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+    }
+    .card {
+      border-radius: 18px;
+      border: 1px solid rgba(229, 214, 190, 0.9);
+      background: rgba(255, 255, 255, 0.93);
+      box-shadow: 0 16px 42px rgba(63, 35, 8, 0.14);
+      padding: 30px 28px;
+      text-align: center;
+    }
+    .icon {
+      width: 54px;
+      height: 54px;
+      margin: 0 auto 16px;
+      border-radius: 999px;
+      display: grid;
+      place-items: center;
+      background: #fff4ed;
+      color: #ea580c;
+      border: 1px solid #f3d2bf;
+      font-size: 26px;
+      font-weight: 700;
+    }
+    h1 {
+      font-size: 22px;
+      margin-bottom: 10px;
+      letter-spacing: 0.01em;
+    }
+    p {
+      font-size: 14px;
+      color: #6b7280;
+      line-height: 1.65;
+    }
+    .powered {
+      margin-top: 14px;
+      text-align: center;
+      font-size: 12px;
+      color: #6b7280;
+    }
+    .powered a {
+      color: #0f766e;
+      text-decoration: none;
+      font-weight: 600;
+    }
+    .powered a:hover { text-decoration: underline; }
+  </style>
+</head>
+<body>
+  <main class="page">
+    <section class="card">
+      <div class="icon">!</div>
+      <h1>访问失败</h1>
+      <p>{{ message or "页面不存在或您的权限不足" }}</p>
+    </section>
+    <p class="powered">
+      powered by
+      <a href="https://github.com/ThinkerWen/z-drive" target="_blank" rel="noreferrer noopener">z-drive</a>
+    </p>
+  </main>
+</body>
+</html>
