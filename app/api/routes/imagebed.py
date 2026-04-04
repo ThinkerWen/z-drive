@@ -3,13 +3,13 @@ from __future__ import annotations
 import ipaddress
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, Response, UploadFile
-from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
+from fastapi.responses import JSONResponse, RedirectResponse
 from sqlalchemy.orm import Session
 
 from app.core.config import get_settings
 from app.core.security import create_admin_token, decode_admin_token
 from app.db.session import get_db
-from app.schemas.image import DeleteImageRequest, ImageInfoResponse, ImageListRequest, LoginRequest, UpdateImageRequest
+from app.schemas.image import DeleteImageRequest, ImageInfoResponse, LoginRequest, UpdateImageRequest
 from app.services.imagebed import ImageBedService
 
 public_router = APIRouter(tags=["imagebed"])
@@ -195,50 +195,6 @@ async def download_image(request: Request, short_code: str, ext: str, sign: str 
         raise HTTPException(status_code=403, detail=str(exc)) from exc
 
 
-@image_router.get("/preview/{short_code}.{ext}")
-async def preview_image(request: Request, short_code: str, ext: str, sign: str = "", db: Session = Depends(get_db)) -> HTMLResponse:
-    try:
-        if not sign and settings.image_auth_mode == "sign":
-            image = service.get_image_by_shortcode(db, short_code)
-            sign = service._build_sign(image)
-        image = service.get_image(db, short_code, sign)
-        ip, user_agent, referer = _request_meta(request)
-        service.record_access(db, image, "preview", ip, user_agent, referer)
-        public_urls = service.build_public_urls(image, _base_url(request), sign)
-        template = request.app.state.templates
-        context = {
-            "request": request,
-            "file_name": image.file_name,
-            "file_size_formatted": f"{image.file_size / 1024 / 1024:.2f} MB",
-            "file_type": image.file_type,
-            "view_count": image.view_count,
-            "view_url": public_urls["view_url"],
-            "download_url": public_urls["download_url"],
-        }
-        return template.TemplateResponse(
-            request=request,
-            name="imagebed/preview.html",
-            context=context,
-            headers=_cache_headers(),
-        )
-    except LookupError as exc:
-        template = request.app.state.templates
-        return template.TemplateResponse(
-            request=request,
-            name="imagebed/error.html",
-            context={"request": request, "message": "页面不存在或您的权限不足"},
-            status_code=404,
-        )
-    except PermissionError as exc:
-        template = request.app.state.templates
-        return template.TemplateResponse(
-            request=request,
-            name="imagebed/error.html",
-            context={"request": request, "message": "页面不存在或您的权限不足"},
-            status_code=403,
-        )
-
-
 @image_router.get("/list")
 async def list_images(
     page: int = 1,
@@ -276,47 +232,11 @@ async def login(payload: LoginRequest) -> JSONResponse:
     return response
 
 
-@image_router.get("/login")
-async def login_page(request: Request):
-    return request.app.state.templates.TemplateResponse(
-        request=request,
-        name="imagebed/manage/login.html",
-        context={"request": request},
-    )
-
-
 @image_router.get("/logout")
 async def logout() -> RedirectResponse:
     response = RedirectResponse(url="/gallery/login", status_code=302)
     response.delete_cookie("z_drive_admin_token", path="/")
     return response
-
-
-@image_router.get("/index")
-async def index_page(request: Request, _: str = Depends(_admin_token_or_401)):
-    return request.app.state.templates.TemplateResponse(
-        request=request,
-        name="imagebed/manage/upload.html",
-        context={"request": request},
-    )
-
-
-@image_router.get("/gallery")
-async def gallery_page(request: Request, _: str = Depends(_admin_token_or_401)):
-    return request.app.state.templates.TemplateResponse(
-        request=request,
-        name="imagebed/manage/gallery.html",
-        context={"request": request},
-    )
-
-
-@image_router.get("/stats")
-async def stats_page(request: Request, _: str = Depends(_admin_token_or_401)):
-    return request.app.state.templates.TemplateResponse(
-        request=request,
-        name="imagebed/manage/stats.html",
-        context={"request": request},
-    )
 
 
 @image_router.get("/api/list")

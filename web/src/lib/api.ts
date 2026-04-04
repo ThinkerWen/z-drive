@@ -109,13 +109,13 @@ export async function deleteImage(shortcode: string): Promise<void> {
   });
 }
 
-export async function getImageInfo(shortcode: string, sign = ""): Promise<ImageInfoResponse> {
+export async function getImageInfo(shortcode: string, ext: string, sign = ""): Promise<ImageInfoResponse> {
   const search = new URLSearchParams();
   if (sign) {
     search.set("sign", sign);
   }
   const suffix = search.size ? `?${search.toString()}` : "";
-  return request<ImageInfoResponse>(`/gallery/info/${shortcode}${suffix}`);
+  return request<ImageInfoResponse>(`/gallery/info/${shortcode}.${ext}${suffix}`);
 }
 
 export { ApiError };

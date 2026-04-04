@@ -2,6 +2,7 @@ import { Suspense, lazy, useEffect, useMemo, useRef, useState, type ReactNode } 
 import { BarChart3, Copy, ExternalLink, Loader2, LogOut, Palette, Shield, Trash2, Upload } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { PublicErrorPage, PublicPreviewPage, parsePublicPreviewPath } from "@/components/public-pages";
 import {
   ApiError,
   deleteImage,
@@ -42,6 +43,11 @@ const TrendLineChart = lazy(async () => {
 });
 
 export default function App() {
+  const pathname = window.location.pathname;
+  const previewPath = parsePublicPreviewPath(pathname);
+  const isPublicPreviewRoute = Boolean(previewPath);
+  const isPublicErrorRoute = pathname === "/gallery/error";
+
   const [username, setUsername] = useState("admin");
   const [password, setPassword] = useState("");
   const [isAuthed, setIsAuthed] = useState(false);
@@ -111,15 +117,22 @@ export default function App() {
   }
 
   useEffect(() => {
+    if (isPublicPreviewRoute || isPublicErrorRoute) {
+      setAuthLoading(false);
+      return;
+    }
     void (async () => {
       setAuthLoading(true);
       await Promise.all([refreshStats(), refreshList(1)]);
       setAuthLoading(false);
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [isPublicErrorRoute, isPublicPreviewRoute]);
 
   useEffect(() => {
+    if (isPublicPreviewRoute || isPublicErrorRoute) {
+      return;
+    }
     const saved = localStorage.getItem("z-drive-theme") as ThemeName | null;
     const normalized = saved && THEME_OPTIONS.some((option) => option.key === saved) ? saved : "amber";
     setTheme(normalized);
@@ -128,7 +141,15 @@ export default function App() {
     } else {
       document.documentElement.setAttribute("data-theme", normalized);
     }
-  }, []);
+  }, [isPublicErrorRoute, isPublicPreviewRoute]);
+
+  if (isPublicPreviewRoute && previewPath) {
+    return <PublicPreviewPage shortCode={previewPath.shortCode} ext={previewPath.ext} />;
+  }
+
+  if (isPublicErrorRoute) {
+    return <PublicErrorPage />;
+  }
 
   function applyTheme(nextTheme: ThemeName) {
     setTheme(nextTheme);
