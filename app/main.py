@@ -1,17 +1,20 @@
 from __future__ import annotations
 
 from pathlib import Path
+from time import perf_counter
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
 from app.api.routes.health import router as health_router
 from app.api.routes.imagebed import image_router, public_router, service
 from app.core.config import get_settings
+from app.core.logging import logger, setup_logging
 from app.db.session import init_db
 
 settings = get_settings()
+setup_logging(settings.debug)
 base_dir = Path(__file__).resolve().parent
 static_dir = base_dir / "static"
 
@@ -19,6 +22,20 @@ static_dir = base_dir / "static"
 def create_app() -> FastAPI:
     app = FastAPI(title=settings.app_name, debug=settings.debug)
     app.state.settings = settings
+
+    @app.middleware("http")
+    async def request_logging_middleware(request: Request, call_next):
+        started_at = perf_counter()
+        try:
+            response = await call_next(request)
+        except Exception:  # noqa: BLE001
+            elapsed_ms = (perf_counter() - started_at) * 1000
+            logger.exception("{} {} -> 500 ({:.2f} ms)", request.method, request.url.path, elapsed_ms)
+            raise
+
+        elapsed_ms = (perf_counter() - started_at) * 1000
+        logger.info("{} {} -> {} ({:.2f} ms)", request.method, request.url.path, response.status_code, elapsed_ms)
+        return response
 
     if static_dir.exists():
         app.mount("/static", StaticFiles(directory=str(static_dir)), name="static")
@@ -41,6 +58,7 @@ def create_app() -> FastAPI:
     async def startup() -> None:
         init_db()
         service.ensure_directories()
+        logger.info("{} started at {}", settings.app_name, settings.base_url)
 
     app.include_router(health_router)
     app.include_router(public_router)

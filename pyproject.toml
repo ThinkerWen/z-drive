@@ -11,6 +11,7 @@ dependencies = [
     "pydantic-settings>=2.8.1",
     "PyJWT>=2.10.1",
     "Pillow>=11.1.0",
+    "loguru>=0.7.2",
 ]
 
 [project.scripts]
