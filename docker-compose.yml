@@ -1,0 +1,30 @@
+version: "3.9"
+
+services:
+  z-drive:
+    image: ${DOCKERHUB_USERNAME:-yourname}/z-drive:${ZDRIVE_TAG:-latest}
+    container_name: z-drive
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    environment:
+      APP_NAME: z-drive
+      DEBUG: "false"
+      BASE_URL: ${BASE_URL:-http://127.0.0.1:8000}
+      DATABASE_URL: sqlite:////data/z_drive.db
+      STORAGE_PATH: /data/storage
+      VIEW_ORIGIN: "false"
+      ENABLE_BROWSER_CACHE: "true"
+      IMAGE_MAX_FILE_SIZE_MB: "50"
+      IMAGE_THUMBNAIL_SIZE: "320"
+      IMAGE_AUTH_MODE: none
+      SIGN_SALT: ${SIGN_SALT:-change-me}
+      ADMIN_USERNAME: ${ADMIN_USERNAME:-admin}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-change-me}
+      JWT_SECRET: ${JWT_SECRET:-z-drive-change-me-secret-key-at-least-32-bytes}
+      JWT_EXPIRE_MINUTES: ${JWT_EXPIRE_MINUTES:-10080}
+    volumes:
+      - z_drive_data:/data
+
+volumes:
+  z_drive_data:

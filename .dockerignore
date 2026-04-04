@@ -1,0 +1,15 @@
+.git
+.gitignore
+.idea
+.venv
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+.pytest_cache
+.mypy_cache
+z_drive.db
+storage
+web/node_modules
+web/dist
+app/static

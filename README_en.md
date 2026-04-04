@@ -18,6 +18,8 @@ z-drive is a personal cloud project focused on image hosting, cloud drive, and c
 
 ## 2. Installation Guide
 
+### 1. Local
+
 1. Clone and enter the project directory
 
 ```bash
@@ -58,6 +60,31 @@ pnpm dev
 cd web
 pnpm build
 ```
+
+### 2. Docker (Recommended)
+
+1. Clone and enter the project directory
+
+```bash
+git clone https://github.com/ThinkerWen/z-drive.git
+cd z-drive
+```
+
+2. Configure environment values as needed (recommended)
+
+```bash
+cp .env.example .env
+```
+
+3. Start with Docker Compose
+
+```bash
+docker compose up -d
+```
+
+Notes:
+- The sample compose file is `docker-compose.yml` in the project root.
+- If you use custom image owner/tag, set `DOCKERHUB_USERNAME` and `ZDRIVE_TAG` first.
 
 ## 3. `.env` Fields
 

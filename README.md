@@ -18,6 +18,8 @@ z-drive 是一个专注个人云项目，包含图床、云盘、代码片等云
 
 ## 二、安装指导
 
+### 1、本地运行
+
 1. 克隆并进入项目目录
 
 ```bash
@@ -58,6 +60,31 @@ pnpm dev
 cd web
 pnpm build
 ```
+
+### 2、Docker（推荐）
+
+1. 克隆并进入项目目录
+
+```bash
+git clone https://github.com/ThinkerWen/z-drive.git
+cd z-drive
+```
+
+2. 按需配置环境变量（建议）
+
+```bash
+cp .env.example .env
+```
+
+3. 使用 Docker Compose 启动
+
+```bash
+docker compose up -d
+```
+
+说明：
+- 示例编排文件为项目根目录下的 `docker-compose.yml`
+- 如果使用私有镜像或自定义 tag，请先设置 `DOCKERHUB_USERNAME` 和 `ZDRIVE_TAG`
 
 ## 三、`.env` 字段介绍
 
