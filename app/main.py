@@ -37,7 +37,7 @@ def create_app() -> FastAPI:
         started_at = perf_counter()
         try:
             response = await call_next(request)
-        except Exception:  # noqa: BLE001
+        except Exception:
             elapsed_ms = (perf_counter() - started_at) * 1000
             logger.exception("{} {} -> 500 ({:.2f} ms)", request.method, request.url.path, elapsed_ms)
             raise

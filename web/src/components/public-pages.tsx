@@ -44,9 +44,10 @@ export function PublicPreviewPage({ shortCode, ext }: { shortCode: string; ext: 
     return search.get("sign") || "";
   }, []);
 
+  const origin = window.location.origin;
   const querySuffix = sign ? `?sign=${encodeURIComponent(sign)}` : "";
-  const viewUrl = `/i/${shortCode}.${ext}${querySuffix}`;
-  const downloadUrl = `/gallery/download/${shortCode}.${ext}${querySuffix}`;
+  const viewUrl = `${origin}/i/${shortCode}.${ext}${querySuffix}`;
+  const downloadUrl = `${origin}/gallery/download/${shortCode}.${ext}${querySuffix}`;
 
   useEffect(() => {
     void (async () => {
