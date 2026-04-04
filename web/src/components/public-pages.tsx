@@ -35,7 +35,8 @@ export function PublicErrorPage({ message }: { message?: string }) {
 
 export function PublicPreviewPage({ shortCode, ext }: { shortCode: string; ext: string }) {
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
+  const [fatalError, setFatalError] = useState("");
+  const [copyError, setCopyError] = useState("");
   const [info, setInfo] = useState<ImageInfoResponse | null>(null);
   const [copied, setCopied] = useState("");
 
@@ -55,21 +56,53 @@ export function PublicPreviewPage({ shortCode, ext }: { shortCode: string; ext: 
       try {
         const payload = await getImageInfo(shortCode, ext, sign);
         setInfo(payload);
+        setFatalError("");
       } catch {
-        setError("页面不存在或您的权限不足");
+        setFatalError("页面不存在或您的权限不足");
       } finally {
         setLoading(false);
       }
     })();
   }, [shortCode, ext, sign]);
 
+  function fallbackCopyText(text: string): boolean {
+    const textArea = document.createElement("textarea");
+    textArea.value = text;
+    textArea.setAttribute("readonly", "readonly");
+    textArea.style.position = "fixed";
+    textArea.style.opacity = "0";
+    textArea.style.pointerEvents = "none";
+    document.body.appendChild(textArea);
+    textArea.focus();
+    textArea.select();
+
+    let copiedWithFallback = false;
+    try {
+      copiedWithFallback = document.execCommand("copy");
+    } finally {
+      document.body.removeChild(textArea);
+    }
+    return copiedWithFallback;
+  }
+
   async function copyText(text: string, key: string) {
     try {
-      await navigator.clipboard.writeText(text);
+      if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(text);
+      } else if (!fallbackCopyText(text)) {
+        throw new Error("clipboard not available");
+      }
       setCopied(key);
+      setCopyError("");
       window.setTimeout(() => setCopied(""), 1200);
     } catch {
-      setError("复制失败，请手动复制");
+      if (fallbackCopyText(text)) {
+        setCopied(key);
+        setCopyError("");
+        window.setTimeout(() => setCopied(""), 1200);
+        return;
+      }
+      setCopyError("复制失败，请长按文本手动复制");
     }
   }
 
@@ -77,8 +110,8 @@ export function PublicPreviewPage({ shortCode, ext }: { shortCode: string; ext: 
     return <div className="flex min-h-screen items-center justify-center text-sm text-muted-foreground">加载中...</div>;
   }
 
-  if (error || !info) {
-    return <PublicErrorPage message={error || undefined} />;
+  if (fatalError || !info) {
+    return <PublicErrorPage message={fatalError || undefined} />;
   }
 
   const markdown = `![${info.file_name}](${viewUrl})`;
@@ -109,6 +142,7 @@ export function PublicPreviewPage({ shortCode, ext }: { shortCode: string; ext: 
         </div>
 
         <div className="mt-5 space-y-2">
+          {copyError ? <p className="text-xs text-orange-600">{copyError}</p> : null}
           {info.file_type === "video" ? (
             <CopyItem label="VIDEO" value={videoTag} copied={copied === "video"} onCopy={() => void copyText(videoTag, "video")} />
           ) : (

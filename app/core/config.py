@@ -9,7 +9,6 @@ class Settings(BaseSettings):
 
     app_name: str = "z-drive"
     debug: bool = False
-    base_url: str = Field(default="http://127.0.0.1:8000")
 
     database_url: str = Field(default="sqlite:///./z_drive.db")
     storage_path: str = Field(default="storage")
@@ -17,7 +16,6 @@ class Settings(BaseSettings):
     view_origin: bool = False
     enable_browser_cache: bool = True
     image_max_file_size_mb: int = 50
-    image_thumbnail_size: int = 320
     image_auth_mode: str = "none"
     sign_salt: str = "change-me"
 

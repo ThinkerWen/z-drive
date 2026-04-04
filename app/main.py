@@ -24,7 +24,7 @@ static_dir = base_dir / "static"
 async def app_lifespan(_: FastAPI):
     init_db()
     service.ensure_directories()
-    logger.info("{} started at {}", settings.app_name, settings.base_url)
+    logger.info("{} started", settings.app_name)
     yield
 
 

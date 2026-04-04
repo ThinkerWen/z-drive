@@ -312,13 +312,46 @@ export default function App() {
     setSelectedFilesLabel(`已选择 ${fileList.length} 个文件`);
   }
 
+  function fallbackCopyWithExecCommand(value: string): boolean {
+    const textArea = document.createElement("textarea");
+    textArea.value = value;
+    textArea.setAttribute("readonly", "readonly");
+    textArea.style.position = "fixed";
+    textArea.style.opacity = "0";
+    textArea.style.pointerEvents = "none";
+    document.body.appendChild(textArea);
+    textArea.focus();
+    textArea.select();
+    textArea.setSelectionRange(0, textArea.value.length);
+
+    let copied = false;
+    try {
+      copied = document.execCommand("copy");
+    } finally {
+      document.body.removeChild(textArea);
+    }
+    return copied;
+  }
+
   async function copyText(value: string, key: string) {
     try {
-      await navigator.clipboard.writeText(value);
+      if (navigator.clipboard?.writeText && window.isSecureContext) {
+        await navigator.clipboard.writeText(value);
+      } else if (!fallbackCopyWithExecCommand(value)) {
+        throw new Error("clipboard unavailable");
+      }
       setCopiedKey(key);
       window.setTimeout(() => setCopiedKey(""), 1500);
+      setMessage("复制成功");
     } catch {
-      setMessage("复制失败，请手动复制");
+      if (fallbackCopyWithExecCommand(value)) {
+        setCopiedKey(key);
+        window.setTimeout(() => setCopiedKey(""), 1500);
+        setMessage("复制成功");
+        return;
+      }
+      window.prompt("当前环境不支持自动复制，请手动复制以下内容：", value);
+      setMessage("自动复制失败，已提供手动复制");
     }
   }
 

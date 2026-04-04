@@ -205,6 +205,7 @@ async def download_image(request: Request, file_key: str, sign: str = "", db: Se
 
 @image_router.get("/list")
 async def list_images(
+    request: Request,
     page: int = 1,
     page_size: int = 20,
     file_type: str = "all",
@@ -212,7 +213,7 @@ async def list_images(
     db: Session = Depends(get_db),
     _: str = Depends(_admin_token_or_401),
 ) -> dict:
-    payload = service.list_images(db, page, page_size, file_type, query)
+    payload = service.list_images(db, page, page_size, file_type, query, _base_url(request))
     return payload
 
 
@@ -249,6 +250,7 @@ async def logout() -> RedirectResponse:
 
 @image_router.get("/api/list")
 async def manage_list(
+    request: Request,
     page: int = 1,
     page_size: int = 20,
     file_type: str = "all",
@@ -256,7 +258,7 @@ async def manage_list(
     db: Session = Depends(get_db),
     _: str = Depends(_admin_token_or_401),
 ) -> dict:
-    return service.list_images(db, page, page_size, file_type, query)
+    return service.list_images(db, page, page_size, file_type, query, _base_url(request))
 
 
 @image_router.post("/api/update")

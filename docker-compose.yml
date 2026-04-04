@@ -10,13 +10,11 @@ services:
     environment:
       APP_NAME: z-drive
       DEBUG: "false"
-      BASE_URL: ${BASE_URL:-http://127.0.0.1:8000}
       DATABASE_URL: sqlite:////data/z_drive.db
       STORAGE_PATH: /data/storage
       VIEW_ORIGIN: "false"
       ENABLE_BROWSER_CACHE: "true"
       IMAGE_MAX_FILE_SIZE_MB: "50"
-      IMAGE_THUMBNAIL_SIZE: "320"
       IMAGE_AUTH_MODE: none
       SIGN_SALT: ${SIGN_SALT:-change-me}
       ADMIN_USERNAME: ${ADMIN_USERNAME:-admin}

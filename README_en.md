@@ -18,7 +18,7 @@ z-drive is a personal cloud project focused on image hosting, cloud drive, and c
 
 ## 2. Installation Guide
 
-### 1. Local
+### 1. Local (Production)
 
 1. Clone and enter the project directory
 
@@ -33,32 +33,19 @@ cd z-drive
 cp .env.example .env
 ```
 
-3. Start backend
+3. Install dependencies and build frontend
 
 ```bash
 uv sync
-uv run python main.py
-```
-
-or:
-
-```bash
-uv run uvicorn app.main:app --reload
-```
-
-4. Start frontend development (optional)
-
-```bash
 cd web
 pnpm install
-pnpm dev
+pnpm build
 ```
 
-5. Build frontend (production)
+4. Start backend (production)
 
 ```bash
-cd web
-pnpm build
+uv run z-drive
 ```
 
 ### 2. Docker (Recommended)
@@ -92,13 +79,11 @@ Notes:
 | --- | --- | --- |
 | `APP_NAME` | Application name | `z-drive` |
 | `DEBUG` | Enable debug mode | `false` |
-| `BASE_URL` | Public service URL used for generating full links | `http://127.0.0.1:8000` |
 | `DATABASE_URL` | Database connection string | `sqlite:///./z_drive.db` |
 | `STORAGE_PATH` | Local file storage directory | `storage` |
 | `VIEW_ORIGIN` | Always return original file instead of preview | `false` |
 | `ENABLE_BROWSER_CACHE` | Enable browser cache headers | `true` |
 | `IMAGE_MAX_FILE_SIZE_MB` | Max upload size per file (MB) | `50` |
-| `IMAGE_THUMBNAIL_SIZE` | Thumbnail size config (reserved) | `320` |
 | `IMAGE_AUTH_MODE` | Image access mode (e.g. `none`/`sign`) | `none` |
 | `SIGN_SALT` | Global signature salt (must be replaced) | `change-me` |
 | `ADMIN_USERNAME` | Admin username | `admin` |

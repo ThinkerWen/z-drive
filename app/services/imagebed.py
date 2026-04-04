@@ -272,7 +272,7 @@ class ImageBedService:
         }
         return payload
 
-    def list_images(self, db: Session, page: int, page_size: int, file_type: str, query: str) -> dict:
+    def list_images(self, db: Session, page: int, page_size: int, file_type: str, query: str, base_url: str) -> dict:
         page = max(page, 1)
         page_size = max(min(page_size, 200), 1)
         image_cols = Image.__table__.c
@@ -295,7 +295,7 @@ class ImageBedService:
         items = []
         for image in rows:
             sign = self._build_sign(image)
-            public_urls = self.build_public_urls(image, self.settings.base_url, sign)
+            public_urls = self.build_public_urls(image, base_url, sign)
             item = {
                 "id": image.id,
                 "short_code": image.short_code,
