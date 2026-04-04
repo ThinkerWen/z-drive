@@ -5,9 +5,9 @@ from pathlib import Path
 from time import perf_counter
 
 from fastapi import FastAPI, Request
-from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
+from app.api.routes.frontend import create_frontend_router
 from app.api.routes.health import router as health_router
 from app.api.routes.imagebed import image_router, public_router, service
 from app.core.config import get_settings
@@ -28,45 +28,41 @@ async def app_lifespan(_: FastAPI):
     yield
 
 
-def create_app() -> FastAPI:
-    app = FastAPI(title=settings.app_name, debug=settings.debug, lifespan=app_lifespan)
-    app.state.settings = settings
+app = FastAPI(title=settings.app_name, debug=settings.debug, lifespan=app_lifespan)
+app.state.settings = settings
 
-    @app.middleware("http")
-    async def request_logging_middleware(request: Request, call_next):
-        started_at = perf_counter()
-        try:
-            response = await call_next(request)
-        except Exception:
-            elapsed_ms = (perf_counter() - started_at) * 1000
-            logger.exception("{} {} -> 500 ({:.2f} ms)", request.method, request.url.path, elapsed_ms)
-            raise
-
+@app.middleware("http")
+async def request_logging_middleware(request: Request, call_next):
+    started_at = perf_counter()
+    try:
+        response = await call_next(request)
+    except Exception:
         elapsed_ms = (perf_counter() - started_at) * 1000
-        logger.info("{} {} -> {} ({:.2f} ms)", request.method, request.url.path, response.status_code, elapsed_ms)
-        return response
+        logger.exception("{} {} -> 500 ({:.2f} ms)", request.method, request.url.path, elapsed_ms)
+        raise
 
-    if static_dir.exists():
-        app.mount("/static", StaticFiles(directory=str(static_dir)), name="static")
+    elapsed_ms = (perf_counter() - started_at) * 1000
+    logger.info("{} {} -> {} ({:.2f} ms)", request.method, request.url.path, response.status_code, elapsed_ms)
+    return response
 
-        index_file = static_dir / "index.html"
+if static_dir.exists():
+    app.mount("/static", StaticFiles(directory=str(static_dir)), name="static")
 
-        if index_file.exists():
+    index_file = static_dir / "index.html"
 
-            @app.get("/", include_in_schema=False)
-            @app.get("/gallery/index", include_in_schema=False)
-            @app.get("/gallery/gallery", include_in_schema=False)
-            @app.get("/gallery/stats", include_in_schema=False)
-            @app.get("/gallery/login", include_in_schema=False)
-            @app.get("/gallery/error", include_in_schema=False)
-            @app.get("/gallery/preview/{preview_path:path}", include_in_schema=False)
-            async def frontend_index() -> FileResponse:
-                return FileResponse(index_file)
+    if index_file.exists():
+        app.include_router(create_frontend_router(index_file))
 
-    app.include_router(health_router)
-    app.include_router(public_router)
-    app.include_router(image_router)
-    return app
+app.include_router(health_router)
+app.include_router(public_router)
+app.include_router(image_router)
 
 
-app = create_app()
+def main() -> None:
+    import uvicorn
+
+    uvicorn.run("app.main:app", host="0.0.0.0", port=8000, reload=True)
+
+
+if __name__ == "__main__":
+    main()

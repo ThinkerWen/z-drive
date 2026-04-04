@@ -342,12 +342,10 @@ export default function App() {
       }
       setCopiedKey(key);
       window.setTimeout(() => setCopiedKey(""), 1500);
-      setMessage("复制成功");
     } catch {
       if (fallbackCopyWithExecCommand(value)) {
         setCopiedKey(key);
         window.setTimeout(() => setCopiedKey(""), 1500);
-        setMessage("复制成功");
         return;
       }
       window.prompt("当前环境不支持自动复制，请手动复制以下内容：", value);

@@ -16,4 +16,4 @@ dependencies = [
 ]
 
 [project.scripts]
-z-drive = "main:main"
+z-drive = "app.main:main"

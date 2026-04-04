@@ -20,7 +20,6 @@ COPY pyproject.toml uv.lock ./
 RUN uv sync --frozen --no-dev --no-install-project
 
 COPY app ./app
-COPY main.py ./main.py
 COPY .env.example ./.env.example
 COPY README.md README_en.md LICENSE ./
 COPY --from=frontend-builder /src/app/static ./app/static
