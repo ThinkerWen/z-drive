@@ -85,8 +85,8 @@ Notes:
 | `ENABLE_BROWSER_CACHE` | Enable browser cache headers | `true` |
 | `IMAGE_MAX_FILE_SIZE_MB` | Max upload size per file (MB) | `50` |
 | `IMAGE_AUTH_MODE` | Image access mode (e.g. `none`/`sign`) | `none` |
-| `SIGN_SALT` | Global signature salt (must be replaced) | `change-me` |
+| `SIGN_SALT` | Global signature salt (must be replaced) | `replace-with-random-salt` |
 | `ADMIN_USERNAME` | Admin username | `admin` |
-| `ADMIN_PASSWORD` | Admin password (must be replaced) | `admin123` |
-| `JWT_SECRET` | JWT secret (must be replaced, at least 32 bytes) | `z-drive-change-me-secret-key-at-least-32-bytes` |
+| `ADMIN_PASSWORD` | Admin password (must be replaced) | `replace-with-strong-password` |
+| `JWT_SECRET` | JWT secret (must be replaced, at least 32 bytes) | `replace-with-long-random-secret-at-least-32-bytes` |
 | `JWT_EXPIRE_MINUTES` | Admin session expiration in minutes | `10080` |

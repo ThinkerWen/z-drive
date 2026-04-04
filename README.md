@@ -85,8 +85,8 @@ docker compose up -d
 | `ENABLE_BROWSER_CACHE` | 是否启用浏览器缓存头 | `true` |
 | `IMAGE_MAX_FILE_SIZE_MB` | 单文件上传大小上限（MB） | `50` |
 | `IMAGE_AUTH_MODE` | 图片访问权限模式（如 `none`/`sign`） | `none` |
-| `SIGN_SALT` | 全局签名盐值（务必替换） | `change-me` |
+| `SIGN_SALT` | 全局签名盐值（务必替换） | `replace-with-random-salt` |
 | `ADMIN_USERNAME` | 管理员用户名 | `admin` |
-| `ADMIN_PASSWORD` | 管理员密码（务必替换） | `admin123` |
-| `JWT_SECRET` | JWT 密钥（务必替换且不少于 32 字节） | `z-drive-change-me-secret-key-at-least-32-bytes` |
+| `ADMIN_PASSWORD` | 管理员密码（务必替换） | `replace-with-strong-password` |
+| `JWT_SECRET` | JWT 密钥（务必替换且不少于 32 字节） | `replace-with-long-random-secret-at-least-32-bytes` |
 | `JWT_EXPIRE_MINUTES` | 管理员登录态过期时间（分钟） | `10080` |
