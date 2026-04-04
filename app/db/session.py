@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from collections.abc import Generator
+from typing import Any
 
 from sqlalchemy import create_engine
 from sqlalchemy.orm import DeclarativeBase, sessionmaker
@@ -13,7 +14,7 @@ class Base(DeclarativeBase):
 
 
 settings = get_settings()
-engine_kwargs = {"future": True}
+engine_kwargs: dict[str, Any] = {"future": True}
 if settings.database_url.startswith("sqlite"):
     engine_kwargs["connect_args"] = {"check_same_thread": False}
 

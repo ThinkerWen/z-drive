@@ -25,13 +25,11 @@ class Image(Base):
     sign: Mapped[str] = mapped_column(String(64), default="")
     view_count: Mapped[int] = mapped_column(Integer, default=0)
     download_count: Mapped[int] = mapped_column(Integer, default=0)
-    # Backward compatibility for legacy schema migrated from old service.
     has_thumbnail: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     has_compressed: Mapped[bool] = mapped_column(Boolean, default=False)
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now(), nullable=False)
     updated_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now(), onupdate=func.now(), nullable=False)
     is_delete: Mapped[bool] = mapped_column(Boolean, default=False, index=True)
-    deleted_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
 
 
 class ImageAccessLog(Base):

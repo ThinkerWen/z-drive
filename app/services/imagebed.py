@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import io
 import mimetypes
-from datetime import date, datetime
+from datetime import date
 from pathlib import Path
 
 from PIL import Image as PILImage, ImageOps, UnidentifiedImageError
@@ -37,7 +37,8 @@ class ImageBedService:
         self._original_dir().mkdir(parents=True, exist_ok=True)
         self._preview_dir().mkdir(parents=True, exist_ok=True)
 
-    def _guess_mime(self, file_name: str, content_type: str | None) -> str:
+    @staticmethod
+    def _guess_mime(file_name: str, content_type: str | None) -> str:
         if content_type:
             return content_type
         guessed, _ = mimetypes.guess_type(file_name)
@@ -53,11 +54,13 @@ class ImageBedService:
         except UnidentifiedImageError:
             return "file", 0, 0
 
-    def _get_image_dimensions(self, data: bytes) -> tuple[str, int, int]:
+    @staticmethod
+    def _get_image_dimensions(data: bytes) -> tuple[str, int, int]:
         with PILImage.open(io.BytesIO(data)) as image:
             return "image", image.width, image.height
 
-    def _generate_unique_short_code(self, db: Session) -> str:
+    @staticmethod
+    def _generate_unique_short_code(db: Session) -> str:
         while True:
             short_code = generate_short_code()
             exists = db.scalar(select(Image.id).where(Image.short_code == short_code, Image.is_delete.is_(False)))
@@ -71,7 +74,8 @@ class ImageBedService:
         preview_path = self._preview_dir() / f"{short_code}.webp"
         return original_path, preview_path
 
-    def _create_preview_image(self, data: bytes, preview_path: Path) -> bool:
+    @staticmethod
+    def _create_preview_image(data: bytes, preview_path: Path) -> bool:
         try:
             with PILImage.open(io.BytesIO(data)) as source:
                 if source.mode not in {"RGB", "RGBA"}:
@@ -82,14 +86,16 @@ class ImageBedService:
         except UnidentifiedImageError:
             return False
 
-    def _build_url(self, base_url: str, path: str, sign: str | None = None) -> str:
+    @staticmethod
+    def _build_url(base_url: str, path: str, sign: str | None = None) -> str:
         url = f"{base_url.rstrip('/')}/{path.lstrip('/')}"
         if sign:
             separator = "&" if "?" in url else "?"
             url = f"{url}{separator}sign={sign}"
         return url
 
-    def _get_public_extension(self, image: Image) -> str:
+    @staticmethod
+    def _get_public_extension(image: Image) -> str:
         suffix = Path(image.file_name or "").suffix.lower().lstrip(".")
         if suffix:
             return suffix
@@ -167,7 +173,8 @@ class ImageBedService:
 
         return image, self._build_sign(image)
 
-    def get_image_by_shortcode(self, db: Session, short_code: str) -> Image:
+    @staticmethod
+    def get_image_by_shortcode(db: Session, short_code: str) -> Image:
         image = db.scalar(select(Image).where(Image.short_code == short_code, Image.is_delete.is_(False)))
         if image is None:
             raise LookupError("图片不存在")
@@ -186,7 +193,8 @@ class ImageBedService:
         self._check_access(image, sign)
         return image
 
-    def _read_bytes(self, file_path: str) -> bytes:
+    @staticmethod
+    def _read_bytes(file_path: str) -> bytes:
         return Path(file_path).read_bytes()
 
     def get_original_image_data(self, image: Image) -> bytes:
@@ -200,7 +208,8 @@ class ImageBedService:
             return preview_path.read_bytes(), "image/webp"
         return self.get_original_image_data(image), image.mime_type
 
-    def record_access(self, db: Session, image: Image, access_type: str, ip: str, user_agent: str, referer: str) -> None:
+    @staticmethod
+    def record_access(db: Session, image: Image, access_type: str, ip: str, user_agent: str, referer: str) -> None:
         log = ImageAccessLog(
             image_id=image.id,
             short_code=image.short_code,
@@ -234,7 +243,6 @@ class ImageBedService:
     def delete_image(self, db: Session, short_code: str) -> None:
         image = self.get_image_by_shortcode(db, short_code)
         image.is_delete = True
-        image.deleted_at = datetime.utcnow()
         db.commit()
 
     def update_image_access_mode(self, db: Session, short_code: str, access_mode: str, custom_sign: str = "") -> Image:
@@ -267,12 +275,13 @@ class ImageBedService:
     def list_images(self, db: Session, page: int, page_size: int, file_type: str, query: str) -> dict:
         page = max(page, 1)
         page_size = max(min(page_size, 200), 1)
-        filters = [Image.is_delete.is_(False)]
+        image_cols = Image.__table__.c
+        filters = [image_cols.is_delete.is_(False)]
         if file_type and file_type != "all":
-            filters.append(Image.file_type == file_type)
+            filters.append(image_cols.file_type == file_type)
         if query:
             keyword = f"%{query}%"
-            filters.append((Image.file_name.like(keyword)) | (Image.short_code.like(keyword)))
+            filters.append((image_cols.file_name.like(keyword)) | (image_cols.short_code.like(keyword)))
 
         total = db.scalar(select(func.count()).select_from(Image).where(*filters)) or 0
         rows = db.scalars(
@@ -310,7 +319,8 @@ class ImageBedService:
 
         return {"total": int(total), "page": page, "items": items}
 
-    def get_stats(self, db: Session) -> dict:
+    @staticmethod
+    def get_stats(db: Session) -> dict:
         total_images = db.scalar(select(func.count()).select_from(Image).where(Image.is_delete.is_(False))) or 0
         total_size = db.scalar(select(func.coalesce(func.sum(Image.file_size), 0)).where(Image.is_delete.is_(False))) or 0
         total_views = db.scalar(select(func.coalesce(func.sum(Image.view_count), 0)).where(Image.is_delete.is_(False))) or 0

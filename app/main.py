@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from contextlib import asynccontextmanager
 from pathlib import Path
 from time import perf_counter
 
@@ -19,8 +20,16 @@ base_dir = Path(__file__).resolve().parent
 static_dir = base_dir / "static"
 
 
+@asynccontextmanager
+async def app_lifespan(_: FastAPI):
+    init_db()
+    service.ensure_directories()
+    logger.info("{} started at {}", settings.app_name, settings.base_url)
+    yield
+
+
 def create_app() -> FastAPI:
-    app = FastAPI(title=settings.app_name, debug=settings.debug)
+    app = FastAPI(title=settings.app_name, debug=settings.debug, lifespan=app_lifespan)
     app.state.settings = settings
 
     @app.middleware("http")
@@ -53,12 +62,6 @@ def create_app() -> FastAPI:
             @app.get("/gallery/preview/{preview_path:path}", include_in_schema=False)
             async def frontend_index() -> FileResponse:
                 return FileResponse(index_file)
-
-    @app.on_event("startup")
-    async def startup() -> None:
-        init_db()
-        service.ensure_directories()
-        logger.info("{} started at {}", settings.app_name, settings.base_url)
 
     app.include_router(health_router)
     app.include_router(public_router)

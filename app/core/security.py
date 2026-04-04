@@ -9,8 +9,6 @@ import jwt
 
 
 def _normalize_hs256_secret(secret: str) -> str:
-    # PyJWT warns when HS256 secret is shorter than 32 bytes.
-    # For backward compatibility, short secrets are deterministically expanded.
     if len(secret.encode("utf-8")) >= 32:
         return secret
     return hashlib.sha256(secret.encode("utf-8")).hexdigest()

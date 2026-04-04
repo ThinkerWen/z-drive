@@ -67,8 +67,9 @@ def _extract_client_ip(request: Request) -> str:
     if x_real_ip:
         candidates.append(x_real_ip)
 
-    if request.client and request.client.host:
-        candidates.append(request.client.host)
+    client = request.client
+    if client is not None and client.host:
+        candidates.append(client.host)
 
     normalized_candidates = [_normalize_ip(candidate) for candidate in candidates]
     normalized_candidates = [candidate for candidate in normalized_candidates if candidate]
@@ -77,7 +78,6 @@ def _extract_client_ip(request: Request) -> str:
         if not _is_loopback_ip(candidate):
             return candidate
 
-    # If all candidates are loopback/local, ignore them as requested.
     return ""
 
 
@@ -89,15 +89,34 @@ def _request_meta(request: Request) -> tuple[str, str, str]:
     return ip, user_agent, referer
 
 
-@public_router.get("/i/{short_code}.{ext}")
-async def view_image(request: Request, short_code: str, ext: str, sign: str = "", db: Session = Depends(get_db)) -> Response:
+def _split_file_key(file_key: str) -> tuple[str, str]:
+    short_code, sep, ext = file_key.partition(".")
+    if not sep or not short_code or not ext:
+        raise HTTPException(status_code=404, detail="图片不存在")
+    return short_code, ext
+
+
+def _build_original_file_response(request: Request, db: Session, file_key: str, sign: str) -> Response:
+    short_code, _ = _split_file_key(file_key)
+    image = service.get_image(db, short_code, sign)
+    ip, user_agent, referer = _request_meta(request)
+    service.record_access(db, image, "download", ip, user_agent, referer)
+    data = service.get_original_image_data(image)
+    headers = _cache_headers()
+    headers["Content-Disposition"] = f'attachment; filename="{str(image.file_name)}"'
+    return Response(content=data, media_type=str(image.mime_type), headers=headers)
+
+
+@public_router.get("/i/{file_key}")
+async def view_image(request: Request, file_key: str, sign: str = "", db: Session = Depends(get_db)) -> Response:
     try:
+        short_code, _ = _split_file_key(file_key)
         image = service.get_image(db, short_code, sign)
         ip, user_agent, referer = _request_meta(request)
         service.record_access(db, image, "view", ip, user_agent, referer)
         if settings.view_origin or image.file_type != "image":
             data = service.get_original_image_data(image)
-            mime_type = image.mime_type
+            mime_type = str(image.mime_type)
         else:
             data, mime_type = service.get_compressed_view(image)
         return Response(content=data, media_type=mime_type, headers=_cache_headers())
@@ -139,38 +158,33 @@ async def upload_multiple(
     return {"total": len(files), "results": results}
 
 
-@image_router.get("/file/{short_code}.{ext}")
-async def get_image_file(request: Request, short_code: str, ext: str, sign: str = "", db: Session = Depends(get_db)) -> Response:
+@image_router.get("/file/{file_key}")
+async def get_image_file(request: Request, file_key: str, sign: str = "", db: Session = Depends(get_db)) -> Response:
     try:
-        image = service.get_image(db, short_code, sign)
-        ip, user_agent, referer = _request_meta(request)
-        service.record_access(db, image, "download", ip, user_agent, referer)
-        data = service.get_original_image_data(image)
-        headers = _cache_headers()
-        headers["Content-Disposition"] = f'attachment; filename="{image.file_name}"'
-        return Response(content=data, media_type=image.mime_type, headers=headers)
+        return _build_original_file_response(request, db, file_key, sign)
     except LookupError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
     except PermissionError as exc:
         raise HTTPException(status_code=403, detail=str(exc)) from exc
 
 
-@image_router.get("/info/{short_code}.{ext}")
-async def get_image_info(request: Request, short_code: str, ext: str, sign: str = "", db: Session = Depends(get_db)) -> dict:
+@image_router.get("/info/{file_key}")
+async def get_image_info(request: Request, file_key: str, sign: str = "", db: Session = Depends(get_db)) -> dict:
     try:
+        short_code, _ = _split_file_key(file_key)
         image = service.get_image(db, short_code, sign)
         ip, user_agent, referer = _request_meta(request)
         service.record_access(db, image, "info", ip, user_agent, referer)
         return ImageInfoResponse(
-            short_code=image.short_code,
-            file_name=image.file_name,
-            file_size=image.file_size,
-            file_type=image.file_type,
-            mime_type=image.mime_type,
-            width=image.width,
-            height=image.height,
-            view_count=image.view_count,
-            download_count=image.download_count,
+            short_code=str(image.short_code),
+            file_name=str(image.file_name),
+            file_size=int(image.file_size),
+            file_type=str(image.file_type),
+            mime_type=str(image.mime_type),
+            width=int(image.width),
+            height=int(image.height),
+            view_count=int(image.view_count),
+            download_count=int(image.download_count),
             created_at=image.created_at.strftime("%Y-%m-%d %H:%M:%S"),
         ).model_dump()
     except LookupError as exc:
@@ -179,16 +193,10 @@ async def get_image_info(request: Request, short_code: str, ext: str, sign: str 
         raise HTTPException(status_code=403, detail=str(exc)) from exc
 
 
-@image_router.get("/download/{short_code}.{ext}")
-async def download_image(request: Request, short_code: str, ext: str, sign: str = "", db: Session = Depends(get_db)) -> Response:
+@image_router.get("/download/{file_key}")
+async def download_image(request: Request, file_key: str, sign: str = "", db: Session = Depends(get_db)) -> Response:
     try:
-        image = service.get_image(db, short_code, sign)
-        ip, user_agent, referer = _request_meta(request)
-        service.record_access(db, image, "download", ip, user_agent, referer)
-        data = service.get_original_image_data(image)
-        headers = _cache_headers()
-        headers["Content-Disposition"] = f'attachment; filename="{image.file_name}"'
-        return Response(content=data, media_type=image.mime_type, headers=headers)
+        return _build_original_file_response(request, db, file_key, sign)
     except LookupError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
     except PermissionError as exc:
