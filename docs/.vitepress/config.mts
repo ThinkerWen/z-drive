@@ -4,7 +4,7 @@ export default defineConfig({
   title: "Z-Drive",
   description: "Z-Drive project documentation",
   lang: "zh-CN",
-  base: "/z-drive/",
+  base: "/",
   cleanUrls: true,
   themeConfig: {
     siteTitle: "Z-Drive Docs",
