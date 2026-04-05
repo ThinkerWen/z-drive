@@ -193,3 +193,28 @@ h6 {
 :root[data-theme="midnight"] .font-mono {
   color: #cfe2ff;
 }
+
+.theme-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: hsl(var(--border)) hsl(var(--muted));
+}
+
+.theme-scrollbar::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+.theme-scrollbar::-webkit-scrollbar-track {
+  background: hsl(var(--muted));
+  border-radius: 9999px;
+}
+
+.theme-scrollbar::-webkit-scrollbar-thumb {
+  background: hsl(var(--border));
+  border-radius: 9999px;
+  border: 2px solid hsl(var(--muted));
+}
+
+.theme-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: hsl(var(--primary) / 0.75);
+}

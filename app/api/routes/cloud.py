@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from datetime import datetime
 from pathlib import Path
+from urllib.parse import quote
 
 from fastapi import APIRouter, BackgroundTasks, Depends, File, HTTPException, Query, Request, UploadFile
 from fastapi.responses import FileResponse
@@ -64,6 +65,11 @@ def _admin_token_or_401(request: Request) -> str:
         return decode_admin_token(token, settings.jwt_secret)
     except Exception as exc:  # noqa: BLE001
         raise HTTPException(status_code=401, detail="登录已过期") from exc
+
+
+def _inline_content_disposition(file_name: str) -> str:
+    encoded_name = quote(file_name, safe="")
+    return f"inline; filename*=UTF-8''{encoded_name}"
 
 
 def _to_item_payload(item, duplicate_of_id: int | None = None) -> DriveItemResponse:
@@ -277,7 +283,7 @@ async def preview_shared_item(share_code: str, password: str = "", db: Session =
         file_path = Path(settings.storage_path) / "cloud" / item.storage_path
         if not file_path.exists():
             raise LookupError("文件不存在")
-        headers = {"Content-Disposition": f'inline; filename="{item.name}"'}
+        headers = {"Content-Disposition": _inline_content_disposition(str(item.name))}
         return FileResponse(path=file_path, media_type=item.mime_type or "application/octet-stream", headers=headers)
     except LookupError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
@@ -432,7 +438,7 @@ async def download_file(item_id: int, db: Session = Depends(get_db), _: str = De
 async def preview_file(item_id: int, db: Session = Depends(get_db), _: str = Depends(_admin_token_or_401)) -> FileResponse:
     try:
         item, file_path = service.get_preview_file(db, item_id)
-        headers = {"Content-Disposition": f'inline; filename="{item.name}"'}
+        headers = {"Content-Disposition": _inline_content_disposition(str(item.name))}
         return FileResponse(path=file_path, media_type=item.mime_type or "application/octet-stream", headers=headers)
     except LookupError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc

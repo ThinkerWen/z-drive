@@ -41,7 +41,6 @@ import {
   listCloudShares,
   moveCloudItem,
   renameCloudItem,
-  uploadCloudFiles,
 } from "@/lib/api";
 import type {
   CloudFileType,
@@ -56,6 +55,16 @@ interface CloudPageProps {
   mode: "upload" | "files" | "shares" | "stats";
   onAuthExpired: () => void;
   onNotify: (message: string) => void;
+}
+
+type CloudUploadTaskStatus = "waiting" | "uploading" | "success" | "error" | "cancelled";
+
+interface CloudUploadTask {
+  id: string;
+  file: File;
+  progress: number;
+  status: CloudUploadTaskStatus;
+  error?: string;
 }
 
 type TargetPickerAction =
@@ -83,6 +92,9 @@ export function CloudPage({ mode, onAuthExpired, onNotify }: CloudPageProps) {
   const [loading, setLoading] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [uploadDropActive, setUploadDropActive] = useState(false);
+  const [cloudSelectedFiles, setCloudSelectedFiles] = useState<File[]>([]);
+  const [cloudSelectedFilesLabel, setCloudSelectedFilesLabel] = useState("未选择文件");
+  const [cloudUploadTasks, setCloudUploadTasks] = useState<CloudUploadTask[]>([]);
   const [copiedShareId, setCopiedShareId] = useState<number | null>(null);
   const [sharePasswords, setSharePasswords] = useState<Record<string, string>>({});
   const [copyPasswordShare, setCopyPasswordShare] = useState<CloudShareResponse | null>(null);
@@ -98,8 +110,13 @@ export function CloudPage({ mode, onAuthExpired, onNotify }: CloudPageProps) {
   const [targetPickerCopyName, setTargetPickerCopyName] = useState("");
   const [propertiesItem, setPropertiesItem] = useState<CloudItem | null>(null);
   const [previewItem, setPreviewItem] = useState<CloudItem | null>(null);
+  const [previewTextContent, setPreviewTextContent] = useState("");
+  const [previewLoading, setPreviewLoading] = useState(false);
+  const [previewError, setPreviewError] = useState("");
   const [renameModalItem, setRenameModalItem] = useState<CloudItem | null>(null);
   const [renameValue, setRenameValue] = useState("");
+  const [deleteTarget, setDeleteTarget] = useState<CloudItem | null>(null);
+  const [batchDeleteConfirmOpen, setBatchDeleteConfirmOpen] = useState(false);
   const [shareModalItem, setShareModalItem] = useState<CloudItem | null>(null);
   const [sharePassword, setSharePassword] = useState("");
   const [shareExpiresMinutes, setShareExpiresMinutes] = useState("");
@@ -109,6 +126,7 @@ export function CloudPage({ mode, onAuthExpired, onNotify }: CloudPageProps) {
     y: number;
   } | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const activeCloudUploadsRef = useRef<Record<string, XMLHttpRequest>>({});
 
   useEffect(() => {
     try {
@@ -209,6 +227,55 @@ export function CloudPage({ mode, onAuthExpired, onNotify }: CloudPageProps) {
       window.removeEventListener("keydown", handleEsc);
     };
   }, [contextMenu]);
+
+  useEffect(() => {
+    if (!previewItem) {
+      setPreviewLoading(false);
+      setPreviewError("");
+      setPreviewTextContent("");
+      return;
+    }
+
+    const previewKind = getCloudPreviewKind(previewItem);
+    if (previewKind !== "text") {
+      setPreviewLoading(false);
+      setPreviewError("");
+      setPreviewTextContent("");
+      return;
+    }
+
+    const controller = new AbortController();
+    void (async () => {
+      setPreviewLoading(true);
+      setPreviewError("");
+      setPreviewTextContent("");
+      try {
+        const response = await fetch(buildCloudPreviewUrl(previewItem.id), {
+          credentials: "include",
+          signal: controller.signal,
+        });
+        if (!response.ok) {
+          throw new Error(`预览加载失败 (${response.status})`);
+        }
+        const text = await response.text();
+        const maxLen = 600_000;
+        setPreviewTextContent(text.length > maxLen ? `${text.slice(0, maxLen)}\n\n... (内容过长，已截断)` : text);
+      } catch (error) {
+        if (controller.signal.aborted) {
+          return;
+        }
+        setPreviewError(error instanceof Error ? error.message : "文本预览加载失败");
+      } finally {
+        if (!controller.signal.aborted) {
+          setPreviewLoading(false);
+        }
+      }
+    })();
+
+    return () => {
+      controller.abort();
+    };
+  }, [previewItem]);
 
   function fallbackCopyWithExecCommand(value: string): boolean {
     const textArea = document.createElement("textarea");
@@ -329,6 +396,101 @@ export function CloudPage({ mode, onAuthExpired, onNotify }: CloudPageProps) {
     onNotify("暂不支持直接新建空文件，请使用上传功能创建文件");
   }
 
+  function buildCloudUploadUrl(parentId: number | null): string {
+    const search = new URLSearchParams();
+    if (parentId !== null) {
+      search.set("parent_id", String(parentId));
+    }
+    const suffix = search.size ? `?${search.toString()}` : "";
+    return `/api/cloud/upload${suffix}`;
+  }
+
+  function updateCloudUploadTask(taskId: string, updater: (task: CloudUploadTask) => CloudUploadTask) {
+    setCloudUploadTasks((prev) => prev.map((task) => (task.id === taskId ? updater(task) : task)));
+  }
+
+  function setSelectedCloudFiles(files: File[]) {
+    setCloudSelectedFiles(files);
+    if (files.length === 0) {
+      setCloudSelectedFilesLabel("未选择文件");
+      return;
+    }
+    if (files.length === 1) {
+      setCloudSelectedFilesLabel(files[0].name);
+      return;
+    }
+    setCloudSelectedFilesLabel(`已选择 ${files.length} 个文件`);
+  }
+
+  async function uploadSingleCloudTask(taskId: string, file: File, parentId: number | null): Promise<void> {
+    await new Promise<void>((resolve, reject) => {
+      const xhr = new XMLHttpRequest();
+      xhr.open("POST", buildCloudUploadUrl(parentId), true);
+      xhr.withCredentials = true;
+
+      updateCloudUploadTask(taskId, (task) => ({ ...task, status: "uploading", progress: 0, error: undefined }));
+
+      xhr.upload.onprogress = (event) => {
+        if (!event.lengthComputable) {
+          return;
+        }
+        const progress = Math.min(99, Math.round((event.loaded / event.total) * 100));
+        updateCloudUploadTask(taskId, (task) => ({ ...task, progress }));
+      };
+
+      xhr.onload = () => {
+        delete activeCloudUploadsRef.current[taskId];
+
+        let payload: Record<string, unknown> | null = null;
+        try {
+          payload = xhr.responseText ? (JSON.parse(xhr.responseText) as Record<string, unknown>) : null;
+        } catch {
+          payload = null;
+        }
+
+        const payloadObj = payload && typeof payload === "object" ? (payload as Record<string, unknown>) : null;
+        const isEnvelope = payloadObj !== null && "code" in payloadObj && "data" in payloadObj && "message" in payloadObj;
+        const envelopeCode = isEnvelope && typeof payloadObj.code === "number" ? payloadObj.code : null;
+        const envelopeMessage = isEnvelope && typeof payloadObj.message === "string" ? payloadObj.message : "";
+
+        if (xhr.status < 200 || xhr.status >= 300 || (envelopeCode !== null && envelopeCode !== 0)) {
+          const errorText = envelopeMessage || (typeof payloadObj?.detail === "string" ? payloadObj.detail : "上传失败");
+          updateCloudUploadTask(taskId, (task) => ({ ...task, status: "error", error: errorText }));
+          reject(new Error(errorText));
+          return;
+        }
+
+        updateCloudUploadTask(taskId, (task) => ({ ...task, status: "success", progress: 100, error: undefined }));
+        resolve();
+      };
+
+      xhr.onerror = () => {
+        delete activeCloudUploadsRef.current[taskId];
+        updateCloudUploadTask(taskId, (task) => ({ ...task, status: "error", error: "网络错误" }));
+        reject(new Error("网络错误"));
+      };
+
+      xhr.onabort = () => {
+        delete activeCloudUploadsRef.current[taskId];
+        updateCloudUploadTask(taskId, (task) => ({ ...task, status: "cancelled", error: "已取消" }));
+        reject(new Error("已取消"));
+      };
+
+      const form = new FormData();
+      form.append("file", file);
+      xhr.send(form);
+      activeCloudUploadsRef.current[taskId] = xhr;
+    });
+  }
+
+  function cancelCloudUploadTask(taskId: string) {
+    const xhr = activeCloudUploadsRef.current[taskId];
+    if (xhr) {
+      xhr.abort();
+      delete activeCloudUploadsRef.current[taskId];
+    }
+  }
+
   async function uploadCloudFileList(files: File[]) {
     if (files.length === 0) {
       return;
@@ -336,9 +498,23 @@ export function CloudPage({ mode, onAuthExpired, onNotify }: CloudPageProps) {
 
     setUploading(true);
     try {
-      await uploadCloudFiles(currentParentId, files);
-      onNotify(`上传完成，共 ${files.length} 个文件`);
-      await refreshAll(currentParentId);
+      const tasks: CloudUploadTask[] = files.map((file) => ({
+        id: `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
+        file,
+        progress: 0,
+        status: "waiting",
+      }));
+      setCloudUploadTasks((prev) => [...tasks, ...prev]);
+
+      const settled = await Promise.allSettled(tasks.map((task) => uploadSingleCloudTask(task.id, task.file, currentParentId)));
+      const successCount = settled.filter((item) => item.status === "fulfilled").length;
+      onNotify(`上传完成：成功 ${successCount} / ${tasks.length}`);
+
+      if (successCount > 0) {
+        await refreshAll(currentParentId);
+      }
+
+      setSelectedCloudFiles([]);
     } catch (error) {
       if (error instanceof ApiError && error.status === 401) {
         onAuthExpired();
@@ -352,15 +528,19 @@ export function CloudPage({ mode, onAuthExpired, onNotify }: CloudPageProps) {
 
   async function handleUpload(event: React.ChangeEvent<HTMLInputElement>) {
     const files = event.target.files ? Array.from(event.target.files) : [];
-    await uploadCloudFileList(files);
+    setSelectedCloudFiles(files);
     event.target.value = "";
   }
 
-  async function handleUploadDrop(event: React.DragEvent<HTMLLabelElement>) {
+  async function handleUploadDrop(event: React.DragEvent<HTMLDivElement>) {
     event.preventDefault();
     setUploadDropActive(false);
     const files = Array.from(event.dataTransfer.files ?? []);
-    await uploadCloudFileList(files);
+    setSelectedCloudFiles(files);
+  }
+
+  async function confirmCloudUpload() {
+    await uploadCloudFileList(cloudSelectedFiles);
   }
 
   function openRenameModal(item: CloudItem) {
@@ -394,14 +574,18 @@ export function CloudPage({ mode, onAuthExpired, onNotify }: CloudPageProps) {
   }
 
   async function handleDelete(item: CloudItem) {
-    const ok = window.confirm(`确认删除 ${item.name} 吗？此操作不可恢复。`);
-    if (!ok) {
+    setDeleteTarget(item);
+  }
+
+  async function confirmDelete() {
+    if (!deleteTarget) {
       return;
     }
     setLoading(true);
     try {
-      await deleteCloudItem(item.id);
+      await deleteCloudItem(deleteTarget.id);
       onNotify("删除成功");
+      setDeleteTarget(null);
       await refreshAll(currentParentId);
     } catch (error) {
       if (error instanceof ApiError && error.status === 401) {
@@ -548,8 +732,13 @@ export function CloudPage({ mode, onAuthExpired, onNotify }: CloudPageProps) {
       onNotify("请先选择要删除的项目");
       return;
     }
-    const ok = window.confirm(`确认删除已选 ${selectedIds.length} 项吗？此操作不可恢复。`);
-    if (!ok) {
+
+    setBatchDeleteConfirmOpen(true);
+  }
+
+  async function confirmBatchDelete() {
+    if (selectedIds.length === 0) {
+      setBatchDeleteConfirmOpen(false);
       return;
     }
 
@@ -557,6 +746,7 @@ export function CloudPage({ mode, onAuthExpired, onNotify }: CloudPageProps) {
     try {
       const result = await batchDeleteCloudItems(selectedIds);
       onNotify(`批量删除完成：成功 ${result.success} / ${result.total}`);
+      setBatchDeleteConfirmOpen(false);
       await refreshAll(currentParentId);
     } catch (error) {
       if (error instanceof ApiError && error.status === 401) {
@@ -767,7 +957,7 @@ export function CloudPage({ mode, onAuthExpired, onNotify }: CloudPageProps) {
 
       {mode === "upload" ? (
         <>
-          <label
+          <div
             className={
               uploadDropActive
                 ? "flex min-h-48 cursor-pointer flex-col items-center justify-center rounded-2xl border-2 border-primary bg-primary/5 p-6 text-center"
@@ -781,17 +971,73 @@ export function CloudPage({ mode, onAuthExpired, onNotify }: CloudPageProps) {
             onDrop={(event) => {
               void handleUploadDrop(event);
             }}
-            onClick={() => fileInputRef.current?.click()}
           >
             <p className="text-base font-semibold">拖拽文件到这里上传</p>
-            <p className="mt-1 text-sm text-muted-foreground">或点击此区域选择多个文件上传到当前目录</p>
+            <p className="mt-1 text-sm text-muted-foreground">或点击按钮选择多个文件上传到当前目录</p>
+            <p className="mt-3 max-w-full truncate rounded-lg bg-white/80 px-3 py-1.5 text-xs text-muted-foreground" title={cloudSelectedFilesLabel}>
+              {cloudSelectedFilesLabel}
+            </p>
             <div className="mt-4">
               <Button type="button" onClick={() => fileInputRef.current?.click()} disabled={uploading || loading}>
                 <Upload className="mr-2 h-4 w-4" />
-                {uploading ? "上传中..." : "选择文件"}
+                选择本地文件
               </Button>
             </div>
-          </label>
+          </div>
+
+          <div className="mt-3 flex justify-end">
+            <Button type="button" onClick={() => void confirmCloudUpload()} disabled={uploading || loading || cloudSelectedFiles.length === 0}>
+              {uploading ? "上传中..." : "开始上传"}
+            </Button>
+          </div>
+
+          {cloudUploadTasks.length > 0 ? (
+            <div className="mt-4 grid gap-2">
+              {cloudUploadTasks.map((task) => (
+                <article key={task.id} className="rounded-xl border border-border/70 bg-white/85 p-3">
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-xs font-semibold" title={task.file.name}>{task.file.name}</p>
+                      <p className="text-[11px] text-muted-foreground">{formatFileSize(task.file.size)}</p>
+                    </div>
+                    <span
+                      className={
+                        task.status === "success"
+                          ? "rounded-md bg-emerald-100 px-2 py-1 text-[11px] font-semibold text-emerald-700"
+                          : task.status === "error"
+                            ? "rounded-md bg-rose-100 px-2 py-1 text-[11px] font-semibold text-rose-700"
+                            : task.status === "cancelled"
+                              ? "rounded-md bg-slate-200 px-2 py-1 text-[11px] font-semibold text-slate-700"
+                              : "rounded-md bg-amber-100 px-2 py-1 text-[11px] font-semibold text-amber-700"
+                      }
+                    >
+                      {task.status === "success"
+                        ? "完成"
+                        : task.status === "error"
+                          ? `失败: ${task.error ?? "unknown"}`
+                          : task.status === "cancelled"
+                            ? "已取消"
+                            : `${task.progress}%`}
+                    </span>
+                    {(task.status === "waiting" || task.status === "uploading") ? (
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        onClick={() => cancelCloudUploadTask(task.id)}
+                        disabled={task.status === "waiting"}
+                      >
+                        取消
+                      </Button>
+                    ) : null}
+                  </div>
+                  <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-muted">
+                    <div className="h-full rounded-full bg-primary transition-all" style={{ width: `${task.progress}%` }} />
+                  </div>
+                </article>
+              ))}
+            </div>
+          ) : null}
         </>
       ) : null}
 
@@ -1154,16 +1400,72 @@ export function CloudPage({ mode, onAuthExpired, onNotify }: CloudPageProps) {
                   <Button type="button" variant="outline" size="sm" onClick={() => setPreviewItem(null)}>关闭</Button>
                 </div>
                 <div className="flex max-h-[72vh] items-center justify-center overflow-hidden rounded-xl border border-border/70 bg-muted/30 p-2">
-                  {previewItem.mime_type.startsWith("image/") ? (
-                    <img src={`/api/cloud/preview/${previewItem.id}`} alt={previewItem.name} className="max-h-[68vh] w-auto rounded" />
-                  ) : previewItem.mime_type.startsWith("video/") ? (
-                    <PlyrVideo src={`/api/cloud/preview/${previewItem.id}`} className="max-h-[68vh] w-full rounded" />
+                  {getCloudPreviewKind(previewItem) === "image" ? (
+                    <img src={buildCloudPreviewUrl(previewItem.id)} alt={previewItem.name} className="max-h-[68vh] w-auto rounded" />
+                  ) : getCloudPreviewKind(previewItem) === "video" ? (
+                    <PlyrVideo src={buildCloudPreviewUrl(previewItem.id)} className="max-h-[68vh] w-full rounded" />
+                  ) : getCloudPreviewKind(previewItem) === "pdf" ? (
+                    <iframe title={previewItem.name} src={buildCloudPreviewUrl(previewItem.id)} className="h-[68vh] w-full rounded border border-border/60 bg-white" />
+                  ) : getCloudPreviewKind(previewItem) === "text" ? (
+                    <div className="theme-scrollbar h-[68vh] w-full overflow-auto rounded border border-border/60 bg-white p-4 text-left">
+                      {previewLoading ? <p className="text-sm text-muted-foreground">文本加载中...</p> : null}
+                      {previewError ? <p className="text-sm text-rose-600">{previewError}</p> : null}
+                      {!previewLoading && !previewError ? (
+                        <pre className="whitespace-pre-wrap break-words font-mono text-xs leading-6 text-foreground">{previewTextContent}</pre>
+                      ) : null}
+                    </div>
                   ) : (
                     <div className="px-6 py-10 text-center">
-                      <p className="text-sm text-muted-foreground">该类型暂不支持内嵌预览</p>
-                      <Button type="button" className="mt-3" onClick={() => window.open(`/api/cloud/preview/${previewItem.id}`, "_blank")}>新窗口打开</Button>
+                      <p className="text-sm text-muted-foreground">该类型暂不支持预览，请下载后查看</p>
+                      <Button type="button" className="mt-3" onClick={() => window.open(`/api/cloud/download/${previewItem.id}`, "_blank")}>立即下载</Button>
                     </div>
                   )}
+                </div>
+              </div>
+            </div>
+          ) : null}
+
+          {deleteTarget ? (
+            <div
+              className="fixed inset-0 z-[75] flex items-center justify-center bg-black/45 p-4"
+              onClick={() => setDeleteTarget(null)}
+            >
+              <div
+                className="w-full max-w-md rounded-2xl border border-white/70 bg-white p-4 shadow-[0_18px_48px_rgba(0,0,0,0.22)]"
+                onClick={(event) => event.stopPropagation()}
+              >
+                <h3 className="text-sm font-semibold text-rose-700">确认删除</h3>
+                <p className="mt-2 text-xs text-muted-foreground">
+                  确认删除 <span className="font-semibold text-foreground">{deleteTarget.name}</span> 吗？此操作不可恢复。
+                </p>
+                <div className="mt-4 flex justify-end gap-2">
+                  <Button type="button" variant="outline" onClick={() => setDeleteTarget(null)} disabled={loading}>取消</Button>
+                  <Button type="button" onClick={() => void confirmDelete()} disabled={loading} className="bg-rose-600 text-white hover:bg-rose-700">
+                    删除
+                  </Button>
+                </div>
+              </div>
+            </div>
+          ) : null}
+
+          {batchDeleteConfirmOpen ? (
+            <div
+              className="fixed inset-0 z-[75] flex items-center justify-center bg-black/45 p-4"
+              onClick={() => setBatchDeleteConfirmOpen(false)}
+            >
+              <div
+                className="w-full max-w-md rounded-2xl border border-white/70 bg-white p-4 shadow-[0_18px_48px_rgba(0,0,0,0.22)]"
+                onClick={(event) => event.stopPropagation()}
+              >
+                <h3 className="text-sm font-semibold text-rose-700">确认批量删除</h3>
+                <p className="mt-2 text-xs text-muted-foreground">
+                  确认删除已选 <span className="font-semibold text-foreground">{selectedIds.length}</span> 项吗？此操作不可恢复。
+                </p>
+                <div className="mt-4 flex justify-end gap-2">
+                  <Button type="button" variant="outline" onClick={() => setBatchDeleteConfirmOpen(false)} disabled={loading}>取消</Button>
+                  <Button type="button" onClick={() => void confirmBatchDelete()} disabled={loading} className="bg-rose-600 text-white hover:bg-rose-700">
+                    批量删除
+                  </Button>
                 </div>
               </div>
             </div>
@@ -1632,6 +1934,60 @@ function ContextMenuButton({
       {children}
     </button>
   );
+}
+
+type CloudPreviewKind = "image" | "video" | "text" | "pdf" | "other";
+
+function getCloudPreviewKind(item: CloudItem): CloudPreviewKind {
+  const extRaw = (item.file_ext || item.name.split(".").pop() || "").toLowerCase();
+  const ext = extRaw.startsWith(".") ? extRaw.slice(1) : extRaw;
+  const mime = (item.mime_type || "").toLowerCase();
+
+  const textExts = new Set([
+    "txt", "log", "md", "markdown", "html", "htm", "xml", "json", "yaml", "yml", "toml", "ini", "cfg", "conf",
+    "csv", "tsv", "py", "js", "ts", "jsx", "tsx", "java", "go", "c", "cpp", "rs", "php", "rb", "sh", "bat", "ps1",
+    "sql", "css", "scss", "less",
+  ]);
+
+  const isOfficeMime =
+    mime.includes("officedocument") ||
+    mime.includes("msword") ||
+    mime.includes("ms-powerpoint") ||
+    mime.includes("ms-excel") ||
+    mime.includes("vnd.ms-");
+  if (mime.startsWith("image/")) {
+    return "image";
+  }
+  if (mime.startsWith("video/")) {
+    return "video";
+  }
+  if (mime === "application/pdf" || ext === "pdf") {
+    return "pdf";
+  }
+
+  if (isOfficeMime) {
+    return "other";
+  }
+
+  const knownTextMime =
+    mime === "application/json" ||
+    mime === "application/xml" ||
+    mime === "application/x-yaml" ||
+    mime === "application/yaml" ||
+    mime === "application/toml" ||
+    mime === "application/javascript" ||
+    mime === "application/x-javascript" ||
+    mime === "application/sql";
+
+  if (textExts.has(ext) || mime.startsWith("text/") || knownTextMime) {
+    return "text";
+  }
+
+  return "other";
+}
+
+function buildCloudPreviewUrl(itemId: number): string {
+  return `/api/cloud/preview/${itemId}`;
 }
 
 function CopyIcon() {
