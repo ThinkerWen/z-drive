@@ -6,6 +6,7 @@ from fastapi.responses import FileResponse
 
 FRONTEND_ENTRY_PATHS = (
     "/",
+    "/f/{share_code}",
     "/gallery/index",
     "/gallery/gallery",
     "/gallery/stats",

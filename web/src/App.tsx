@@ -1,9 +1,10 @@
 import { Suspense, lazy, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { BarChart3, Copy, ExternalLink, Loader2, LogOut, Palette, Shield, Trash2, Upload } from "lucide-react";
+import { BarChart3, CheckCircle2, Copy, ExternalLink, Loader2, LogOut, Palette, Shield, Trash2, Upload, XCircle } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { CloudPage } from "@/components/cloud-page";
 import { PlyrVideo } from "@/components/plyr-video";
-import { PublicErrorPage, PublicPreviewPage, parsePublicPreviewPath } from "@/components/public-pages";
+import { PublicErrorPage, PublicPreviewPage, PublicSharePage, parsePublicPreviewPath, parsePublicSharePath } from "@/components/public-pages";
 import {
   ApiError,
   deleteImage,
@@ -16,9 +17,12 @@ import {
 import type { AccessMode, ImageListItem, StatsResponse, UploadResultItem } from "@/lib/types";
 
 const PAGE_SIZE = 8;
-type ManagePage = "login" | "upload" | "gallery" | "stats";
+type GallerySubPage = "upload" | "gallery" | "stats";
+type CloudSubPage = "upload" | "files" | "shares" | "stats";
+type ManageSection = "gallery" | "cloud";
 type UploadTaskStatus = "uploading" | "processing" | "success" | "error" | "cancelled";
 type ThemeName = "amber" | "ocean" | "forest" | "rose" | "midnight";
+type ToastKind = "success" | "error";
 
 const THEME_OPTIONS: Array<{ key: ThemeName; label: string; preview: string }> = [
   { key: "amber", label: "琥珀", preview: "#ea580c" },
@@ -46,16 +50,20 @@ const TrendLineChart = lazy(async () => {
 export default function App() {
   const pathname = window.location.pathname;
   const previewPath = parsePublicPreviewPath(pathname);
+  const sharePath = parsePublicSharePath(pathname);
   const isPublicPreviewRoute = Boolean(previewPath);
+  const isPublicShareRoute = Boolean(sharePath);
   const isPublicErrorRoute = pathname === "/gallery/error";
 
   const [username, setUsername] = useState("admin");
   const [password, setPassword] = useState("");
   const [isAuthed, setIsAuthed] = useState(false);
   const [authLoading, setAuthLoading] = useState(true);
-  const [activePage, setActivePage] = useState<ManagePage>("upload");
+  const [activeSection, setActiveSection] = useState<ManageSection>("gallery");
+  const [activeGalleryPage, setActiveGalleryPage] = useState<GallerySubPage>("upload");
+  const [activeCloudPage, setActiveCloudPage] = useState<CloudSubPage>("upload");
   const [busy, setBusy] = useState(false);
-  const [message, setMessage] = useState("");
+  const [toast, setToast] = useState<{ id: number; text: string; kind: ToastKind } | null>(null);
 
   const [stats, setStats] = useState<StatsResponse | null>(null);
   const [items, setItems] = useState<ImageListItem[]>([]);
@@ -65,6 +73,8 @@ export default function App() {
   const [fileType, setFileType] = useState("all");
 
   const [uploadTasks, setUploadTasks] = useState<UploadTask[]>([]);
+  const [gallerySelectedFiles, setGallerySelectedFiles] = useState<File[]>([]);
+  const [galleryDropActive, setGalleryDropActive] = useState(false);
   const [selectedFilesLabel, setSelectedFilesLabel] = useState("未选择文件");
   const [copiedKey, setCopiedKey] = useState("");
   const [previewItem, setPreviewItem] = useState<ImageListItem | null>(null);
@@ -78,6 +88,24 @@ export default function App() {
   const activeUploadsRef = useRef<Record<string, XMLHttpRequest>>({});
 
   const pageCount = useMemo(() => Math.max(Math.ceil(total / PAGE_SIZE), 1), [total]);
+  const activeBrand = activeSection === "cloud" ? "Z-Drive Cloud" : "Z-Drive Gallery";
+
+  function notify(text: string, kind: ToastKind = "success") {
+    setToast({ id: Date.now(), text, kind });
+  }
+
+  function notifyAuto(text: string) {
+    const isError = /失败|错误|无效|过期|请先|取消|不可|异常/i.test(text);
+    notify(text, isError ? "error" : "success");
+  }
+
+  useEffect(() => {
+    if (!toast) {
+      return;
+    }
+    const timer = window.setTimeout(() => setToast(null), 2200);
+    return () => window.clearTimeout(timer);
+  }, [toast]);
 
   async function refreshList(targetPage = page, nextQuery = query, nextFileType = fileType): Promise<void> {
     try {
@@ -94,10 +122,10 @@ export default function App() {
     } catch (error) {
       if (error instanceof ApiError && error.status === 401) {
         setIsAuthed(false);
-        setMessage("请先登录管理账号");
+        notify("请先登录管理账号", "error");
         return;
       }
-      setMessage(error instanceof Error ? error.message : "加载失败");
+      notify(error instanceof Error ? error.message : "加载失败", "error");
     }
   }
 
@@ -109,16 +137,17 @@ export default function App() {
     } catch (error) {
       if (error instanceof ApiError && error.status === 401) {
         setIsAuthed(false);
-        setActivePage("login");
-        setMessage("请先登录管理账号");
+        setActiveSection("gallery");
+        setActiveGalleryPage("upload");
+        notify("请先登录管理账号", "error");
         return;
       }
-      setMessage(error instanceof Error ? error.message : "统计加载失败");
+      notify(error instanceof Error ? error.message : "统计加载失败", "error");
     }
   }
 
   useEffect(() => {
-    if (isPublicPreviewRoute || isPublicErrorRoute) {
+    if (isPublicPreviewRoute || isPublicShareRoute || isPublicErrorRoute) {
       setAuthLoading(false);
       return;
     }
@@ -128,10 +157,10 @@ export default function App() {
       setAuthLoading(false);
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isPublicErrorRoute, isPublicPreviewRoute]);
+  }, [isPublicErrorRoute, isPublicPreviewRoute, isPublicShareRoute]);
 
   useEffect(() => {
-    if (isPublicPreviewRoute || isPublicErrorRoute) {
+    if (isPublicPreviewRoute || isPublicShareRoute || isPublicErrorRoute) {
       return;
     }
     const saved = localStorage.getItem("z-drive-theme") as ThemeName | null;
@@ -142,10 +171,14 @@ export default function App() {
     } else {
       document.documentElement.setAttribute("data-theme", normalized);
     }
-  }, [isPublicErrorRoute, isPublicPreviewRoute]);
+  }, [isPublicErrorRoute, isPublicPreviewRoute, isPublicShareRoute]);
 
   if (isPublicPreviewRoute && previewPath) {
     return <PublicPreviewPage shortCode={previewPath.shortCode} ext={previewPath.ext} />;
+  }
+
+  if (isPublicShareRoute && sharePath) {
+    return <PublicSharePage shareCode={sharePath.shareCode} />;
   }
 
   if (isPublicErrorRoute) {
@@ -166,33 +199,28 @@ export default function App() {
   async function handleLogin(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setBusy(true);
-    setMessage("");
     try {
       await login(username, password);
       setPassword("");
       await Promise.all([refreshStats(), refreshList(1)]);
-      setActivePage("upload");
-      setMessage("登录成功");
+      setActiveSection("gallery");
+      setActiveGalleryPage("upload");
+      notify("登录成功", "success");
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : "登录失败");
+      notify(error instanceof Error ? error.message : "登录失败", "error");
     } finally {
       setBusy(false);
     }
   }
 
-  async function handleUpload(event: React.FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    const form = event.currentTarget;
-    const input = form.elements.namedItem("files") as HTMLInputElement | null;
-    if (!input?.files?.length) {
-      setMessage("请选择至少一个文件");
+  async function runGalleryUpload(files: File[]) {
+    if (files.length === 0) {
+      notify("请选择至少一个文件", "error");
       return;
     }
 
     setBusy(true);
-    setMessage("");
     try {
-      const files = Array.from(input.files);
       const tasks = files.map((file) => ({
         id: `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
         file,
@@ -204,16 +232,21 @@ export default function App() {
 
       const settled = await Promise.allSettled(tasks.map((task) => uploadFileTask(task.id, task.file)));
       const successCount = settled.filter((item) => item.status === "fulfilled").length;
-      setMessage(`上传完成：成功 ${successCount} / ${tasks.length}`);
+      notify(`上传完成：成功 ${successCount} / ${tasks.length}`, successCount > 0 ? "success" : "error");
 
-      form.reset();
+      setGallerySelectedFiles([]);
       setSelectedFilesLabel("未选择文件");
       await Promise.all([refreshStats(), refreshList(1)]);
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : "上传失败");
+      notify(error instanceof Error ? error.message : "上传失败", "error");
     } finally {
       setBusy(false);
     }
+  }
+
+  async function handleUpload(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    await runGalleryUpload(gallerySelectedFiles);
   }
 
   function updateTask(id: string, updater: (task: UploadTask) => UploadTask) {
@@ -303,14 +336,29 @@ export default function App() {
   function handleFileInputChange(event: React.ChangeEvent<HTMLInputElement>) {
     const fileList = event.target.files;
     if (!fileList || fileList.length === 0) {
+      setGallerySelectedFiles([]);
       setSelectedFilesLabel("未选择文件");
       return;
     }
+    const files = Array.from(fileList);
+    setGallerySelectedFiles(files);
     if (fileList.length === 1) {
       setSelectedFilesLabel(fileList[0].name);
       return;
     }
     setSelectedFilesLabel(`已选择 ${fileList.length} 个文件`);
+  }
+
+  async function handleGalleryDrop(event: React.DragEvent<HTMLLabelElement>) {
+    event.preventDefault();
+    setGalleryDropActive(false);
+    const files = Array.from(event.dataTransfer.files ?? []);
+    if (files.length === 0) {
+      return;
+    }
+    setGallerySelectedFiles(files);
+    setSelectedFilesLabel(files.length === 1 ? files[0].name : `已选择 ${files.length} 个文件`);
+    await runGalleryUpload(files);
   }
 
   function fallbackCopyWithExecCommand(value: string): boolean {
@@ -350,20 +398,19 @@ export default function App() {
         return;
       }
       window.prompt("当前环境不支持自动复制，请手动复制以下内容：", value);
-      setMessage("自动复制失败，已提供手动复制");
+      notify("自动复制失败，已提供手动复制", "error");
     }
   }
 
   async function handleDelete(shortCode: string) {
     setBusy(true);
-    setMessage("");
     try {
       await deleteImage(shortCode);
       await Promise.all([refreshStats(), refreshList(page)]);
-      setMessage("删除成功");
+      notify("删除成功", "success");
       setDeleteTarget(null);
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : "删除失败");
+      notify(error instanceof Error ? error.message : "删除失败", "error");
     } finally {
       setBusy(false);
     }
@@ -371,13 +418,12 @@ export default function App() {
 
   async function handleAccessModeChange(item: ImageListItem, nextMode: AccessMode) {
     setBusy(true);
-    setMessage("");
     try {
       await updateAccessMode(item.short_code, nextMode);
       await refreshList(page);
-      setMessage("访问模式已更新");
+      notify("访问模式已更新", "success");
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : "更新失败");
+      notify(error instanceof Error ? error.message : "更新失败", "error");
     } finally {
       setBusy(false);
     }
@@ -406,7 +452,6 @@ export default function App() {
     }
 
     setBusy(true);
-    setMessage("");
     try {
       let sign = "";
       if (accessModalMode === "individual") {
@@ -419,10 +464,10 @@ export default function App() {
 
       await updateAccessMode(accessModalItem.short_code, accessModalMode, sign);
       await refreshList(page);
-      setMessage("访问模式已更新");
+      notify("访问模式已更新", "success");
       setAccessModalItem(null);
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : "更新失败");
+      notify(error instanceof Error ? error.message : "更新失败", "error");
     } finally {
       setBusy(false);
     }
@@ -439,7 +484,6 @@ export default function App() {
   async function applyFilters(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setBusy(true);
-    setMessage("");
     try {
       await refreshList(1);
     } finally {
@@ -452,11 +496,12 @@ export default function App() {
     await logout();
     setBusy(false);
     setIsAuthed(false);
-    setActivePage("login");
+    setActiveSection("gallery");
+    setActiveGalleryPage("upload");
     setStats(null);
     setItems([]);
     setTotal(0);
-    setMessage("已退出登录");
+    notify("已退出登录", "success");
   }
 
   if (authLoading) {
@@ -467,7 +512,7 @@ export default function App() {
     );
   }
 
-  const isLoginView = !isAuthed || activePage === "login";
+  const isLoginView = !isAuthed;
 
   if (isLoginView) {
     return (
@@ -494,8 +539,8 @@ export default function App() {
               {busy ? "登录中..." : "登录"}
             </Button>
           </form>
-          {message ? <p className="mt-4 rounded-xl bg-white/60 px-3 py-2 text-sm text-muted-foreground">{message}</p> : null}
         </section>
+        <ToastPopup toast={toast} />
       </div>
     );
   }
@@ -505,10 +550,10 @@ export default function App() {
       <header className="glass-panel rounded-3xl p-7 sm:p-8">
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.24em] text-primary/90">Z-Drive Gallery</p>
-            <h1 className="mt-3 text-3xl font-semibold tracking-tight sm:text-4xl">图床管理</h1>
+            <p className="text-xs font-semibold uppercase tracking-[0.24em] text-primary/90">{activeBrand}</p>
+            <h1 className="mt-3 text-3xl font-semibold tracking-tight sm:text-4xl">管理控制台</h1>
             <p className="mt-2 max-w-2xl text-sm text-muted-foreground">
-              供个人用户使用，面向生产环境的一体化图床能力。
+              专注个人使用的云工具平台
             </p>
           </div>
           <div className="flex gap-2">
@@ -552,42 +597,69 @@ export default function App() {
           </div>
         </div>
         {isAuthed ? (
-          <nav className="mt-5 flex flex-wrap gap-2 rounded-2xl border border-white/60 bg-white/55 p-2">
-            <TabButton current={activePage} target="upload" onClick={setActivePage}>上传页</TabButton>
-            <TabButton current={activePage} target="gallery" onClick={setActivePage}>图库页</TabButton>
-            <TabButton current={activePage} target="stats" onClick={setActivePage}>统计页</TabButton>
-          </nav>
+          <>
+            <nav className="mt-5 flex flex-wrap gap-2 rounded-2xl border border-white/60 bg-white/55 p-2">
+              <TabButton current={activeSection} target="gallery" onClick={setActiveSection}>图库</TabButton>
+              <TabButton current={activeSection} target="cloud" onClick={setActiveSection}>云盘</TabButton>
+            </nav>
+            {activeSection === "gallery" ? (
+              <nav className="mt-3 flex flex-wrap gap-2 rounded-2xl border border-white/60 bg-white/55 p-2">
+                <TabButton current={activeGalleryPage} target="upload" onClick={setActiveGalleryPage}>上传</TabButton>
+                <TabButton current={activeGalleryPage} target="gallery" onClick={setActiveGalleryPage}>图库</TabButton>
+                <TabButton current={activeGalleryPage} target="stats" onClick={setActiveGalleryPage}>统计</TabButton>
+              </nav>
+            ) : (
+              <nav className="mt-3 flex flex-wrap gap-2 rounded-2xl border border-white/60 bg-white/55 p-2">
+                <TabButton current={activeCloudPage} target="upload" onClick={setActiveCloudPage}>上传</TabButton>
+                <TabButton current={activeCloudPage} target="files" onClick={setActiveCloudPage}>文件管理</TabButton>
+                <TabButton current={activeCloudPage} target="shares" onClick={setActiveCloudPage}>分享管理</TabButton>
+                <TabButton current={activeCloudPage} target="stats" onClick={setActiveCloudPage}>数据统计</TabButton>
+              </nav>
+            )}
+          </>
         ) : null}
-        {message ? <p className="mt-4 rounded-xl bg-white/60 px-3 py-2 text-sm text-muted-foreground">{message}</p> : null}
       </header>
 
       <>
-          {activePage === "upload" ? (
+          {activeSection === "gallery" && activeGalleryPage === "upload" ? (
             <section className="soft-panel rounded-3xl p-5 sm:p-6">
             <h2 className="mb-3 flex items-center text-lg font-semibold">
               <Upload className="mr-2 h-5 w-5" /> 上传页
             </h2>
-            <form className="grid gap-3 md:grid-cols-[1fr_170px]" onSubmit={handleUpload}>
-              <div className="flex items-center gap-3 rounded-xl border border-white/70 bg-white/75 px-2 py-2 shadow-sm">
-                <input
-                  id="upload-files"
-                  name="files"
-                  type="file"
-                  multiple
-                  className="sr-only"
-                  onChange={handleFileInputChange}
-                />
-                <label
-                  htmlFor="upload-files"
-                  className="cursor-pointer rounded-lg bg-primary px-3 py-2 text-sm font-semibold text-primary-foreground shadow-[0_8px_16px_rgba(234,88,12,0.24)] transition hover:-translate-y-0.5 hover:bg-primary/95"
-                >
-                  选择文件
-                </label>
-                <span className="truncate text-sm text-muted-foreground" title={selectedFilesLabel}>
+            <form className="space-y-3" onSubmit={handleUpload}>
+              <input
+                id="upload-files"
+                name="files"
+                type="file"
+                multiple
+                className="sr-only"
+                onChange={handleFileInputChange}
+              />
+              <label
+                htmlFor="upload-files"
+                className={
+                  galleryDropActive
+                    ? "flex min-h-40 cursor-pointer flex-col items-center justify-center rounded-2xl border-2 border-primary bg-primary/5 px-4 py-8 text-center"
+                    : "flex min-h-40 cursor-pointer flex-col items-center justify-center rounded-2xl border-2 border-dashed border-border/80 bg-white/70 px-4 py-8 text-center transition hover:border-primary/70 hover:bg-white"
+                }
+                onDragOver={(event) => {
+                  event.preventDefault();
+                  setGalleryDropActive(true);
+                }}
+                onDragLeave={() => setGalleryDropActive(false)}
+                onDrop={(event) => {
+                  void handleGalleryDrop(event);
+                }}
+              >
+                <p className="text-base font-semibold">拖拽文件到这里上传</p>
+                <p className="mt-1 text-sm text-muted-foreground">或点击此区域选择文件，可一次上传多个文件</p>
+                <p className="mt-3 max-w-full truncate rounded-lg bg-white/80 px-3 py-1.5 text-xs text-muted-foreground" title={selectedFilesLabel}>
                   {selectedFilesLabel}
-                </span>
+                </p>
+              </label>
+              <div className="flex justify-end">
+                <Button disabled={busy || gallerySelectedFiles.length === 0}>{busy ? "上传中..." : "开始上传"}</Button>
               </div>
-              <Button disabled={busy}>{busy ? "上传中..." : "开始上传"}</Button>
             </form>
 
             {uploadTasks.length > 0 ? (
@@ -723,7 +795,7 @@ export default function App() {
             </section>
           ) : null}
 
-          {activePage === "gallery" ? (
+          {activeSection === "gallery" && activeGalleryPage === "gallery" ? (
             <section className="soft-panel rounded-3xl p-5 sm:p-6">
             <h2 className="mb-3 text-lg font-semibold">图库页</h2>
             <form className="mb-4 flex flex-wrap items-center gap-2 rounded-2xl border border-white/70 bg-white/70 p-3" onSubmit={applyFilters}>
@@ -1049,7 +1121,7 @@ export default function App() {
             </section>
           ) : null}
 
-          {activePage === "stats" ? (
+          {activeSection === "gallery" && activeGalleryPage === "stats" ? (
             <section className="space-y-4 rounded-3xl border border-border/70 bg-white/74 p-5 shadow-[0_10px_26px_rgba(106,71,30,0.08)] sm:p-6">
               <h2 className="text-lg font-semibold">统计页</h2>
               <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-6">
@@ -1153,20 +1225,49 @@ export default function App() {
               </div>
             </section>
           ) : null}
+
+          {activeSection === "cloud" ? (
+            <CloudPage
+              mode={activeCloudPage}
+              onAuthExpired={() => {
+                setIsAuthed(false);
+                setActiveSection("gallery");
+                setActiveGalleryPage("upload");
+                notify("登录已过期，请重新登录", "error");
+              }}
+              onNotify={notifyAuto}
+            />
+          ) : null}
       </>
+      <ToastPopup toast={toast} />
     </div>
   );
 }
 
-function TabButton({
+function ToastPopup({ toast }: { toast: { id: number; text: string; kind: ToastKind } | null }) {
+  if (!toast) {
+    return null;
+  }
+  const isSuccess = toast.kind === "success";
+  return (
+    <div className="pointer-events-none fixed right-6 top-6 z-[120]">
+      <div className={isSuccess ? "flex items-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50/95 px-4 py-2.5 text-sm text-emerald-700 shadow-lg" : "flex items-center gap-2 rounded-xl border border-rose-200 bg-rose-50/95 px-4 py-2.5 text-sm text-rose-700 shadow-lg"}>
+        {isSuccess ? <CheckCircle2 className="h-4 w-4" /> : <XCircle className="h-4 w-4" />}
+        <span>{toast.text}</span>
+      </div>
+    </div>
+  );
+}
+
+function TabButton<T extends string>({
   current,
   target,
   onClick,
   children,
 }: {
-  current: ManagePage;
-  target: ManagePage;
-  onClick: (page: ManagePage) => void;
+  current: T;
+  target: T;
+  onClick: (page: T) => void;
   children: ReactNode;
 }) {
   return (

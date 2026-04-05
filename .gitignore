@@ -309,9 +309,7 @@ z_drive.db
 *.sqlite3
 
 # Runtime uploads/cache
-storage/original/*
-storage/preview/*
-storage/thumbnail/*
+storage/*
 
 # Frontend build output generated from web/
 app/static/

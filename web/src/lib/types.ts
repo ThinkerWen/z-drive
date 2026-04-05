@@ -100,3 +100,68 @@ export interface ImageInfoResponse {
   download_count: number;
   created_at: string;
 }
+
+export type CloudSortBy = "name" | "time" | "size";
+export type CloudSortOrder = "asc" | "desc";
+export type CloudFileType = "all" | "image" | "video" | "audio" | "document" | "other";
+
+export interface CloudItem {
+  id: number;
+  parent_id: number | null;
+  name: string;
+  is_folder: boolean;
+  file_size: number;
+  mime_type: string;
+  file_ext: string;
+  is_public: boolean;
+  duplicate_of_id: number | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CloudListResponse {
+  parent_id: number | null;
+  items: CloudItem[];
+}
+
+export interface CloudSummaryResponse {
+  total_items: number;
+  total_files: number;
+  total_folders: number;
+  total_size: number;
+  total_space: number;
+  available_space: number;
+  recent_uploads: CloudItem[];
+  recent_top_visits: Array<{
+    item_id: number;
+    item_name: string;
+    visit_count: number;
+    last_accessed_at: string | null;
+  }>;
+}
+
+export interface CloudShareResponse {
+  id: number;
+  item_id: number;
+  item_name: string;
+  share_code: string;
+  has_password: boolean;
+  is_active: boolean;
+  expires_at: string | null;
+  created_at: string;
+  share_url: string;
+}
+
+export interface CloudShareAccessResponse {
+  share_code: string;
+  item: CloudItem;
+  preview_url: string;
+  download_url: string;
+}
+
+export interface CloudBatchResultResponse {
+  total: number;
+  success: number;
+  failed: number;
+  message: string;
+}

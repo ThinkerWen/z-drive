@@ -16,7 +16,7 @@ class Settings(BaseSettings):
     view_origin: bool = False
     enable_browser_cache: bool = True
     image_max_file_size_mb: int = 50
-    cloud_total_space_mb: int = 102400
+    cloud_total_space_mb: int = 10240
     image_auth_mode: str = "none"
     sign_salt: str = "change-me"
 

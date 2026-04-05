@@ -15,6 +15,7 @@ from sqlalchemy.orm import Session
 
 from app.core.config import Settings
 from app.models.cloud_item import DriveItem
+from app.models.cloud_share import DriveShare, DriveShareAccessLog
 
 
 class DriveService:
@@ -539,7 +540,7 @@ class DriveService:
         return temp_zip_path, "z-drive-batch-download.zip"
 
     @staticmethod
-    def summary(db: Session) -> dict[str, int | list[DriveItem]]:
+    def summary(db: Session) -> dict[str, object]:
         active = DriveItem.is_delete.is_(False)
         total_items = db.scalar(select(func.count()).select_from(DriveItem).where(active)) or 0
         total_files = db.scalar(select(func.count()).select_from(DriveItem).where(active, DriveItem.is_folder.is_(False))) or 0
@@ -551,15 +552,48 @@ class DriveService:
             .order_by(DriveItem.created_at.desc())
             .limit(10)
         ).all()
+
+        # "近期访问"定义为最近 7 天内的分享访问记录。
+        recent_since = func.datetime("now", "-7 day")
+        top_visit_rows = db.execute(
+            select(
+                DriveShare.item_id,
+                DriveItem.name,
+                func.count(DriveShareAccessLog.id).label("visit_count"),
+                func.max(DriveShareAccessLog.created_at).label("last_accessed_at"),
+            )
+            .join(DriveShare, DriveShare.id == DriveShareAccessLog.share_id)
+            .join(DriveItem, DriveItem.id == DriveShare.item_id)
+            .where(
+                DriveItem.is_delete.is_(False),
+                DriveShareAccessLog.created_at >= recent_since,
+            )
+            .group_by(DriveShare.item_id, DriveItem.name)
+            .order_by(func.count(DriveShareAccessLog.id).desc(), func.max(DriveShareAccessLog.created_at).desc())
+            .limit(5)
+        ).all()
+
+        recent_top_visits: list[dict[str, object]] = []
+        for item_id, item_name, visit_count, last_accessed_at in top_visit_rows:
+            recent_top_visits.append(
+                {
+                    "item_id": int(item_id),
+                    "item_name": str(item_name),
+                    "visit_count": int(visit_count or 0),
+                    "last_accessed_at": last_accessed_at.strftime("%Y-%m-%d %H:%M:%S") if hasattr(last_accessed_at, "strftime") else None,
+                }
+            )
+
         return {
             "total_items": int(total_items),
             "total_files": int(total_files),
             "total_folders": int(total_folders),
             "total_size": int(total_size),
             "recent_uploads": recent_uploads,
+            "recent_top_visits": recent_top_visits,
         }
 
-    def summary_with_quota(self, db: Session) -> dict[str, int | list[DriveItem]]:
+    def summary_with_quota(self, db: Session) -> dict[str, object]:
         base = self.summary(db)
         total_space = max(int(self.settings.cloud_total_space_mb), 0) * 1024 * 1024
         total_size = int(base["total_size"])

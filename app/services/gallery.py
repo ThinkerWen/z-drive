@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import io
 import mimetypes
+import shutil
 from datetime import date
 from pathlib import Path
 
@@ -27,15 +28,42 @@ class GalleryService:
     def _storage_dir(self) -> Path:
         return Path(self.settings.storage_path)
 
+    def _gallery_dir(self) -> Path:
+        return self._storage_dir() / "gallery"
+
     def _original_dir(self) -> Path:
-        return self._storage_dir() / "original"
+        return self._gallery_dir() / "original"
 
     def _preview_dir(self) -> Path:
+        return self._gallery_dir() / "preview"
+
+    def _legacy_original_dir(self) -> Path:
+        return self._storage_dir() / "original"
+
+    def _legacy_preview_dir(self) -> Path:
         return self._storage_dir() / "preview"
+
+    @staticmethod
+    def _merge_legacy_dir(legacy_dir: Path, target_dir: Path) -> None:
+        if not legacy_dir.exists() or not legacy_dir.is_dir():
+            return
+        target_dir.mkdir(parents=True, exist_ok=True)
+        for entry in legacy_dir.iterdir():
+            target = target_dir / entry.name
+            if target.exists():
+                continue
+            shutil.move(str(entry), str(target))
+        try:
+            legacy_dir.rmdir()
+        except OSError:
+            # Keep legacy directory if not empty.
+            pass
 
     def ensure_directories(self) -> None:
         self._original_dir().mkdir(parents=True, exist_ok=True)
         self._preview_dir().mkdir(parents=True, exist_ok=True)
+        self._merge_legacy_dir(self._legacy_original_dir(), self._original_dir())
+        self._merge_legacy_dir(self._legacy_preview_dir(), self._preview_dir())
 
     @staticmethod
     def _guess_mime(file_name: str, content_type: str | None) -> str:
@@ -193,12 +221,24 @@ class GalleryService:
         self._check_access(image, sign)
         return image
 
-    @staticmethod
-    def _read_bytes(file_path: str) -> bytes:
-        return Path(file_path).read_bytes()
+    def _resolve_original_path(self, image: Image) -> Path:
+        candidates: list[Path] = []
+
+        if image.file_path:
+            candidates.append(Path(image.file_path))
+
+        if image.storage_name:
+            candidates.append(self._original_dir() / image.storage_name)
+            candidates.append(self._legacy_original_dir() / image.storage_name)
+
+        for candidate in candidates:
+            if candidate.exists() and candidate.is_file():
+                return candidate
+
+        raise FileNotFoundError(f"original file not found: {image.file_path}")
 
     def get_original_image_data(self, image: Image) -> bytes:
-        return self._read_bytes(image.file_path)
+        return self._resolve_original_path(image).read_bytes()
 
     def get_compressed_view(self, image: Image) -> tuple[bytes, str]:
         if image.file_type != "image":
@@ -206,6 +246,9 @@ class GalleryService:
         preview_path = self._preview_dir() / f"{image.short_code}.webp"
         if image.has_compressed and preview_path.exists():
             return preview_path.read_bytes(), "image/webp"
+        legacy_preview_path = self._legacy_preview_dir() / f"{image.short_code}.webp"
+        if image.has_compressed and legacy_preview_path.exists():
+            return legacy_preview_path.read_bytes(), "image/webp"
         return self.get_original_image_data(image), image.mime_type
 
     @staticmethod

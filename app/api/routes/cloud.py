@@ -4,12 +4,14 @@ from datetime import datetime
 from pathlib import Path
 
 from fastapi import APIRouter, BackgroundTasks, Depends, File, HTTPException, Query, Request, UploadFile
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, JSONResponse, RedirectResponse
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.core.config import get_settings
 from app.core.security import decode_admin_token
 from app.db.session import get_db
+from app.models.cloud_item import DriveItem
 from app.schemas.cloud import (
     DriveBatchCopyRequest,
     DriveBatchDeleteRequest,
@@ -35,6 +37,7 @@ from app.schemas.cloud import (
     DriveShareAccessResponse,
     DriveShareResponse,
     DriveSummaryResponse,
+    DriveTopVisitResponse,
     DriveUploadMultipleResponse,
     DriveVisibilityRequest,
 )
@@ -43,6 +46,7 @@ from app.services.cloud_share import DriveShareService
 from app.services.cloud import DriveService
 
 router = APIRouter(prefix="/cloud", tags=["cloud"])
+short_router = APIRouter(tags=["cloud-public"])
 settings = get_settings()
 service = DriveService(settings)
 share_service = DriveShareService()
@@ -79,17 +83,56 @@ def _to_item_payload(item, duplicate_of_id: int | None = None) -> DriveItemRespo
     )
 
 
-def _to_share_payload(share, base_url: str) -> DriveShareResponse:
+def _to_share_payload(share, base_url: str, item_name: str = "") -> DriveShareResponse:
     return DriveShareResponse(
         id=int(share.id),
         item_id=int(share.item_id),
+        item_name=item_name,
         share_code=str(share.share_code),
         has_password=bool(share.password_hash),
         is_active=bool(share.is_active),
         expires_at=share.expires_at.strftime("%Y-%m-%d %H:%M:%S") if share.expires_at else None,
         created_at=share.created_at.strftime("%Y-%m-%d %H:%M:%S"),
-        share_url=f"{base_url}/cloud/public/{share.share_code}",
+        share_url=f"{base_url}/f/{share.share_code}",
     )
+
+
+@short_router.get("/f/{share_code}")
+async def short_share_entry(
+    request: Request,
+    share_code: str,
+    password: str = "",
+    db: Session = Depends(get_db),
+):
+    base_url = _base_url(request)
+    try:
+        _, item = share_service.resolve_share(db, share_code, password)
+    except LookupError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except PermissionError:
+        return JSONResponse(
+            status_code=403,
+            content={
+                "share_code": share_code,
+                "requires_password": True,
+                "message": "该分享需要密码，请在客户端输入密码后访问。",
+                "access_api": f"{base_url}/cloud/public/{share_code}/access",
+            },
+        )
+
+    if item.is_folder:
+        return JSONResponse(
+            status_code=200,
+            content={
+                "share_code": share_code,
+                "is_folder": True,
+                "message": "目录分享暂不支持直接预览，请使用客户端接口访问。",
+                "access_api": f"{base_url}/cloud/public/{share_code}/access",
+            },
+        )
+
+    password_query = f"?password={password}" if password else ""
+    return RedirectResponse(url=f"{base_url}/cloud/public/{share_code}/preview{password_query}", status_code=307)
 
 
 @router.get("/items", response_model=DriveListResponse)
@@ -204,7 +247,12 @@ async def create_share(
 async def list_shares(request: Request, db: Session = Depends(get_db), _: str = Depends(_admin_token_or_401)) -> list[DriveShareResponse]:
     shares = share_service.list_shares(db)
     base_url = _base_url(request)
-    return [_to_share_payload(share, base_url) for share in shares]
+    item_ids = {int(share.item_id) for share in shares}
+    names = {
+        int(item.id): str(item.name)
+        for item in db.scalars(select(DriveItem).where(DriveItem.id.in_(item_ids), DriveItem.is_delete.is_(False))).all()
+    }
+    return [_to_share_payload(share, base_url, names.get(int(share.item_id), "")) for share in shares]
 
 
 @router.delete("/shares/{share_id}")
@@ -582,6 +630,17 @@ async def cancel_chunk_upload(upload_id: str, _: str = Depends(_admin_token_or_4
 @router.get("/summary", response_model=DriveSummaryResponse)
 async def summary(db: Session = Depends(get_db), _: str = Depends(_admin_token_or_401)) -> DriveSummaryResponse:
     payload = service.summary_with_quota(db)
+    top_visits = []
+    for row in payload.get("recent_top_visits", []):
+        top_visits.append(
+            DriveTopVisitResponse(
+                item_id=int(row.get("item_id", 0)) if isinstance(row, dict) else 0,
+                item_name=str(row.get("item_name", "")) if isinstance(row, dict) else "",
+                visit_count=int(row.get("visit_count", 0)) if isinstance(row, dict) else 0,
+                last_accessed_at=str(row.get("last_accessed_at")) if isinstance(row, dict) and row.get("last_accessed_at") else None,
+            )
+        )
+
     return DriveSummaryResponse(
         total_items=int(payload["total_items"]),
         total_files=int(payload["total_files"]),
@@ -590,4 +649,5 @@ async def summary(db: Session = Depends(get_db), _: str = Depends(_admin_token_o
         total_space=int(payload["total_space"]),
         available_space=int(payload["available_space"]),
         recent_uploads=[_to_item_payload(item) for item in payload["recent_uploads"]],
+        recent_top_visits=top_visits,
     )

@@ -81,6 +81,14 @@ class DriveSummaryResponse(BaseModel):
     total_space: int
     available_space: int
     recent_uploads: list[DriveItemResponse]
+    recent_top_visits: list[DriveTopVisitResponse]
+
+
+class DriveTopVisitResponse(BaseModel):
+    item_id: int
+    item_name: str
+    visit_count: int
+    last_accessed_at: str | None
 
 
 class DriveCreateShareRequest(BaseModel):
@@ -92,6 +100,7 @@ class DriveCreateShareRequest(BaseModel):
 class DriveShareResponse(BaseModel):
     id: int
     item_id: int
+    item_name: str = ""
     share_code: str
     has_password: bool
     is_active: bool

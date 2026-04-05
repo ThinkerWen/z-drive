@@ -89,7 +89,7 @@ class DriveShareService:
 
     @staticmethod
     def list_shares(db: Session) -> list[DriveShare]:
-        return db.scalars(select(DriveShare).order_by(DriveShare.created_at.desc())).all()
+        return db.scalars(select(DriveShare).where(DriveShare.is_active.is_(True)).order_by(DriveShare.created_at.desc())).all()
 
     @staticmethod
     def cancel_share(db: Session, share_id: int) -> None:
