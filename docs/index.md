@@ -1,5 +1,14 @@
 ---
 layout: Home
+heroImage: /z-drive.png
+heroText: Z-Drive
+tagline: 个人云平台（图库 + 云盘）
+actions:
+  - text: 快速开始
+    link: /guide/getting-started
+    type: primary
+  - text: 部署说明
+    link: /guide/deploy
 ---
 
 # Z-Drive
