@@ -90,19 +90,6 @@ uv run z-drive
 - 管理端：`http://127.0.0.1:8000/`
 - 健康检查：`http://127.0.0.1:8000/health`
 
-## 文档站部署（GitHub Pages）
-
-当前仓库已提供 `docs-pages.yml` 工作流：
-
-- 触发分支：`doc`
-- 构建目录：`docs/.vitepress/dist`
-- 发布目标：GitHub Pages
-
-首次启用请在仓库设置中确认：
-
-1. 打开 `Settings` -> `Pages`
-2. `Build and deployment` 选择 `GitHub Actions`
-
 ## 部署建议
 
 - 生产环境下请务必修改 `.env` 里的 `ADMIN_PASSWORD`、`JWT_SECRET` 和 `SIGN_SALT`。
