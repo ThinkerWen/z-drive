@@ -9,7 +9,7 @@ export default defineConfig({
   head: [["link", { rel: "icon", href: "/favicon.ico" }]],
   themeConfig: {
     siteTitle: "Z-Drive Docs",
-    logo: '/z-drive.png',
+    logo: '/favicon.ico',
     nav: [
       { text: "首页", link: "/" },
       { text: "快速开始", link: "/guide/getting-started" },
