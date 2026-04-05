@@ -2,6 +2,7 @@ import { Suspense, lazy, useEffect, useMemo, useRef, useState, type ReactNode } 
 import { BarChart3, Copy, ExternalLink, Loader2, LogOut, Palette, Shield, Trash2, Upload } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { PlyrVideo } from "@/components/plyr-video";
 import { PublicErrorPage, PublicPreviewPage, parsePublicPreviewPath } from "@/components/public-pages";
 import {
   ApiError,
@@ -870,7 +871,7 @@ export default function App() {
                   <div className="grid gap-4 lg:grid-cols-[1.4fr_1fr]">
                     <div className="flex max-h-[70vh] items-center justify-center overflow-hidden rounded-2xl border border-border/70 bg-muted/60">
                     {previewItem.file_type === "video" ? (
-                      <video src={previewItem.view_url} controls className="max-h-[70vh] w-full" />
+                      <PlyrVideo src={previewItem.view_url} className="max-h-[70vh] w-full" />
                     ) : (
                       <img src={previewItem.view_url} alt={previewItem.file_name} className="max-h-[70vh] w-auto" />
                     )}

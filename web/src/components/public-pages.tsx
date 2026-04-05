@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 
+import { PlyrVideo } from "@/components/plyr-video";
 import { getImageInfo } from "@/lib/api";
 import type { ImageInfoResponse } from "@/lib/types";
 
@@ -128,7 +129,7 @@ export function PublicPreviewPage({ shortCode, ext }: { shortCode: string; ext: 
 
         <div className="mt-4 flex max-h-[66vh] min-h-[280px] items-center justify-center overflow-hidden rounded-2xl border border-border/70 bg-muted/35 p-2">
           {info.file_type === "video" ? (
-            <video src={viewUrl} controls className="max-h-[66vh] w-full" />
+            <PlyrVideo src={viewUrl} className="max-h-[66vh] w-full" />
           ) : info.file_type === "image" ? (
             <img src={viewUrl} alt={info.file_name} className="max-h-[66vh] w-auto" />
           ) : (
