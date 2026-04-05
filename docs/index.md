@@ -21,10 +21,10 @@ features:
   - icon: ☁️
     title: 云盘文件
     details: 支持目录层级、批量操作、公共分享页和视频预览，覆盖日常文件整理场景。
-  - icon: ⚙️
-    title: 统一架构
-    details: 管理接口统一挂载在 /api 下，公共分享入口使用 /f/{share_code}，鉴权与调度能力集中管理。
+  - icon: 🧩
+    title: 代码片管理
+    details: 支持在线编辑、标签筛选、分享预览与本地正文混合存储，适合管理可复用代码片段。
   - icon: 🚀
     title: 易于部署
-    details: SQLite + 本地磁盘即可运行，支持本地开发、Docker 部署与文档站独立发布。
+    details: SQLite + 本地磁盘即可运行，支持本地运行、Docker 部署。
 ---

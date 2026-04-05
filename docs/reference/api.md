@@ -107,6 +107,36 @@ curl -X POST "http://127.0.0.1:8000/api/gallery/upload" \
 | `POST` | `/api/cloud/uploads/chunk/{upload_id}/complete` | 合并分片并保存为正式文件。 |
 | `POST` | `/api/cloud/uploads/chunk/{upload_id}/cancel` | 取消任务。 |
 
+## 代码片接口
+
+代码片接口用于编辑、查询、分享和下载代码片内容。
+
+### 管理接口
+
+| 方法 | 路径 | 说明 |
+| --- | --- | --- |
+| `GET` | `/api/snippets` | 查询代码片列表，支持 `query`、`language`、`folder_id`、`tag`。 |
+| `POST` | `/api/snippets` | 新建代码片。 |
+| `PUT` | `/api/snippets/{snippet_id}` | 更新代码片。 |
+| `DELETE` | `/api/snippets/{snippet_id}` | 删除代码片。 |
+| `GET` | `/api/snippets/{snippet_id}` | 获取代码片详情。 |
+| `GET` | `/api/snippets/{snippet_id}/download` | 下载代码片正文。 |
+| `GET` | `/api/snippets/folders` | 列出代码片分组。 |
+| `POST` | `/api/snippets/folders` | 新建代码片分组。 |
+| `GET` | `/api/snippets/tags` | 列出代码片标签。 |
+| `POST` | `/api/snippets/tags` | 新建代码片标签。 |
+| `GET` | `/api/snippets/shares/list` | 列出有效代码片分享。 |
+| `POST` | `/api/snippets/{snippet_id}/shares` | 创建代码片分享。 |
+| `DELETE` | `/api/snippets/shares/{share_id}` | 取消代码片分享。 |
+
+### 公共分享接口
+
+| 方法 | 路径 | 说明 |
+| --- | --- | --- |
+| `POST` | `/api/snippets/public/{share_code}/access` | 公共访问代码片分享，支持密码校验。 |
+| `GET` | `/api/snippets/public/{share_code}/download` | 公共下载代码片正文。 |
+| `GET` | `/p/{share_code}` | 代码片短链入口。 |
+
 ## 请求示例
 
 ### 云盘新建文件夹
@@ -129,9 +159,9 @@ curl -X POST "http://127.0.0.1:8000/api/cloud/shares" \
 
 ## OpenAPI / Swagger
 
-FastAPI 默认提供接口文档：
+FastAPI 在 `DEBUG=true` 时默认提供接口文档：
 
 - `GET /openapi.json`
 - `GET /docs`
 
-如果你想核对字段定义，建议启动服务后直接打开 `http://127.0.0.1:8000/docs`。
+如果你想核对字段定义，建议在本地调试环境直接打开 `http://127.0.0.1:8000/docs`。生产环境把 `DEBUG` 设为 `false` 后，这两个入口会关闭。
