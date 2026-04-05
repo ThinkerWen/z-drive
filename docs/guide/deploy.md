@@ -27,6 +27,7 @@ services:
 			SIGN_SALT: ${SIGN_SALT:-change-me}
 			ADMIN_USERNAME: ${ADMIN_USERNAME:-admin}
 			ADMIN_PASSWORD: ${ADMIN_PASSWORD:-change-me}
+			ADMIN_TOKEN: ${ADMIN_TOKEN:-z-drive-change-me-admin-token}
 			JWT_SECRET: ${JWT_SECRET:-z-drive-change-me-secret-key-at-least-32-bytes}
 			JWT_EXPIRE_MINUTES: ${JWT_EXPIRE_MINUTES:-10080}
 		volumes:
@@ -42,7 +43,7 @@ services:
 APP_NAME=z-drive
 DEBUG=false
 
-DATABASE_URL=sqlite:///./z_drive.db
+DATABASE_URL=sqlite:///./storage/z_drive.db
 STORAGE_PATH=storage
 
 VIEW_ORIGIN=false
@@ -54,6 +55,7 @@ SIGN_SALT=replace-with-random-salt
 
 ADMIN_USERNAME=admin
 ADMIN_PASSWORD=replace-with-strong-password
+ADMIN_TOKEN=replace-with-long-random-admin-token
 JWT_SECRET=replace-with-long-random-secret-at-least-32-bytes
 JWT_EXPIRE_MINUTES=10080
 ```
@@ -93,5 +95,6 @@ uv run z-drive
 ## 部署建议
 
 - 生产环境下请务必修改 `.env` 里的 `ADMIN_PASSWORD`、`JWT_SECRET` 和 `SIGN_SALT`。
+- 如果你需要静态令牌访问，把 `.env` 里的 `ADMIN_TOKEN` 也改成随机长字符串；Compose 示例中的默认占位值是 `z-drive-change-me-admin-token`，`.env.example` 示例值是 `replace-with-long-random-admin-token`。
 - 如果你希望保留上传文件和数据库，记得把 `./storage` 目录持久化到宿主机或云盘卷。
 - 如果是反向代理部署，建议在代理层开启 HTTPS，并把请求头中的真实客户端 IP 透传给后端。

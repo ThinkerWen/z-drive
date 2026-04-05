@@ -11,7 +11,7 @@
 APP_NAME=z-drive
 DEBUG=false
 
-DATABASE_URL=sqlite:///./z_drive.db
+DATABASE_URL=sqlite:///./storage/z_drive.db
 STORAGE_PATH=storage
 
 VIEW_ORIGIN=false
@@ -23,6 +23,7 @@ SIGN_SALT=replace-with-random-salt
 
 ADMIN_USERNAME=admin
 ADMIN_PASSWORD=replace-with-strong-password
+ADMIN_TOKEN=replace-with-long-random-admin-token
 JWT_SECRET=replace-with-long-random-secret-at-least-32-bytes
 JWT_EXPIRE_MINUTES=10080
 ```
@@ -33,7 +34,7 @@ JWT_EXPIRE_MINUTES=10080
 | --- | --- | --- |
 | `APP_NAME` | `z-drive` | FastAPI 应用名称，影响接口文档标题与日志信息。 |
 | `DEBUG` | `false` | 开启调试模式。生产环境建议保持关闭。 |
-| `DATABASE_URL` | `sqlite:///./z_drive.db` | 数据库连接串。默认使用本地 SQLite。 |
+| `DATABASE_URL` | `sqlite:///./storage/z_drive.db` | 数据库连接串。默认使用本地 SQLite，数据库文件保存在 `storage/` 下。 |
 | `STORAGE_PATH` | `storage` | 文件存储根目录。图库与云盘相关文件都会写入这里。 |
 | `VIEW_ORIGIN` | `false` | 图库访问时是否始终返回原图；关闭时会优先返回压缩预览。 |
 | `ENABLE_BROWSER_CACHE` | `true` | 是否给图片/文件响应添加长期缓存头。 |
@@ -43,6 +44,7 @@ JWT_EXPIRE_MINUTES=10080
 | `SIGN_SALT` | `change-me` | 全局签名盐值。`IMAGE_AUTH_MODE=sign` 时用于生成访问签名。 |
 | `ADMIN_USERNAME` | `admin` | 管理端登录用户名。 |
 | `ADMIN_PASSWORD` | `admin123` | 管理端登录密码。生产环境必须改掉。 |
+| `ADMIN_TOKEN` | `replace-with-long-random-admin-token` | 管理端静态令牌。建议生产环境替换为随机长字符串；如留空，则静态鉴权通道会被关闭。 |
 | `JWT_SECRET` | `z-drive-change-me-secret-key-at-least-32-bytes` | 管理端 JWT 签名密钥。建议使用足够长的随机字符串。 |
 | `JWT_EXPIRE_MINUTES` | `10080` | 管理端 JWT 有效期，单位分钟。默认约 7 天。 |
 
@@ -51,6 +53,7 @@ JWT_EXPIRE_MINUTES=10080
 - `DATABASE_URL` 和 `STORAGE_PATH` 是最先需要确认的两个参数。前者决定元数据存到哪里，后者决定文件写到哪里。
 - 如果你想在图床链接中启用签名校验，把 `IMAGE_AUTH_MODE` 改为 `sign`，并同步配置 `SIGN_SALT`。
 - 管理端账号密码不要沿用默认值，否则任何能访问站点的人都能登录后台。
+- 如果你不需要静态令牌，可以把 `ADMIN_TOKEN` 留空；如果需要用于外部系统或脚本接入，请改成随机长字符串。文档示例默认使用 `replace-with-long-random-admin-token`。
 - `CLOUD_TOTAL_SPACE_MB` 不是硬盘物理空间，而是业务层统计值；如果你要按实际可用空间展示，记得调成符合你环境的数字。
 
 ## 运行目录
@@ -59,6 +62,7 @@ JWT_EXPIRE_MINUTES=10080
 - `storage/gallery/original/`：图库原始文件。
 - `storage/gallery/preview/`：图库预览图。
 - `storage/cloud/`：云盘文件。
+- `storage/cloud/chunks/`：分片上传临时文件与任务元数据。
 
 ## 修改后建议
 

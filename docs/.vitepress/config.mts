@@ -2,7 +2,7 @@ import { defineConfig } from "vitepress";
 
 export default defineConfig({
   title: "Z-Drive",
-  description: "Z-Drive project documentation",
+  description: "Z-Drive 图库 + 云盘一体化文档",
   lang: "zh-CN",
   base: "/",
   cleanUrls: true,
@@ -13,7 +13,8 @@ export default defineConfig({
     nav: [
       { text: "首页", link: "/" },
       { text: "快速开始", link: "/guide/getting-started" },
-      { text: "部署说明", link: "/guide/deploy" }
+      { text: "部署说明", link: "/guide/deploy" },
+      { text: "架构", link: "/reference/architecture" }
     ],
     sidebar: [
       {

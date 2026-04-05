@@ -3,7 +3,7 @@ layout: home
 hero:
   name: Z-Drive
   text: 个人云平台
-  tagline: 图库 + 云盘，面向个人备份、分享与轻量部署
+  tagline: 图库 + 云盘一体化，面向个人备份、分享与统一管理
   image:
     src: /z-drive.webp
     alt: Z-Drive
@@ -20,11 +20,11 @@ features:
     details: 支持上传、预览、统计和短链访问，适合个人图床和素材管理。
   - icon: ☁️
     title: 云盘文件
-    details: 支持目录管理、文件预览、分享与批量操作，覆盖日常文件整理场景。
+    details: 支持目录层级、批量操作、公共分享页和视频预览，覆盖日常文件整理场景。
   - icon: ⚙️
+    title: 统一架构
+    details: 管理接口统一挂载在 /api 下，公共分享入口使用 /f/{share_code}，鉴权与调度能力集中管理。
+  - icon: 🚀
     title: 易于部署
-    details: 后端、前端与文档站拆分清晰，支持本地开发与 GitHub Pages 文档发布。
-  - icon: 🔁
-    title: 兼容迁移
-    details: 保留旧存储路径兼容逻辑，升级后可以平滑接入现有数据。
+    details: SQLite + 本地磁盘即可运行，支持本地开发、Docker 部署与文档站独立发布。
 ---
