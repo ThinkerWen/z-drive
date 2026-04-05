@@ -5,7 +5,7 @@ hero:
   text: 个人云平台
   tagline: 图库 + 云盘，面向个人备份、分享与轻量部署
   image:
-    src: /z-drive.png
+    src: /z-drive.webp
     alt: Z-Drive
   actions:
     - theme: brand
