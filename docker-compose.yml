@@ -19,7 +19,7 @@ services:
       SIGN_SALT: ${SIGN_SALT:-change-me}
       ADMIN_USERNAME: ${ADMIN_USERNAME:-admin}
       ADMIN_PASSWORD: ${ADMIN_PASSWORD:-change-me}
-      ADMIN_TOKEN: ${ADMIN_TOKEN:-}
+      ADMIN_TOKEN: ${ADMIN_TOKEN:-z-drive-change-me-admin-token}
       JWT_SECRET: ${JWT_SECRET:-z-drive-change-me-secret-key-at-least-32-bytes}
       JWT_EXPIRE_MINUTES: ${JWT_EXPIRE_MINUTES:-10080}
     volumes:
