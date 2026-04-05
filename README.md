@@ -6,17 +6,31 @@
 
 z-drive 是一个专注个人云项目，包含图床、云盘、代码片等云功能，使用 FastAPI 作为后端。
 
-- 图床（已实现）
+- 图床（✅）
 	- 上传、管理、统计、短链访问与预览
 	- 支持全局/独立两种权限管理模式
-- 云盘（To-Do）
-	- 面向个人文件管理与预览
-	- 规划支持全局/独立权限管理
-- 代码片分享（To-Do）
+- 云盘（✅）
+	- 上传、文件管理、分享管理、数据统计
+	- 支持目录层级、批量操作、分享下载
+- 代码片分享（To-do）
 	- 面向文本/代码片段托管与分享
 	- 规划支持全局/独立权限管理与预览
 
-## 二、安装指导
+## 二、界面预览
+
+### 1. 图库页面
+
+| 上传页 | 列表页 | 统计页                                                                                                                         |
+| --- | --- |-----------------------------------------------------------------------------------------------------------------------------|
+| <img src="https://raw.githubusercontent.com/ThinkerWen/z-drive/refs/heads/main/images/gallery-upload.png" width="500" alt="z-drive.png"> | <img src="https://raw.githubusercontent.com/ThinkerWen/z-drive/refs/heads/main/images/gallery-list.png" width="500" alt="z-drive.png"> | <img src="https://raw.githubusercontent.com/ThinkerWen/z-drive/refs/heads/main/images/gallery-stats.png" width="500" alt="z-drive.png"> |
+
+### 2. 云盘页面
+
+| 上传页                                                                                                                                  |
+|--------------------------------------------------------------------------------------------------------------------------------------|
+| <img src="https://raw.githubusercontent.com/ThinkerWen/z-drive/refs/heads/main/images/cloud-list.png" width="500" alt="z-drive.png"> |
+
+## 三、安装指导
 
 ### 1、本地生产运行
 
@@ -73,7 +87,7 @@ docker compose up -d
 - 示例编排文件为项目根目录下的 `docker-compose.yml`
 - 如果使用私有镜像或自定义 tag，请先设置 `DOCKERHUB_USERNAME` 和 `ZDRIVE_TAG`
 
-## 三、`.env` 字段介绍
+## 四、`.env` 字段介绍
 
 | 字段 | 说明 | 默认值 |
 | --- | --- | --- |
@@ -84,6 +98,7 @@ docker compose up -d
 | `VIEW_ORIGIN` | 是否始终返回原图而非预览图 | `false` |
 | `ENABLE_BROWSER_CACHE` | 是否启用浏览器缓存头 | `true` |
 | `IMAGE_MAX_FILE_SIZE_MB` | 单文件上传大小上限（MB） | `50` |
+| `CLOUD_TOTAL_SPACE_MB` | 云盘总空间上限（MB） | `10240` |
 | `IMAGE_AUTH_MODE` | 图片访问权限模式（如 `none`/`sign`） | `none` |
 | `SIGN_SALT` | 全局签名盐值（务必替换） | `replace-with-random-salt` |
 | `ADMIN_USERNAME` | 管理员用户名 | `admin` |

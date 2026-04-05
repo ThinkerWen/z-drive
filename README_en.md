@@ -6,17 +6,31 @@
 
 z-drive is a personal cloud project focused on image hosting, cloud drive, and code snippet sharing, using FastAPI as the backend.
 
-- Image Hosting (Implemented)
+- Image Hosting (✅)
 	- Upload, management, analytics, short-link access, and preview
 	- Supports both global and per-item access control modes
-- Cloud Drive (To-Do)
-	- Personal file management and preview
-	- Planned support for global/per-item access control
+- Cloud Drive (✅)
+	- Upload, file management, share management, and analytics
+	- Supports folder hierarchy, batch operations, and share-based download
 - Code Snippet Sharing (To-Do)
 	- Text/code snippet hosting and sharing
 	- Planned support for global/per-item access control and preview
 
-## 2. Installation Guide
+## 2. UI Preview
+
+### 1. Gallery
+
+| Upload | List | Stats |
+| --- | --- | --- |
+| <img src="https://raw.githubusercontent.com/ThinkerWen/z-drive/refs/heads/main/images/gallery-upload.png" width="500" alt="gallery-upload"> | <img src="https://raw.githubusercontent.com/ThinkerWen/z-drive/refs/heads/main/images/gallery-list.png" width="500" alt="gallery-list"> | <img src="https://raw.githubusercontent.com/ThinkerWen/z-drive/refs/heads/main/images/gallery-stats.png" width="500" alt="gallery-stats"> |
+
+### 2. Cloud
+
+| File List |
+| --- |
+| <img src="https://raw.githubusercontent.com/ThinkerWen/z-drive/refs/heads/main/images/cloud-list.png" width="500" alt="cloud-list"> |
+
+## 3. Installation Guide
 
 ### 1. Local (Production)
 
@@ -73,7 +87,7 @@ Notes:
 - The sample compose file is `docker-compose.yml` in the project root.
 - If you use custom image owner/tag, set `DOCKERHUB_USERNAME` and `ZDRIVE_TAG` first.
 
-## 3. `.env` Fields
+## 4. `.env` Fields
 
 | Field | Description | Default |
 | --- | --- | --- |
@@ -84,6 +98,7 @@ Notes:
 | `VIEW_ORIGIN` | Always return original file instead of preview | `false` |
 | `ENABLE_BROWSER_CACHE` | Enable browser cache headers | `true` |
 | `IMAGE_MAX_FILE_SIZE_MB` | Max upload size per file (MB) | `50` |
+| `CLOUD_TOTAL_SPACE_MB` | Total cloud drive quota (MB) | `10240` |
 | `IMAGE_AUTH_MODE` | Image access mode (e.g. `none`/`sign`) | `none` |
 | `SIGN_SALT` | Global signature salt (must be replaced) | `replace-with-random-salt` |
 | `ADMIN_USERNAME` | Admin username | `admin` |
