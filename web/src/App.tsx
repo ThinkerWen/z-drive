@@ -95,8 +95,12 @@ export default function App() {
   }
 
   function notifyAuto(text: string) {
-    const isError = /失败|错误|无效|过期|请先|取消|不可|异常/i.test(text);
-    notify(text, isError ? "error" : "success");
+    const normalized = text.trim().toLowerCase();
+    const errorPattern = /失败|错误|异常|无效|失效|拒绝|不存在|未找到|超时|error|failed|exception|invalid|forbidden|unauthorized|not\s*found|timeout|500|404|403|401/i;
+    const successPattern = /成功|完成|已复制|已取消|已更新|上传完成|创建完成|删除完成|copied|success|done|completed/i;
+    const isError = errorPattern.test(normalized);
+    const isSuccess = successPattern.test(normalized);
+    notify(text, isError ? "error" : isSuccess ? "success" : "error");
   }
 
   useEffect(() => {
