@@ -33,7 +33,7 @@
 - `storage/gallery/original/`：图库原始文件。
 - `storage/gallery/preview/`：图库预览图。
 - `storage/cloud/`：云盘文件。
-- `storage/cloud/chunks/`：分片上传临时文件与任务元数据。
+- `storage/cloud/.uploads/`：分片上传临时文件与任务元数据。
 - `storage/`：根存储目录，可通过 `STORAGE_PATH` 调整。
 
 图库服务还保留了旧路径兼容逻辑，会自动迁移或回读 `storage/original/` 和 `storage/preview/`，避免升级后旧数据失效。

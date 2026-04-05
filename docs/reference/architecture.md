@@ -36,7 +36,7 @@
 - `storage/gallery/original/`：图库原始文件。
 - `storage/gallery/preview/`：图库预览图。
 - `storage/cloud/`：云盘文件。
-- `storage/cloud/chunks/`：分片上传临时文件与任务元数据。
+- `storage/cloud/.uploads/`：分片上传临时文件与任务元数据。
 - 旧的 `storage/original/` 与 `storage/preview/` 仍保留兼容读取逻辑，便于历史数据平滑迁移。
 
 更多细节见下游各章节（后端、接口、配置）。

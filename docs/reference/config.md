@@ -62,7 +62,7 @@ JWT_EXPIRE_MINUTES=10080
 - `storage/gallery/original/`：图库原始文件。
 - `storage/gallery/preview/`：图库预览图。
 - `storage/cloud/`：云盘文件。
-- `storage/cloud/chunks/`：分片上传临时文件与任务元数据。
+- `storage/cloud/.uploads/`：分片上传临时文件与任务元数据。
 
 ## 修改后建议
 
