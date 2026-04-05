@@ -11,7 +11,7 @@ z-drive is a personal cloud project focused on image hosting, cloud drive, and c
 	- Supports both global and per-item access control modes
 - Cloud Drive (✅)
 	- Upload, file management, share management, and analytics
-	- Supports folder hierarchy, batch operations, and share-based download
+	- Supports folder hierarchy, file preview, batch operations, and share-based download
 - Code Snippet Sharing (To-Do)
 	- Text/code snippet hosting and sharing
 	- Planned support for global/per-item access control and preview
@@ -26,9 +26,9 @@ z-drive is a personal cloud project focused on image hosting, cloud drive, and c
 
 ### 2. Cloud
 
-| File List |
-| --- |
-| <img src="https://raw.githubusercontent.com/ThinkerWen/z-drive/refs/heads/main/images/cloud-list.png" width="500" alt="cloud-list"> |
+| File List | Preview | Share |
+| --- | --- | --- |
+| <img src="https://raw.githubusercontent.com/ThinkerWen/z-drive/refs/heads/main/images/cloud-list.png" width="500" alt="cloud-list"> | <img src="https://raw.githubusercontent.com/ThinkerWen/z-drive/refs/heads/main/images/cloud-preview.png" width="500" alt="cloud-preview"> | <img src="https://raw.githubusercontent.com/ThinkerWen/z-drive/refs/heads/main/images/cloud-share.png" width="500" alt="cloud-share"> |
 
 ## 3. Installation Guide
 

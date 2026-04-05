@@ -11,7 +11,7 @@ z-drive 是一个专注个人云项目，包含图床、云盘、代码片等云
 	- 支持全局/独立两种权限管理模式
 - 云盘（✅）
 	- 上传、文件管理、分享管理、数据统计
-	- 支持目录层级、批量操作、分享下载
+	- 支持目录层级、文件预览、批量操作、分享下载
 - 代码片分享（To-do）
 	- 面向文本/代码片段托管与分享
 	- 规划支持全局/独立权限管理与预览
@@ -20,15 +20,15 @@ z-drive 是一个专注个人云项目，包含图床、云盘、代码片等云
 
 ### 1. 图库页面
 
-| 上传页 | 列表页 | 统计页                                                                                                                         |
+| 上传页 | 列表页 | 统计页                                                                                                                  |
 | --- | --- |-----------------------------------------------------------------------------------------------------------------------------|
 | <img src="https://raw.githubusercontent.com/ThinkerWen/z-drive/refs/heads/main/images/gallery-upload.png" width="500" alt="z-drive.png"> | <img src="https://raw.githubusercontent.com/ThinkerWen/z-drive/refs/heads/main/images/gallery-list.png" width="500" alt="z-drive.png"> | <img src="https://raw.githubusercontent.com/ThinkerWen/z-drive/refs/heads/main/images/gallery-stats.png" width="500" alt="z-drive.png"> |
 
 ### 2. 云盘页面
 
-| 上传页                                                                                                                                  |
-|--------------------------------------------------------------------------------------------------------------------------------------|
-| <img src="https://raw.githubusercontent.com/ThinkerWen/z-drive/refs/heads/main/images/cloud-list.png" width="500" alt="z-drive.png"> |
+| 列表页                                                                                                                                  | 预览页                                                                                                                                       | 分享页                                                                                                                               |
+|--------------------------------------------------------------------------------------------------------------------------------------|-------------------------------------------------------------------------------------------------------------------------------------------|-----------------------------------------------------------------------------------------------------------------------------------------|
+| <img src="https://raw.githubusercontent.com/ThinkerWen/z-drive/refs/heads/main/images/cloud-list.png" width="500" alt="z-drive.png"> | <img src="https://raw.githubusercontent.com/ThinkerWen/z-drive/refs/heads/main/images/gallery-preview.png" width="500" alt="z-drive.png"> | <img src="https://raw.githubusercontent.com/ThinkerWen/z-drive/refs/heads/main/images/gallery-share.png" width="500" alt="z-drive.png"> |
 
 ## 三、安装指导
 
