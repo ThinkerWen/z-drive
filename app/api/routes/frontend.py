@@ -6,11 +6,18 @@ from fastapi.responses import FileResponse
 
 FRONTEND_ENTRY_PATHS = (
     "/",
-    "/f/{share_code}",
+    "/login",
+    "/gallery",
     "/gallery/index",
-    "/gallery/gallery",
+    "/gallery/upload",
     "/gallery/stats",
-    "/gallery/login",
+    "/cloud",
+    "/cloud/index",
+    "/cloud/upload",
+    "/cloud/shares",
+    "/cloud/share-management",
+    "/cloud/stats",
+    "/f/{share_code}",
     "/gallery/error",
     "/gallery/preview/{preview_path:path}",
 )

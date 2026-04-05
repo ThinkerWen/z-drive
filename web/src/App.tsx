@@ -1,5 +1,6 @@
 import { Suspense, lazy, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { BarChart3, CheckCircle2, Copy, ExternalLink, Loader2, LogOut, Palette, Shield, Trash2, Upload, XCircle } from "lucide-react";
+import { useLocation, useNavigate } from "react-router-dom";
 
 import { Button } from "@/components/ui/button";
 import { CloudPage } from "@/components/cloud-page";
@@ -8,6 +9,7 @@ import { PublicErrorPage, PublicPreviewPage, PublicSharePage, parsePublicPreview
 import {
   ApiError,
   deleteImage,
+  getCloudSummary,
   getStats,
   listImages,
   login,
@@ -47,15 +49,64 @@ const TrendLineChart = lazy(async () => {
   return { default: module.TrendLineChart };
 });
 
+function getGalleryRoute(page: GallerySubPage): string {
+  if (page === "upload") {
+    return "/gallery/upload";
+  }
+  if (page === "stats") {
+    return "/gallery/stats";
+  }
+  return "/gallery/index";
+}
+
+function getCloudRoute(page: CloudSubPage): string {
+  if (page === "upload") {
+    return "/cloud/upload";
+  }
+  if (page === "shares") {
+    return "/cloud/shares";
+  }
+  if (page === "stats") {
+    return "/cloud/stats";
+  }
+  return "/cloud/index";
+}
+
+function resolveGalleryPage(pathname: string): GallerySubPage {
+  if (pathname.endsWith("/upload")) {
+    return "upload";
+  }
+  if (pathname.endsWith("/stats")) {
+    return "stats";
+  }
+  return "gallery";
+}
+
+function resolveCloudPage(pathname: string): CloudSubPage {
+  if (pathname.endsWith("/upload")) {
+    return "upload";
+  }
+  if (pathname.endsWith("/shares") || pathname.endsWith("/share-management")) {
+    return "shares";
+  }
+  if (pathname.endsWith("/stats")) {
+    return "stats";
+  }
+  return "files";
+}
+
 export default function App() {
-  const pathname = window.location.pathname;
+  const location = useLocation();
+  const navigate = useNavigate();
+  const pathname = location.pathname;
   const previewPath = parsePublicPreviewPath(pathname);
   const sharePath = parsePublicSharePath(pathname);
   const isPublicPreviewRoute = Boolean(previewPath);
   const isPublicShareRoute = Boolean(sharePath);
   const isPublicErrorRoute = pathname === "/gallery/error";
+  const isLoginRoute = pathname === "/login";
 
-  const [username, setUsername] = useState("admin");
+  const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [isAuthed, setIsAuthed] = useState(false);
   const [authLoading, setAuthLoading] = useState(true);
@@ -89,6 +140,56 @@ export default function App() {
 
   const pageCount = useMemo(() => Math.max(Math.ceil(total / PAGE_SIZE), 1), [total]);
   const activeBrand = activeSection === "cloud" ? "Z-Drive Cloud" : "Z-Drive Gallery";
+
+  useEffect(() => {
+    if (isPublicPreviewRoute || isPublicShareRoute || isPublicErrorRoute) {
+      return;
+    }
+
+    if (pathname === "/gallery") {
+      navigate("/gallery/index", { replace: true });
+      return;
+    }
+
+    if (pathname === "/cloud") {
+      navigate("/cloud/index", { replace: true });
+      return;
+    }
+
+    if (pathname === "/cloud/share-management") {
+      navigate("/cloud/shares", { replace: true });
+      return;
+    }
+
+    if ((pathname.startsWith("/gallery") || pathname.startsWith("/cloud")) && !authLoading && !isAuthed) {
+      navigate("/login", { replace: true });
+      return;
+    }
+
+    if (pathname === "/") {
+      if (!authLoading) {
+        navigate(isAuthed ? "/gallery/index" : "/login", { replace: true });
+      }
+      return;
+    }
+
+    if (pathname === "/login" && isAuthed) {
+      navigate("/gallery/index", { replace: true });
+    }
+  }, [authLoading, isAuthed, isPublicErrorRoute, isPublicPreviewRoute, isPublicShareRoute, navigate, pathname]);
+
+  useEffect(() => {
+    if (pathname.startsWith("/gallery")) {
+      setActiveSection("gallery");
+      setActiveGalleryPage(resolveGalleryPage(pathname));
+      return;
+    }
+
+    if (pathname.startsWith("/cloud")) {
+      setActiveSection("cloud");
+      setActiveCloudPage(resolveCloudPage(pathname));
+    }
+  }, [pathname]);
 
   function notify(text: string, kind: ToastKind = "success") {
     setToast({ id: Date.now(), text, kind });
@@ -142,7 +243,8 @@ export default function App() {
       if (error instanceof ApiError && error.status === 401) {
         setIsAuthed(false);
         setActiveSection("gallery");
-        setActiveGalleryPage("upload");
+        setActiveGalleryPage("gallery");
+        navigate("/login", { replace: true });
         notify("请先登录管理账号", "error");
         return;
       }
@@ -151,20 +253,35 @@ export default function App() {
   }
 
   useEffect(() => {
-    if (isPublicPreviewRoute || isPublicShareRoute || isPublicErrorRoute) {
+    if (isPublicPreviewRoute || isPublicShareRoute || isPublicErrorRoute || isLoginRoute) {
       setAuthLoading(false);
       return;
     }
     void (async () => {
       setAuthLoading(true);
-      await Promise.all([refreshStats(), refreshList(1)]);
+      if (pathname.startsWith("/cloud")) {
+        try {
+          await getCloudSummary();
+          setIsAuthed(true);
+        } catch (error) {
+          if (error instanceof ApiError && error.status === 401) {
+            setIsAuthed(false);
+            navigate("/login", { replace: true });
+            notify("请先登录管理账号", "error");
+          } else {
+            notify(error instanceof Error ? error.message : "认证检查失败", "error");
+          }
+        }
+      } else {
+        await Promise.all([refreshStats(), refreshList(1)]);
+      }
       setAuthLoading(false);
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isPublicErrorRoute, isPublicPreviewRoute, isPublicShareRoute]);
+  }, [isLoginRoute, isPublicErrorRoute, isPublicPreviewRoute, isPublicShareRoute, pathname]);
 
   useEffect(() => {
-    if (isPublicPreviewRoute || isPublicShareRoute || isPublicErrorRoute) {
+    if (isPublicPreviewRoute || isPublicShareRoute || isPublicErrorRoute || isLoginRoute) {
       return;
     }
     const saved = localStorage.getItem("z-drive-theme") as ThemeName | null;
@@ -175,7 +292,7 @@ export default function App() {
     } else {
       document.documentElement.setAttribute("data-theme", normalized);
     }
-  }, [isPublicErrorRoute, isPublicPreviewRoute, isPublicShareRoute]);
+  }, [isLoginRoute, isPublicErrorRoute, isPublicPreviewRoute, isPublicShareRoute]);
 
   if (isPublicPreviewRoute && previewPath) {
     return <PublicPreviewPage shortCode={previewPath.shortCode} ext={previewPath.ext} />;
@@ -208,7 +325,8 @@ export default function App() {
       setPassword("");
       await Promise.all([refreshStats(), refreshList(1)]);
       setActiveSection("gallery");
-      setActiveGalleryPage("upload");
+      setActiveGalleryPage("gallery");
+      navigate("/gallery/index", { replace: true });
       notify("登录成功", "success");
     } catch (error) {
       notify(error instanceof Error ? error.message : "登录失败", "error");
@@ -260,7 +378,7 @@ export default function App() {
   async function uploadFileTask(taskId: string, file: File): Promise<void> {
     await new Promise<void>((resolve, reject) => {
       const xhr = new XMLHttpRequest();
-      xhr.open("POST", "/gallery/api/upload", true);
+      xhr.open("POST", "/api/gallery/api/upload", true);
       xhr.withCredentials = true;
 
       xhr.upload.onprogress = (progressEvent) => {
@@ -280,23 +398,55 @@ export default function App() {
           payload = null;
         }
 
-        if (xhr.status < 200 || xhr.status >= 300 || !payload) {
-          const detail = typeof payload?.detail === "string" ? payload.detail : "上传失败";
+        const payloadObj = payload && typeof payload === "object" ? (payload as Record<string, unknown>) : null;
+        const isEnvelope =
+          payloadObj !== null &&
+          "code" in payloadObj &&
+          "data" in payloadObj &&
+          "message" in payloadObj;
+
+        const envelopeCode =
+          isEnvelope && typeof payloadObj.code === "number"
+            ? payloadObj.code
+            : null;
+
+        const envelopeMessage =
+          isEnvelope && typeof payloadObj.message === "string"
+            ? payloadObj.message
+            : "";
+
+        const dataPayload =
+          isEnvelope && payloadObj.data && typeof payloadObj.data === "object"
+            ? (payloadObj.data as Record<string, unknown>)
+            : !isEnvelope
+              ? payloadObj
+              : null;
+
+        if (
+          xhr.status < 200 ||
+          xhr.status >= 300 ||
+          !payload ||
+          (envelopeCode !== null && envelopeCode !== 0) ||
+          !dataPayload
+        ) {
+          const detail =
+            envelopeMessage ||
+            (typeof payload?.detail === "string" ? payload.detail : "上传失败");
           updateTask(taskId, (task) => ({ ...task, status: "error", error: detail }));
           reject(new Error(detail));
           return;
         }
 
         const successResult: UploadResultItem = {
-          file_name: String(payload.file_name ?? file.name),
-          file_size: Number(payload.file_size ?? file.size),
-          file_type: String(payload.file_type ?? file.type.split("/")[0] ?? "file"),
+          file_name: String(dataPayload.file_name ?? file.name),
+          file_size: Number(dataPayload.file_size ?? file.size),
+          file_type: String(dataPayload.file_type ?? file.type.split("/")[0] ?? "file"),
           success: true,
-          short_code: String(payload.short_code ?? ""),
-          view_url: typeof payload.view_url === "string" ? payload.view_url : undefined,
-          direct_url: typeof payload.direct_url === "string" ? payload.direct_url : undefined,
-          preview_url: typeof payload.preview_url === "string" ? payload.preview_url : undefined,
-          sign: typeof payload.sign === "string" ? payload.sign : undefined,
+          short_code: String(dataPayload.short_code ?? ""),
+          view_url: typeof dataPayload.view_url === "string" ? dataPayload.view_url : undefined,
+          direct_url: typeof dataPayload.direct_url === "string" ? dataPayload.direct_url : undefined,
+          preview_url: typeof dataPayload.preview_url === "string" ? dataPayload.preview_url : undefined,
+          sign: typeof dataPayload.sign === "string" ? dataPayload.sign : undefined,
         };
 
         updateTask(taskId, (task) => ({
@@ -501,10 +651,11 @@ export default function App() {
     setBusy(false);
     setIsAuthed(false);
     setActiveSection("gallery");
-    setActiveGalleryPage("upload");
+    setActiveGalleryPage("gallery");
     setStats(null);
     setItems([]);
     setTotal(0);
+    navigate("/login", { replace: true });
     notify("已退出登录", "success");
   }
 
@@ -516,7 +667,7 @@ export default function App() {
     );
   }
 
-  const isLoginView = !isAuthed;
+  const isLoginView = isLoginRoute || !isAuthed;
 
   if (isLoginView) {
     return (
@@ -603,21 +754,50 @@ export default function App() {
         {isAuthed ? (
           <>
             <nav className="mt-5 flex flex-wrap gap-2 rounded-2xl border border-white/60 bg-white/55 p-2">
-              <TabButton current={activeSection} target="gallery" onClick={setActiveSection}>图库</TabButton>
-              <TabButton current={activeSection} target="cloud" onClick={setActiveSection}>云盘</TabButton>
+              <TabButton current={activeSection} target="gallery" onClick={() => {
+                setActiveSection("gallery");
+                setActiveGalleryPage("gallery");
+                navigate("/gallery/index");
+              }}>图库</TabButton>
+              <TabButton current={activeSection} target="cloud" onClick={() => {
+                setActiveSection("cloud");
+                setActiveCloudPage("files");
+                navigate("/cloud/index");
+              }}>云盘</TabButton>
             </nav>
             {activeSection === "gallery" ? (
               <nav className="mt-3 flex flex-wrap gap-2 rounded-2xl border border-white/60 bg-white/55 p-2">
-                <TabButton current={activeGalleryPage} target="upload" onClick={setActiveGalleryPage}>上传</TabButton>
-                <TabButton current={activeGalleryPage} target="gallery" onClick={setActiveGalleryPage}>图库</TabButton>
-                <TabButton current={activeGalleryPage} target="stats" onClick={setActiveGalleryPage}>统计</TabButton>
+                <TabButton current={activeGalleryPage} target="upload" onClick={() => {
+                  setActiveGalleryPage("upload");
+                  navigate("/gallery/upload");
+                }}>上传</TabButton>
+                <TabButton current={activeGalleryPage} target="gallery" onClick={() => {
+                  setActiveGalleryPage("gallery");
+                  navigate("/gallery/index");
+                }}>图库</TabButton>
+                <TabButton current={activeGalleryPage} target="stats" onClick={() => {
+                  setActiveGalleryPage("stats");
+                  navigate("/gallery/stats");
+                }}>统计</TabButton>
               </nav>
             ) : (
               <nav className="mt-3 flex flex-wrap gap-2 rounded-2xl border border-white/60 bg-white/55 p-2">
-                <TabButton current={activeCloudPage} target="upload" onClick={setActiveCloudPage}>上传</TabButton>
-                <TabButton current={activeCloudPage} target="files" onClick={setActiveCloudPage}>文件管理</TabButton>
-                <TabButton current={activeCloudPage} target="shares" onClick={setActiveCloudPage}>分享管理</TabButton>
-                <TabButton current={activeCloudPage} target="stats" onClick={setActiveCloudPage}>数据统计</TabButton>
+                <TabButton current={activeCloudPage} target="upload" onClick={() => {
+                  setActiveCloudPage("upload");
+                  navigate("/cloud/upload");
+                }}>上传</TabButton>
+                <TabButton current={activeCloudPage} target="files" onClick={() => {
+                  setActiveCloudPage("files");
+                  navigate("/cloud/index");
+                }}>文件管理</TabButton>
+                <TabButton current={activeCloudPage} target="shares" onClick={() => {
+                  setActiveCloudPage("shares");
+                  navigate("/cloud/shares");
+                }}>分享管理</TabButton>
+                <TabButton current={activeCloudPage} target="stats" onClick={() => {
+                  setActiveCloudPage("stats");
+                  navigate("/cloud/stats");
+                }}>数据统计</TabButton>
               </nav>
             )}
           </>
@@ -964,10 +1144,10 @@ export default function App() {
                             onCopy={() => void copyText(buildSignedShortLink(previewItem), `preview-short-${previewItem.short_code}`)}
                           />
                           <MiniCopyRow
-                            label="访问链接"
-                            value={previewItem.view_url}
-                            copied={copiedKey === `preview-view-${previewItem.short_code}`}
-                            onCopy={() => void copyText(previewItem.view_url, `preview-view-${previewItem.short_code}`)}
+                            label="快速预览"
+                            value={previewItem.preview_url || previewItem.view_url}
+                            copied={copiedKey === `preview-quick-${previewItem.short_code}`}
+                            onCopy={() => void copyText(previewItem.preview_url || previewItem.view_url, `preview-quick-${previewItem.short_code}`)}
                           />
                         </div>
                       </div>
@@ -1236,7 +1416,8 @@ export default function App() {
               onAuthExpired={() => {
                 setIsAuthed(false);
                 setActiveSection("gallery");
-                setActiveGalleryPage("upload");
+                setActiveGalleryPage("gallery");
+                navigate("/login", { replace: true });
                 notify("登录已过期，请重新登录", "error");
               }}
               onNotify={notifyAuto}

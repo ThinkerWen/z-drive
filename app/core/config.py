@@ -10,7 +10,7 @@ class Settings(BaseSettings):
     app_name: str = "z-drive"
     debug: bool = False
 
-    database_url: str = Field(default="sqlite:///./z_drive.db")
+    database_url: str = Field(default="sqlite:///./storage/z_drive.db")
     storage_path: str = Field(default="storage")
 
     view_origin: bool = False

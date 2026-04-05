@@ -137,9 +137,9 @@ class GalleryService:
         ext = self._get_public_extension(image)
         return {
             "view_path": f"i/{image.short_code}.{ext}",
-            "direct_path": f"gallery/file/{image.short_code}.{ext}",
+            "direct_path": f"api/gallery/file/{image.short_code}.{ext}",
             "preview_path": f"gallery/preview/{image.short_code}.{ext}",
-            "download_path": f"gallery/download/{image.short_code}.{ext}",
+            "download_path": f"api/gallery/download/{image.short_code}.{ext}",
         }
 
     def build_public_urls(self, image: Image, base_url: str, sign: str) -> dict[str, str]:
@@ -171,14 +171,13 @@ class GalleryService:
         file_type, width, height = self._detect_file_type(mime_type, data)
 
         short_code = self._generate_unique_short_code(db)
-        original_path, preview_path = self._build_paths(short_code, file.filename)
+        original_path, _preview_path = self._build_paths(short_code, file.filename)
         storage_name = original_path.name
 
         original_path.write_bytes(data)
 
+        # Preview generation is handled by a background scheduler to avoid upload latency.
         has_compressed = False
-        if file_type == "image":
-            has_compressed = self._create_preview_image(data, preview_path)
 
         image = Image(
             short_code=short_code,
@@ -200,6 +199,59 @@ class GalleryService:
         db.refresh(image)
 
         return image, self._build_sign(image)
+
+    def sync_gallery_previews(self, db: Session) -> dict[str, int]:
+        self.ensure_directories()
+
+        images = db.scalars(
+            select(Image).where(
+                Image.is_delete.is_(False),
+                Image.file_type == "image",
+            )
+        ).all()
+
+        active_preview_names = {f"{image.short_code}.webp" for image in images}
+
+        created = 0
+        removed = 0
+        updated = 0
+
+        for image in images:
+            preview_path = self._preview_dir() / f"{image.short_code}.webp"
+            preview_exists = preview_path.exists()
+
+            if not preview_exists:
+                try:
+                    original_data = self.get_original_image_data(image)
+                except FileNotFoundError:
+                    continue
+
+                if self._create_preview_image(original_data, preview_path):
+                    created += 1
+                    preview_exists = True
+
+            if preview_exists and (not image.has_compressed or not image.has_thumbnail):
+                image.has_compressed = True
+                image.has_thumbnail = True
+                updated += 1
+
+        for preview_path in self._preview_dir().glob("*.webp"):
+            if preview_path.name in active_preview_names:
+                continue
+            try:
+                preview_path.unlink()
+                removed += 1
+            except OSError:
+                continue
+
+        if created > 0 or removed > 0 or updated > 0:
+            db.commit()
+
+        return {
+            "created": created,
+            "removed": removed,
+            "updated": updated,
+        }
 
     @staticmethod
     def get_image_by_shortcode(db: Session, short_code: str) -> Image:

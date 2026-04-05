@@ -318,3 +318,5 @@ app/static/
 !web/src/lib/
 !web/src/lib/**
 
+docs/
+

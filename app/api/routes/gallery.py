@@ -10,12 +10,14 @@ from app.core.config import get_settings
 from app.core.security import create_admin_token, decode_admin_token
 from app.db.session import get_db
 from app.schemas.image import DeleteImageRequest, ImageInfoResponse, LoginRequest, UpdateImageRequest
+from app.services.cloud_share import DriveShareService
 from app.services.gallery import GalleryService
 
-public_router = APIRouter(tags=["gallery"])
+public_router = APIRouter(tags=["public"])
 gallery_router = APIRouter(prefix="/gallery", tags=["gallery"])
 settings = get_settings()
 service = GalleryService(settings)
+share_service = DriveShareService()
 
 
 def _base_url(request: Request) -> str:
@@ -124,6 +126,44 @@ async def view_image(request: Request, file_key: str, sign: str = "", db: Sessio
         raise HTTPException(status_code=404, detail=str(exc)) from exc
     except PermissionError as exc:
         raise HTTPException(status_code=403, detail=str(exc)) from exc
+
+
+@public_router.get("/f/{share_code}")
+async def short_share_entry(
+    request: Request,
+    share_code: str,
+    password: str = "",
+    db: Session = Depends(get_db),
+) -> Response:
+    base_url = _base_url(request)
+    try:
+        _, item = share_service.resolve_share(db, share_code, password)
+    except LookupError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except PermissionError:
+        return JSONResponse(
+            status_code=403,
+            content={
+                "share_code": share_code,
+                "requires_password": True,
+                "message": "该分享需要密码，请在客户端输入密码后访问。",
+                "access_api": f"{base_url}/api/cloud/public/{share_code}/access",
+            },
+        )
+
+    if item.is_folder:
+        return JSONResponse(
+            status_code=200,
+            content={
+                "share_code": share_code,
+                "is_folder": True,
+                "message": "目录分享暂不支持直接预览，请使用客户端接口访问。",
+                "access_api": f"{base_url}/api/cloud/public/{share_code}/access",
+            },
+        )
+
+    password_query = f"?password={password}" if password else ""
+    return RedirectResponse(url=f"{base_url}/api/cloud/public/{share_code}/preview{password_query}", status_code=307)
 
 
 @gallery_router.post("/upload")
@@ -242,10 +282,9 @@ async def login(payload: LoginRequest) -> JSONResponse:
 
 
 @gallery_router.get("/logout")
-async def logout() -> RedirectResponse:
-    response = RedirectResponse(url="/gallery/login", status_code=302)
+async def logout(response: Response) -> dict:
     response.delete_cookie("z_drive_admin_token", path="/")
-    return response
+    return {"message": "已退出登录"}
 
 
 @gallery_router.get("/api/list")

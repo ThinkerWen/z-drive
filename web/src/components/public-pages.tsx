@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { XCircle } from "lucide-react";
 
 import { PlyrVideo } from "@/components/plyr-video";
 import { ApiError, accessCloudShare, getImageInfo } from "@/lib/api";
@@ -57,7 +58,7 @@ export function PublicPreviewPage({ shortCode, ext }: { shortCode: string; ext: 
   const origin = window.location.origin;
   const querySuffix = sign ? `?sign=${encodeURIComponent(sign)}` : "";
   const viewUrl = `${origin}/i/${shortCode}.${ext}${querySuffix}`;
-  const downloadUrl = `${origin}/gallery/download/${shortCode}.${ext}${querySuffix}`;
+  const downloadUrl = `${origin}/api/gallery/download/${shortCode}.${ext}${querySuffix}`;
 
   useEffect(() => {
     void (async () => {
@@ -124,7 +125,7 @@ export function PublicPreviewPage({ shortCode, ext }: { shortCode: string; ext: 
   }
 
   const markdown = `![${info.file_name}](${viewUrl})`;
-  const imgTag = `<img src="${viewUrl}" alt="${info.file_name}">`;
+  const imgTag = `<img src="${viewUrl}" width="500" alt="${info.file_name}">`;
   const videoTag = `<video src="${viewUrl}" controls width="500"></video>`;
 
   return (
@@ -174,6 +175,7 @@ export function PublicSharePage({ shareCode }: { shareCode: string }) {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [fatalError, setFatalError] = useState("");
+  const [errorToast, setErrorToast] = useState("");
   const [requiresPassword, setRequiresPassword] = useState(false);
   const [password, setPassword] = useState("");
   const [data, setData] = useState<CloudShareAccessResponse | null>(null);
@@ -193,16 +195,20 @@ export function PublicSharePage({ shareCode }: { shareCode: string }) {
       setData(payload);
       setRequiresPassword(false);
       setFatalError("");
+      setErrorToast("");
       setPassword(pass);
     } catch (error) {
       if (error instanceof ApiError && error.status === 403) {
         setRequiresPassword(true);
         setData(null);
         setFatalError("");
+        setErrorToast(error.message || "分享密码错误");
       } else if (error instanceof ApiError && error.status === 404) {
         setFatalError("分享不存在或已关闭");
+        setErrorToast("");
       } else {
         setFatalError(error instanceof Error ? error.message : "分享访问失败");
+        setErrorToast("");
       }
     } finally {
       setSubmitting(false);
@@ -211,6 +217,14 @@ export function PublicSharePage({ shareCode }: { shareCode: string }) {
       }
     }
   }
+
+  useEffect(() => {
+    if (!errorToast) {
+      return;
+    }
+    const timer = window.setTimeout(() => setErrorToast(""), 2200);
+    return () => window.clearTimeout(timer);
+  }, [errorToast]);
 
   useEffect(() => {
     void accessShare(initialPassword, true);
@@ -227,6 +241,14 @@ export function PublicSharePage({ shareCode }: { shareCode: string }) {
   if (requiresPassword || !data) {
     return (
       <div className="mx-auto flex min-h-screen w-full max-w-3xl items-center justify-center px-4 py-10 sm:px-8">
+        {errorToast ? (
+          <div className="pointer-events-none fixed right-6 top-6 z-[120]">
+            <div className="flex items-center gap-2 rounded-xl border border-rose-200 bg-rose-50/95 px-4 py-2.5 text-sm text-rose-700 shadow-lg">
+              <XCircle className="h-4 w-4 animate-pulse" />
+              <span>{errorToast}</span>
+            </div>
+          </div>
+        ) : null}
         <div className="soft-panel w-full rounded-3xl border border-white/70 bg-white/90 p-8 shadow-[0_18px_48px_rgba(0,0,0,0.18)]">
           <h1 className="text-2xl font-semibold tracking-tight">访问分享</h1>
           <p className="mt-2 text-sm text-muted-foreground">该分享需要密码，请输入后继续。</p>

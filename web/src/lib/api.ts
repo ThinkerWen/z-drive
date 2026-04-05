@@ -26,6 +26,12 @@ class ApiError extends Error {
   }
 }
 
+interface ApiEnvelope<T> {
+  code: number;
+  data: T;
+  message: string;
+}
+
 async function request<T>(input: string, init?: RequestInit): Promise<T> {
   const response = await fetch(input, {
     credentials: "include",
@@ -35,19 +41,36 @@ async function request<T>(input: string, init?: RequestInit): Promise<T> {
   const maybeJson = response.headers.get("content-type")?.includes("application/json");
   const payload = maybeJson ? await response.json() : null;
 
+  const envelope = payload as ApiEnvelope<T> | null;
+  const hasEnvelope =
+    envelope !== null &&
+    typeof envelope === "object" &&
+    "code" in envelope &&
+    "data" in envelope &&
+    "message" in envelope;
+
+  if (hasEnvelope && typeof envelope.code === "number" && envelope.code !== 0) {
+    throw new ApiError(envelope.message || "请求失败", response.status);
+  }
+
   if (!response.ok) {
     const message =
+      (hasEnvelope && typeof envelope.message === "string" && envelope.message) ||
       (payload && typeof payload === "object" && "detail" in payload && String(payload.detail)) ||
       response.statusText ||
       "请求失败";
     throw new ApiError(message, response.status);
   }
 
+  if (hasEnvelope) {
+    return envelope.data as T;
+  }
+
   return payload as T;
 }
 
 export async function login(username: string, password: string): Promise<void> {
-  await request<{ message: string; token: string }>("/gallery/login", {
+  await request<{ message: string; token: string }>("/api/gallery/login", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ username, password }),
@@ -66,17 +89,16 @@ export async function listImages(params: {
     query: params.query,
     file_type: params.fileType,
   });
-  return request<ImageListResponse>(`/gallery/api/list?${search.toString()}`);
+  return request<ImageListResponse>(`/api/gallery/api/list?${search.toString()}`);
 }
 
 export async function getStats(): Promise<StatsResponse> {
-  return request<StatsResponse>("/gallery/api/stats");
+  return request<StatsResponse>("/api/gallery/api/stats");
 }
 
 export async function logout(): Promise<void> {
-  await fetch("/gallery/logout", {
+  await request<{ message: string }>("/api/gallery/logout", {
     method: "GET",
-    credentials: "include",
   });
 }
 
@@ -85,7 +107,7 @@ export async function uploadSingle(file: File, accessMode: AccessMode): Promise<
   form.append("file", file);
   form.append("access_mode", accessMode);
 
-  return request<UploadSingleResponse>("/gallery/api/upload", {
+  return request<UploadSingleResponse>("/api/gallery/api/upload", {
     method: "POST",
     body: form,
   });
@@ -96,14 +118,14 @@ export async function uploadMultiple(files: File[], accessMode: AccessMode): Pro
   files.forEach((file) => form.append("files", file));
   form.append("access_mode", accessMode);
 
-  return request<UploadMultipleResponse>("/gallery/api/upload/multiple", {
+  return request<UploadMultipleResponse>("/api/gallery/api/upload/multiple", {
     method: "POST",
     body: form,
   });
 }
 
 export async function updateAccessMode(shortcode: string, accessMode: AccessMode, sign = ""): Promise<void> {
-  await request<{ message: string }>("/gallery/api/update", {
+  await request<{ message: string }>("/api/gallery/api/update", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ shortcode, access_mode: accessMode, sign }),
@@ -111,7 +133,7 @@ export async function updateAccessMode(shortcode: string, accessMode: AccessMode
 }
 
 export async function deleteImage(shortcode: string): Promise<void> {
-  await request<{ message: string }>("/gallery/api/delete", {
+  await request<{ message: string }>("/api/gallery/api/delete", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ shortcode }),
@@ -124,7 +146,7 @@ export async function getImageInfo(shortcode: string, ext: string, sign = ""): P
     search.set("sign", sign);
   }
   const suffix = search.size ? `?${search.toString()}` : "";
-  return request<ImageInfoResponse>(`/gallery/info/${shortcode}.${ext}${suffix}`);
+  return request<ImageInfoResponse>(`/api/gallery/info/${shortcode}.${ext}${suffix}`);
 }
 
 export async function listCloudItems(params: {
@@ -143,11 +165,11 @@ export async function listCloudItems(params: {
   if (params.parentId !== null) {
     search.set("parent_id", String(params.parentId));
   }
-  return request<CloudListResponse>(`/cloud/items?${search.toString()}`);
+  return request<CloudListResponse>(`/api/cloud/items?${search.toString()}`);
 }
 
 export async function createCloudFolder(parentId: number | null, name: string): Promise<CloudItem> {
-  return request<CloudItem>("/cloud/folders", {
+  return request<CloudItem>("/api/cloud/folders", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ parent_id: parentId, name }),
@@ -162,7 +184,7 @@ export async function uploadCloudFiles(parentId: number | null, files: File[]): 
     search.set("parent_id", String(parentId));
   }
   const suffix = search.size > 0 ? `?${search.toString()}` : "";
-  const payload = await request<{ items: CloudItem[] }>(`/cloud/upload/multiple${suffix}`, {
+  const payload = await request<{ items: CloudItem[] }>(`/api/cloud/upload/multiple${suffix}`, {
     method: "POST",
     body: form,
   });
@@ -170,7 +192,7 @@ export async function uploadCloudFiles(parentId: number | null, files: File[]): 
 }
 
 export async function renameCloudItem(itemId: number, name: string): Promise<CloudItem> {
-  return request<CloudItem>(`/cloud/items/${itemId}`, {
+  return request<CloudItem>(`/api/cloud/items/${itemId}`, {
     method: "PATCH",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ name }),
@@ -178,13 +200,13 @@ export async function renameCloudItem(itemId: number, name: string): Promise<Clo
 }
 
 export async function deleteCloudItem(itemId: number): Promise<void> {
-  await request<{ message: string }>(`/cloud/items/${itemId}`, {
+  await request<{ message: string }>(`/api/cloud/items/${itemId}`, {
     method: "DELETE",
   });
 }
 
 export async function moveCloudItem(itemId: number, targetParentId: number | null): Promise<CloudItem> {
-  return request<CloudItem>(`/cloud/items/${itemId}/move`, {
+  return request<CloudItem>(`/api/cloud/items/${itemId}/move`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ target_parent_id: targetParentId }),
@@ -192,7 +214,7 @@ export async function moveCloudItem(itemId: number, targetParentId: number | nul
 }
 
 export async function copyCloudItem(itemId: number, targetParentId: number | null, name?: string): Promise<CloudItem> {
-  return request<CloudItem>(`/cloud/items/${itemId}/copy`, {
+  return request<CloudItem>(`/api/cloud/items/${itemId}/copy`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ target_parent_id: targetParentId, name }),
@@ -200,7 +222,7 @@ export async function copyCloudItem(itemId: number, targetParentId: number | nul
 }
 
 export async function batchDeleteCloudItems(itemIds: number[]): Promise<CloudBatchResultResponse> {
-  return request<CloudBatchResultResponse>("/cloud/items/batch/delete", {
+  return request<CloudBatchResultResponse>("/api/cloud/items/batch/delete", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ item_ids: itemIds }),
@@ -208,7 +230,7 @@ export async function batchDeleteCloudItems(itemIds: number[]): Promise<CloudBat
 }
 
 export async function batchMoveCloudItems(itemIds: number[], targetParentId: number | null): Promise<CloudBatchResultResponse> {
-  return request<CloudBatchResultResponse>("/cloud/items/batch/move", {
+  return request<CloudBatchResultResponse>("/api/cloud/items/batch/move", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ item_ids: itemIds, target_parent_id: targetParentId }),
@@ -216,7 +238,7 @@ export async function batchMoveCloudItems(itemIds: number[], targetParentId: num
 }
 
 export async function batchCopyCloudItems(itemIds: number[], targetParentId: number | null): Promise<CloudBatchResultResponse> {
-  return request<CloudBatchResultResponse>("/cloud/items/batch/copy", {
+  return request<CloudBatchResultResponse>("/api/cloud/items/batch/copy", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ item_ids: itemIds, target_parent_id: targetParentId }),
@@ -224,7 +246,7 @@ export async function batchCopyCloudItems(itemIds: number[], targetParentId: num
 }
 
 export async function getCloudSummary(): Promise<CloudSummaryResponse> {
-  return request<CloudSummaryResponse>("/cloud/summary");
+  return request<CloudSummaryResponse>("/api/cloud/summary");
 }
 
 export async function createCloudShare(payload: {
@@ -232,7 +254,7 @@ export async function createCloudShare(payload: {
   password?: string;
   expiresMinutes?: number;
 }): Promise<CloudShareResponse> {
-  return request<CloudShareResponse>("/cloud/shares", {
+  return request<CloudShareResponse>("/api/cloud/shares", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
@@ -244,17 +266,17 @@ export async function createCloudShare(payload: {
 }
 
 export async function listCloudShares(): Promise<CloudShareResponse[]> {
-  return request<CloudShareResponse[]>("/cloud/shares");
+  return request<CloudShareResponse[]>("/api/cloud/shares");
 }
 
 export async function cancelCloudShare(shareId: number): Promise<void> {
-  await request<{ message: string }>(`/cloud/shares/${shareId}`, {
+  await request<{ message: string }>(`/api/cloud/shares/${shareId}`, {
     method: "DELETE",
   });
 }
 
 export async function accessCloudShare(shareCode: string, password = ""): Promise<CloudShareAccessResponse> {
-  return request<CloudShareAccessResponse>(`/cloud/public/${shareCode}/access`, {
+  return request<CloudShareAccessResponse>(`/api/cloud/public/${shareCode}/access`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ password }),

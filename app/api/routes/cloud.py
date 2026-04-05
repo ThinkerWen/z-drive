@@ -4,7 +4,7 @@ from datetime import datetime
 from pathlib import Path
 
 from fastapi import APIRouter, BackgroundTasks, Depends, File, HTTPException, Query, Request, UploadFile
-from fastapi.responses import FileResponse, JSONResponse, RedirectResponse
+from fastapi.responses import FileResponse
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -46,7 +46,6 @@ from app.services.cloud_share import DriveShareService
 from app.services.cloud import DriveService
 
 router = APIRouter(prefix="/cloud", tags=["cloud"])
-short_router = APIRouter(tags=["cloud-public"])
 settings = get_settings()
 service = DriveService(settings)
 share_service = DriveShareService()
@@ -95,44 +94,6 @@ def _to_share_payload(share, base_url: str, item_name: str = "") -> DriveShareRe
         created_at=share.created_at.strftime("%Y-%m-%d %H:%M:%S"),
         share_url=f"{base_url}/f/{share.share_code}",
     )
-
-
-@short_router.get("/f/{share_code}")
-async def short_share_entry(
-    request: Request,
-    share_code: str,
-    password: str = "",
-    db: Session = Depends(get_db),
-):
-    base_url = _base_url(request)
-    try:
-        _, item = share_service.resolve_share(db, share_code, password)
-    except LookupError as exc:
-        raise HTTPException(status_code=404, detail=str(exc)) from exc
-    except PermissionError:
-        return JSONResponse(
-            status_code=403,
-            content={
-                "share_code": share_code,
-                "requires_password": True,
-                "message": "该分享需要密码，请在客户端输入密码后访问。",
-                "access_api": f"{base_url}/cloud/public/{share_code}/access",
-            },
-        )
-
-    if item.is_folder:
-        return JSONResponse(
-            status_code=200,
-            content={
-                "share_code": share_code,
-                "is_folder": True,
-                "message": "目录分享暂不支持直接预览，请使用客户端接口访问。",
-                "access_api": f"{base_url}/cloud/public/{share_code}/access",
-            },
-        )
-
-    password_query = f"?password={password}" if password else ""
-    return RedirectResponse(url=f"{base_url}/cloud/public/{share_code}/preview{password_query}", status_code=307)
 
 
 @router.get("/items", response_model=DriveListResponse)
@@ -298,8 +259,8 @@ async def access_shared_item(
         return DriveShareAccessResponse(
             share_code=share_code,
             item=_to_item_payload(item),
-            preview_url=f"{_base_url(request)}/cloud/public/{share_code}/preview{password_query}",
-            download_url=f"{_base_url(request)}/cloud/public/{share_code}/download{password_query}",
+            preview_url=f"{_base_url(request)}/api/cloud/public/{share_code}/preview{password_query}",
+            download_url=f"{_base_url(request)}/api/cloud/public/{share_code}/download{password_query}",
         )
     except LookupError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc

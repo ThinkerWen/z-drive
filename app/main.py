@@ -2,16 +2,14 @@ from __future__ import annotations
 
 from contextlib import asynccontextmanager
 from pathlib import Path
-from time import perf_counter
 
-from fastapi import FastAPI, Request
+from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 
-from app.api.routes.cloud import router as cloud_router, service as cloud_service
-from app.api.routes.frontend import create_frontend_router
-from app.api.routes.gallery import gallery_router, public_router, service
-from app.api.routes.health import router as health_router
+from app.api.routes.router import ensure_storage_directories, register_routes
 from app.core.config import get_settings
+from app.core.corn import start_corn, stop_corn
+from app.core.http import register_http_handlers
 from app.core.logging import logger, setup_logging
 from app.db.session import init_db
 
@@ -22,43 +20,29 @@ static_dir = base_dir / "static"
 
 
 @asynccontextmanager
-async def app_lifespan(_: FastAPI):
+async def app_lifespan(app: FastAPI):
     init_db()
-    service.ensure_directories()
-    cloud_service.ensure_directories()
+    ensure_storage_directories()
+    start_corn(app, settings)
     logger.info("{} started", settings.app_name)
-    yield
+    try:
+        yield
+    finally:
+        await stop_corn(app)
 
 
 app = FastAPI(title=settings.app_name, debug=settings.debug, lifespan=app_lifespan)
 app.state.settings = settings
-
-@app.middleware("http")
-async def request_logging_middleware(request: Request, call_next):
-    started_at = perf_counter()
-    try:
-        response = await call_next(request)
-    except Exception:
-        elapsed_ms = (perf_counter() - started_at) * 1000
-        logger.exception("{} {} -> 500 ({:.2f} ms)", request.method, request.url.path, elapsed_ms)
-        raise
-
-    elapsed_ms = (perf_counter() - started_at) * 1000
-    logger.info("{} {} -> {} ({:.2f} ms)", request.method, request.url.path, response.status_code, elapsed_ms)
-    return response
+register_http_handlers(app)
 
 if static_dir.exists():
     app.mount("/static", StaticFiles(directory=str(static_dir)), name="static")
 
     index_file = static_dir / "index.html"
+else:
+    index_file = None
 
-    if index_file.exists():
-        app.include_router(create_frontend_router(index_file))
-
-app.include_router(health_router)
-app.include_router(public_router)
-app.include_router(gallery_router)
-app.include_router(cloud_router)
+register_routes(app, index_file)
 
 
 def main() -> None:

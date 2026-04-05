@@ -667,7 +667,7 @@ export function CloudPage({ mode, onAuthExpired, onNotify }: CloudPageProps) {
       return;
     }
     if (action === "download" && !item.is_folder) {
-      window.open(`/cloud/download/${item.id}`, "_blank");
+      window.open(`/api/cloud/download/${item.id}`, "_blank");
     }
   }
 
@@ -1155,13 +1155,13 @@ export function CloudPage({ mode, onAuthExpired, onNotify }: CloudPageProps) {
                 </div>
                 <div className="flex max-h-[72vh] items-center justify-center overflow-hidden rounded-xl border border-border/70 bg-muted/30 p-2">
                   {previewItem.mime_type.startsWith("image/") ? (
-                    <img src={`/cloud/preview/${previewItem.id}`} alt={previewItem.name} className="max-h-[68vh] w-auto rounded" />
+                    <img src={`/api/cloud/preview/${previewItem.id}`} alt={previewItem.name} className="max-h-[68vh] w-auto rounded" />
                   ) : previewItem.mime_type.startsWith("video/") ? (
-                    <PlyrVideo src={`/cloud/preview/${previewItem.id}`} className="max-h-[68vh] w-full rounded" />
+                    <PlyrVideo src={`/api/cloud/preview/${previewItem.id}`} className="max-h-[68vh] w-full rounded" />
                   ) : (
                     <div className="px-6 py-10 text-center">
                       <p className="text-sm text-muted-foreground">该类型暂不支持内嵌预览</p>
-                      <Button type="button" className="mt-3" onClick={() => window.open(`/cloud/preview/${previewItem.id}`, "_blank")}>新窗口打开</Button>
+                      <Button type="button" className="mt-3" onClick={() => window.open(`/api/cloud/preview/${previewItem.id}`, "_blank")}>新窗口打开</Button>
                     </div>
                   )}
                 </div>

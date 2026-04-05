@@ -13,6 +13,7 @@ dependencies = [
     "Pillow>=11.1.0",
     "loguru>=0.7.2",
     "pydantic>=2.12.5",
+    "schedule>=1.2.2",
 ]
 
 [project.scripts]

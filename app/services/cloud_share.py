@@ -7,7 +7,7 @@ import string
 from datetime import datetime, timedelta
 
 from fastapi import Request
-from sqlalchemy import select
+from sqlalchemy import or_, select
 from sqlalchemy.orm import Session
 
 from app.models.cloud_item import DriveItem
@@ -89,7 +89,35 @@ class DriveShareService:
 
     @staticmethod
     def list_shares(db: Session) -> list[DriveShare]:
-        return db.scalars(select(DriveShare).where(DriveShare.is_active.is_(True)).order_by(DriveShare.created_at.desc())).all()
+        now = datetime.now()
+        return db.scalars(
+            select(DriveShare)
+            .where(
+                DriveShare.is_active.is_(True),
+                or_(DriveShare.expires_at.is_(None), DriveShare.expires_at >= now),
+            )
+            .order_by(DriveShare.created_at.desc())
+        ).all()
+
+    @staticmethod
+    def cleanup_expired_shares(db: Session) -> int:
+        now = datetime.now()
+        expired = db.scalars(
+            select(DriveShare).where(
+                DriveShare.is_active.is_(True),
+                DriveShare.expires_at.is_not(None),
+                DriveShare.expires_at < now,
+            )
+        ).all()
+
+        if not expired:
+            return 0
+
+        for share in expired:
+            share.is_active = False
+
+        db.commit()
+        return len(expired)
 
     @staticmethod
     def cancel_share(db: Session, share_id: int) -> None:
@@ -112,6 +140,8 @@ class DriveShareService:
             raise LookupError("分享不存在或已关闭")
 
         if share.expires_at is not None and share.expires_at < datetime.now():
+            share.is_active = False
+            db.commit()
             raise PermissionError("分享已过期")
 
         if share.password_hash and share.password_hash != DriveShareService._hash_password(password):
