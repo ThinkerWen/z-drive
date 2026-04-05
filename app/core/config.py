@@ -22,6 +22,7 @@ class Settings(BaseSettings):
 
     admin_username: str = "admin"
     admin_password: str = "admin123"
+    admin_token: str = "z-drive-change-me-admin-token"
     jwt_secret: str = "z-drive-change-me-secret-key-at-least-32-bytes"
     jwt_expire_minutes: int = 7 * 24 * 60
 

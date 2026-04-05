@@ -6,6 +6,7 @@ import string
 from datetime import datetime, timedelta, timezone
 
 import jwt
+from fastapi import HTTPException, Request
 
 
 def _normalize_hs256_secret(secret: str) -> str:
@@ -51,3 +52,31 @@ def decode_admin_token(token: str, secret: str) -> str:
     if not subject:
         raise ValueError("invalid token")
     return str(subject)
+
+
+def decode_admin_auth_token(token: str, jwt_secret: str, admin_token: str = "") -> str:
+    normalized_admin_token = admin_token.strip()
+    if normalized_admin_token and secrets.compare_digest(token, normalized_admin_token):
+        return "admin_token"
+    return decode_admin_token(token, jwt_secret)
+
+
+def extract_request_admin_token(request: Request) -> str:
+    return request.cookies.get("z_drive_admin_token") or request.headers.get("Authorization", "").removeprefix("Bearer ").strip()
+
+
+def require_admin_auth(request: Request, jwt_secret: str, admin_token: str = "") -> str:
+    token = extract_request_admin_token(request)
+    if not token:
+        raise HTTPException(status_code=401, detail="未登录")
+    try:
+        return decode_admin_auth_token(token, jwt_secret, admin_token)
+    except Exception as exc:  # noqa: BLE001
+        raise HTTPException(status_code=401, detail="登录已过期或令牌无效") from exc
+
+
+def build_admin_auth_dependency(jwt_secret: str, admin_token: str = ""):
+    def _dependency(request: Request) -> str:
+        return require_admin_auth(request, jwt_secret, admin_token)
+
+    return _dependency

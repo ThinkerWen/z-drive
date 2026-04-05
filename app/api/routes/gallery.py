@@ -7,7 +7,7 @@ from fastapi.responses import JSONResponse, RedirectResponse
 from sqlalchemy.orm import Session
 
 from app.core.config import get_settings
-from app.core.security import create_admin_token, decode_admin_token
+from app.core.security import build_admin_auth_dependency, create_admin_token
 from app.db.session import get_db
 from app.schemas.image import DeleteImageRequest, ImageInfoResponse, LoginRequest, UpdateImageRequest
 from app.services.cloud_share import DriveShareService
@@ -18,6 +18,7 @@ gallery_router = APIRouter(prefix="/gallery", tags=["gallery"])
 settings = get_settings()
 service = GalleryService(settings)
 share_service = DriveShareService()
+admin_auth = build_admin_auth_dependency(settings.jwt_secret, settings.admin_token)
 
 
 def _base_url(request: Request) -> str:
@@ -28,16 +29,6 @@ def _cache_headers() -> dict[str, str]:
     if settings.enable_browser_cache:
         return {"Cache-Control": "public, max-age=31536000, immutable"}
     return {"Cache-Control": "no-cache, no-store, must-revalidate", "Pragma": "no-cache", "Expires": "0"}
-
-
-def _admin_token_or_401(request: Request) -> str:
-    token = request.cookies.get("z_drive_admin_token") or request.headers.get("Authorization", "").removeprefix("Bearer ").strip()
-    if not token:
-        raise HTTPException(status_code=401, detail="未登录")
-    try:
-        return decode_admin_token(token, settings.jwt_secret)
-    except Exception as exc:  # noqa: BLE001
-        raise HTTPException(status_code=401, detail="登录已过期") from exc
 
 
 def _normalize_ip(raw_ip: str) -> str:
@@ -251,19 +242,19 @@ async def list_images(
     file_type: str = "all",
     query: str = "",
     db: Session = Depends(get_db),
-    _: str = Depends(_admin_token_or_401),
+    _: str = Depends(admin_auth),
 ) -> dict:
     payload = service.list_images(db, page, page_size, file_type, query, _base_url(request))
     return payload
 
 
 @gallery_router.get("/stats")
-async def stats(db: Session = Depends(get_db), _: str = Depends(_admin_token_or_401)) -> dict:
+async def stats(db: Session = Depends(get_db), _: str = Depends(admin_auth)) -> dict:
     return service.get_stats(db)
 
 
 @gallery_router.delete("/delete/{short_code}")
-async def delete_image(short_code: str, db: Session = Depends(get_db), _: str = Depends(_admin_token_or_401)) -> dict:
+async def delete_image(short_code: str, db: Session = Depends(get_db), _: str = Depends(admin_auth)) -> dict:
     try:
         service.delete_image(db, short_code)
         return {"message": "删除成功"}
@@ -295,13 +286,13 @@ async def manage_list(
     file_type: str = "all",
     query: str = "",
     db: Session = Depends(get_db),
-    _: str = Depends(_admin_token_or_401),
+    _: str = Depends(admin_auth),
 ) -> dict:
     return service.list_images(db, page, page_size, file_type, query, _base_url(request))
 
 
 @gallery_router.post("/api/update")
-async def manage_update(payload: UpdateImageRequest, db: Session = Depends(get_db), _: str = Depends(_admin_token_or_401)) -> dict:
+async def manage_update(payload: UpdateImageRequest, db: Session = Depends(get_db), _: str = Depends(admin_auth)) -> dict:
     try:
         image = service.update_image_access_mode(db, payload.shortcode, payload.access_mode or "none", payload.sign)
         return {"message": "更新成功", "access_mode": image.access_mode, "sign": image.sign}
@@ -312,7 +303,7 @@ async def manage_update(payload: UpdateImageRequest, db: Session = Depends(get_d
 
 
 @gallery_router.post("/api/delete")
-async def manage_delete(payload: DeleteImageRequest, db: Session = Depends(get_db), _: str = Depends(_admin_token_or_401)) -> dict:
+async def manage_delete(payload: DeleteImageRequest, db: Session = Depends(get_db), _: str = Depends(admin_auth)) -> dict:
     try:
         service.delete_image(db, payload.shortcode)
         return {"message": "删除成功"}
@@ -326,7 +317,7 @@ async def manage_upload(
     file: UploadFile = File(...),
     access_mode: str = Form("none"),
     db: Session = Depends(get_db),
-    _: str = Depends(_admin_token_or_401),
+    _: str = Depends(admin_auth),
 ) -> dict:
     image, sign = await service.upload_file(db, file, access_mode or "none")
     return service.build_upload_payload(image, _base_url(request), sign)
@@ -338,7 +329,7 @@ async def manage_upload_multiple(
     files: list[UploadFile] = File(...),
     access_mode: str = Form("none"),
     db: Session = Depends(get_db),
-    _: str = Depends(_admin_token_or_401),
+    _: str = Depends(admin_auth),
 ) -> dict:
     results: list[dict] = []
     for file in files:
@@ -351,5 +342,5 @@ async def manage_upload_multiple(
 
 
 @gallery_router.get("/api/stats")
-async def manage_stats(db: Session = Depends(get_db), _: str = Depends(_admin_token_or_401)) -> dict:
+async def manage_stats(db: Session = Depends(get_db), _: str = Depends(admin_auth)) -> dict:
     return service.get_stats(db)

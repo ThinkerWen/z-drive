@@ -2,14 +2,13 @@ from __future__ import annotations
 
 import hashlib
 import ipaddress
-import secrets
-import string
 from datetime import datetime, timedelta
 
 from fastapi import Request
 from sqlalchemy import or_, select
 from sqlalchemy.orm import Session
 
+from app.core.security import generate_short_code
 from app.models.cloud_item import DriveItem
 from app.models.cloud_share import DriveShare, DriveShareAccessLog
 
@@ -23,9 +22,8 @@ class DriveShareService:
 
     @staticmethod
     def _build_share_code(db: Session) -> str:
-        alphabet = string.ascii_letters + string.digits
         while True:
-            code = "".join(secrets.choice(alphabet) for _ in range(10))
+            code = generate_short_code(10)
             exists = db.scalar(select(DriveShare.id).where(DriveShare.share_code == code))
             if exists is None:
                 return code

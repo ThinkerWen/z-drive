@@ -10,7 +10,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.core.config import get_settings
-from app.core.security import decode_admin_token
+from app.core.security import build_admin_auth_dependency
 from app.db.session import get_db
 from app.models.cloud_item import DriveItem
 from app.schemas.cloud import (
@@ -51,20 +51,11 @@ settings = get_settings()
 service = DriveService(settings)
 share_service = DriveShareService()
 chunk_service = DriveChunkUploadService(settings.storage_path)
+admin_auth = build_admin_auth_dependency(settings.jwt_secret, settings.admin_token)
 
 
 def _base_url(request: Request) -> str:
     return str(request.base_url).rstrip("/")
-
-
-def _admin_token_or_401(request: Request) -> str:
-    token = request.cookies.get("z_drive_admin_token") or request.headers.get("Authorization", "").removeprefix("Bearer ").strip()
-    if not token:
-        raise HTTPException(status_code=401, detail="未登录")
-    try:
-        return decode_admin_token(token, settings.jwt_secret)
-    except Exception as exc:  # noqa: BLE001
-        raise HTTPException(status_code=401, detail="登录已过期") from exc
 
 
 def _inline_content_disposition(file_name: str) -> str:
@@ -112,7 +103,7 @@ async def list_items(
     created_from: str = "",
     created_to: str = "",
     db: Session = Depends(get_db),
-    _: str = Depends(_admin_token_or_401),
+    _: str = Depends(admin_auth),
 ) -> DriveListResponse:
     items = service.list_items(db, parent_id, query, sort_by, order, file_type, created_from, created_to)
     return DriveListResponse(parent_id=parent_id, items=[_to_item_payload(item) for item in items])
@@ -122,7 +113,7 @@ async def list_items(
 async def create_folder(
     payload: DriveCreateFolderRequest,
     db: Session = Depends(get_db),
-    _: str = Depends(_admin_token_or_401),
+    _: str = Depends(admin_auth),
 ) -> DriveItemResponse:
     try:
         item = service.create_folder(db, payload.parent_id, payload.name)
@@ -136,7 +127,7 @@ async def upload_file(
     parent_id: int | None = Query(default=None),
     file: UploadFile = File(...),
     db: Session = Depends(get_db),
-    _: str = Depends(_admin_token_or_401),
+    _: str = Depends(admin_auth),
 ) -> DriveItemResponse:
     try:
         item = await service.upload_file(db, parent_id, file)
@@ -151,7 +142,7 @@ async def upload_multiple_files(
     parent_id: int | None = Query(default=None),
     files: list[UploadFile] = File(...),
     db: Session = Depends(get_db),
-    _: str = Depends(_admin_token_or_401),
+    _: str = Depends(admin_auth),
 ) -> DriveUploadMultipleResponse:
     items, errors = await service.upload_files(db, parent_id, files)
     enriched_items: list[DriveItemResponse] = []
@@ -171,7 +162,7 @@ async def upload_multiple_files(
 async def fast_upload_check(
     payload: DriveFastUploadCheckRequest,
     db: Session = Depends(get_db),
-    _: str = Depends(_admin_token_or_401),
+    _: str = Depends(admin_auth),
 ) -> DriveFastUploadCheckResponse:
     source = service.find_duplicate_in_parent(db, payload.parent_id, payload.sha256)
     if source is None:
@@ -186,7 +177,7 @@ async def fast_upload_check(
 async def fast_upload_save(
     payload: DriveFastUploadSaveRequest,
     db: Session = Depends(get_db),
-    _: str = Depends(_admin_token_or_401),
+    _: str = Depends(admin_auth),
 ) -> DriveItemResponse:
     try:
         item = service.fast_save_existing_file(db, payload.source_item_id, payload.parent_id, payload.file_name)
@@ -201,7 +192,7 @@ async def create_share(
     request: Request,
     payload: DriveCreateShareRequest,
     db: Session = Depends(get_db),
-    _: str = Depends(_admin_token_or_401),
+    _: str = Depends(admin_auth),
 ) -> DriveShareResponse:
     try:
         share = share_service.create_share(db, payload.item_id, payload.password, payload.expires_minutes)
@@ -211,7 +202,7 @@ async def create_share(
 
 
 @router.get("/shares", response_model=list[DriveShareResponse])
-async def list_shares(request: Request, db: Session = Depends(get_db), _: str = Depends(_admin_token_or_401)) -> list[DriveShareResponse]:
+async def list_shares(request: Request, db: Session = Depends(get_db), _: str = Depends(admin_auth)) -> list[DriveShareResponse]:
     shares = share_service.list_shares(db)
     base_url = _base_url(request)
     item_ids = {int(share.item_id) for share in shares}
@@ -223,7 +214,7 @@ async def list_shares(request: Request, db: Session = Depends(get_db), _: str = 
 
 
 @router.delete("/shares/{share_id}")
-async def cancel_share(share_id: int, db: Session = Depends(get_db), _: str = Depends(_admin_token_or_401)) -> dict[str, str]:
+async def cancel_share(share_id: int, db: Session = Depends(get_db), _: str = Depends(admin_auth)) -> dict[str, str]:
     try:
         share_service.cancel_share(db, share_id)
         return {"message": "分享已取消"}
@@ -235,7 +226,7 @@ async def cancel_share(share_id: int, db: Session = Depends(get_db), _: str = De
 async def list_share_logs(
     share_id: int,
     db: Session = Depends(get_db),
-    _: str = Depends(_admin_token_or_401),
+    _: str = Depends(admin_auth),
 ) -> list[DriveShareAccessLogResponse]:
     logs = share_service.list_share_logs(db, share_id)
     return [
@@ -316,7 +307,7 @@ async def rename_item(
     item_id: int,
     payload: DriveRenameRequest,
     db: Session = Depends(get_db),
-    _: str = Depends(_admin_token_or_401),
+    _: str = Depends(admin_auth),
 ) -> DriveItemResponse:
     try:
         item = service.rename_item(db, item_id, payload.name)
@@ -330,7 +321,7 @@ async def move_item(
     item_id: int,
     payload: DriveMoveRequest,
     db: Session = Depends(get_db),
-    _: str = Depends(_admin_token_or_401),
+    _: str = Depends(admin_auth),
 ) -> DriveItemResponse:
     try:
         item = service.move_item(db, item_id, payload.target_parent_id)
@@ -346,7 +337,7 @@ async def copy_item(
     item_id: int,
     payload: DriveCopyRequest,
     db: Session = Depends(get_db),
-    _: str = Depends(_admin_token_or_401),
+    _: str = Depends(admin_auth),
 ) -> DriveItemResponse:
     try:
         item = service.copy_item(db, item_id, payload.target_parent_id, payload.name)
@@ -360,7 +351,7 @@ async def set_visibility(
     item_id: int,
     payload: DriveVisibilityRequest,
     db: Session = Depends(get_db),
-    _: str = Depends(_admin_token_or_401),
+    _: str = Depends(admin_auth),
 ) -> DriveItemResponse:
     try:
         item = service.set_visibility(db, item_id, payload.is_public)
@@ -370,7 +361,7 @@ async def set_visibility(
 
 
 @router.delete("/items/{item_id}")
-async def delete_item(item_id: int, db: Session = Depends(get_db), _: str = Depends(_admin_token_or_401)) -> dict[str, str]:
+async def delete_item(item_id: int, db: Session = Depends(get_db), _: str = Depends(admin_auth)) -> dict[str, str]:
     try:
         service.delete_item(db, item_id)
         return {"message": "删除成功"}
@@ -382,7 +373,7 @@ async def delete_item(item_id: int, db: Session = Depends(get_db), _: str = Depe
 async def batch_delete_items(
     payload: DriveBatchDeleteRequest,
     db: Session = Depends(get_db),
-    _: str = Depends(_admin_token_or_401),
+    _: str = Depends(admin_auth),
 ) -> DriveBatchResultResponse:
     success, failed = service.batch_delete(db, payload.item_ids)
     return DriveBatchResultResponse(
@@ -397,7 +388,7 @@ async def batch_delete_items(
 async def batch_move_items(
     payload: DriveBatchMoveRequest,
     db: Session = Depends(get_db),
-    _: str = Depends(_admin_token_or_401),
+    _: str = Depends(admin_auth),
 ) -> DriveBatchResultResponse:
     success, failed = service.batch_move(db, payload.item_ids, payload.target_parent_id)
     return DriveBatchResultResponse(
@@ -412,7 +403,7 @@ async def batch_move_items(
 async def batch_copy_items(
     payload: DriveBatchCopyRequest,
     db: Session = Depends(get_db),
-    _: str = Depends(_admin_token_or_401),
+    _: str = Depends(admin_auth),
 ) -> DriveBatchResultResponse:
     success, failed = service.batch_copy(db, payload.item_ids, payload.target_parent_id)
     return DriveBatchResultResponse(
@@ -424,7 +415,7 @@ async def batch_copy_items(
 
 
 @router.get("/download/{item_id}")
-async def download_file(item_id: int, db: Session = Depends(get_db), _: str = Depends(_admin_token_or_401)) -> FileResponse:
+async def download_file(item_id: int, db: Session = Depends(get_db), _: str = Depends(admin_auth)) -> FileResponse:
     try:
         item, file_path = service.get_download_file(db, item_id)
         return FileResponse(path=file_path, media_type=item.mime_type or "application/octet-stream", filename=item.name)
@@ -435,7 +426,7 @@ async def download_file(item_id: int, db: Session = Depends(get_db), _: str = De
 
 
 @router.get("/preview/{item_id}")
-async def preview_file(item_id: int, db: Session = Depends(get_db), _: str = Depends(_admin_token_or_401)) -> FileResponse:
+async def preview_file(item_id: int, db: Session = Depends(get_db), _: str = Depends(admin_auth)) -> FileResponse:
     try:
         item, file_path = service.get_preview_file(db, item_id)
         headers = {"Content-Disposition": _inline_content_disposition(str(item.name))}
@@ -447,7 +438,7 @@ async def preview_file(item_id: int, db: Session = Depends(get_db), _: str = Dep
 
 
 @router.get("/thumbnail/{item_id}")
-async def thumbnail_file(item_id: int, db: Session = Depends(get_db), _: str = Depends(_admin_token_or_401)) -> FileResponse:
+async def thumbnail_file(item_id: int, db: Session = Depends(get_db), _: str = Depends(admin_auth)) -> FileResponse:
     try:
         thumb_path = service.get_thumbnail_file(db, item_id)
         return FileResponse(path=thumb_path, media_type="image/webp")
@@ -462,7 +453,7 @@ async def batch_download_items(
     payload: DriveBatchDeleteRequest,
     background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
-    _: str = Depends(_admin_token_or_401),
+    _: str = Depends(admin_auth),
 ) -> FileResponse:
     zip_path, file_name = service.create_batch_download_zip(db, payload.item_ids)
 
@@ -477,7 +468,7 @@ async def batch_download_items(
 @router.post("/uploads/chunk/init", response_model=DriveChunkInitResponse)
 async def init_chunk_upload(
     payload: DriveChunkInitRequest,
-    _: str = Depends(_admin_token_or_401),
+    _: str = Depends(admin_auth),
 ) -> DriveChunkInitResponse:
     chunk_service.ensure_directories()
     meta = chunk_service.init_upload(payload.parent_id, payload.file_name, payload.total_chunks, payload.mime_type)
@@ -489,7 +480,7 @@ async def upload_chunk(
     upload_id: str,
     index: int,
     chunk: UploadFile = File(...),
-    _: str = Depends(_admin_token_or_401),
+    _: str = Depends(admin_auth),
 ) -> dict[str, str]:
     try:
         data = await chunk.read()
@@ -502,7 +493,7 @@ async def upload_chunk(
 
 
 @router.get("/uploads/chunk/{upload_id}", response_model=DriveChunkStatusResponse)
-async def chunk_status(upload_id: str, _: str = Depends(_admin_token_or_401)) -> DriveChunkStatusResponse:
+async def chunk_status(upload_id: str, _: str = Depends(admin_auth)) -> DriveChunkStatusResponse:
     try:
         meta = chunk_service.get_meta(upload_id)
         uploaded = chunk_service.uploaded_chunks(upload_id)
@@ -523,7 +514,7 @@ async def chunk_status(upload_id: str, _: str = Depends(_admin_token_or_401)) ->
 
 
 @router.get("/uploads/tasks", response_model=list[DriveChunkTaskResponse])
-async def list_upload_tasks(_: str = Depends(_admin_token_or_401)) -> list[DriveChunkTaskResponse]:
+async def list_upload_tasks(_: str = Depends(admin_auth)) -> list[DriveChunkTaskResponse]:
     tasks = chunk_service.list_tasks()
     result: list[DriveChunkTaskResponse] = []
     for meta in tasks:
@@ -548,7 +539,7 @@ async def list_upload_tasks(_: str = Depends(_admin_token_or_401)) -> list[Drive
 
 
 @router.post("/uploads/chunk/{upload_id}/pause")
-async def pause_chunk_upload(upload_id: str, _: str = Depends(_admin_token_or_401)) -> dict[str, str]:
+async def pause_chunk_upload(upload_id: str, _: str = Depends(admin_auth)) -> dict[str, str]:
     try:
         chunk_service.set_paused(upload_id, True)
         return {"message": "上传任务已暂停"}
@@ -557,7 +548,7 @@ async def pause_chunk_upload(upload_id: str, _: str = Depends(_admin_token_or_40
 
 
 @router.post("/uploads/chunk/{upload_id}/resume")
-async def resume_chunk_upload(upload_id: str, _: str = Depends(_admin_token_or_401)) -> dict[str, str]:
+async def resume_chunk_upload(upload_id: str, _: str = Depends(admin_auth)) -> dict[str, str]:
     try:
         chunk_service.set_paused(upload_id, False)
         return {"message": "上传任务已恢复"}
@@ -569,7 +560,7 @@ async def resume_chunk_upload(upload_id: str, _: str = Depends(_admin_token_or_4
 async def complete_chunk_upload(
     upload_id: str,
     db: Session = Depends(get_db),
-    _: str = Depends(_admin_token_or_401),
+    _: str = Depends(admin_auth),
 ) -> DriveChunkCompleteResponse:
     try:
         meta, file_bytes = chunk_service.merge_chunks(upload_id)
@@ -589,13 +580,13 @@ async def complete_chunk_upload(
 
 
 @router.post("/uploads/chunk/{upload_id}/cancel")
-async def cancel_chunk_upload(upload_id: str, _: str = Depends(_admin_token_or_401)) -> dict[str, str]:
+async def cancel_chunk_upload(upload_id: str, _: str = Depends(admin_auth)) -> dict[str, str]:
     chunk_service.cancel_upload(upload_id)
     return {"message": "上传任务已取消"}
 
 
 @router.get("/summary", response_model=DriveSummaryResponse)
-async def summary(db: Session = Depends(get_db), _: str = Depends(_admin_token_or_401)) -> DriveSummaryResponse:
+async def summary(db: Session = Depends(get_db), _: str = Depends(admin_auth)) -> DriveSummaryResponse:
     payload = service.summary_with_quota(db)
     top_visits = []
     for row in payload.get("recent_top_visits", []):
