@@ -6,6 +6,7 @@ export default defineConfig({
   lang: "zh-CN",
   base: "/",
   cleanUrls: true,
+  head: [["link", { rel: "icon", href: "/favicon.ico" }]],
   themeConfig: {
     siteTitle: "Z-Drive Docs",
     nav: [
