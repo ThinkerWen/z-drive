@@ -17,7 +17,13 @@ FRONTEND_ENTRY_PATHS = (
     "/cloud/shares",
     "/cloud/share-management",
     "/cloud/stats",
+    "/snippets",
+    "/snippets/index",
+    "/snippets/editor",
+    "/snippets/shares",
+    "/snippets/stats",
     "/f/{share_code}",
+    "/p/{share_code}",
     "/gallery/error",
     "/gallery/preview/{preview_path:path}",
 )

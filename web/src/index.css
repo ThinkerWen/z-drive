@@ -218,3 +218,45 @@ h6 {
 .theme-scrollbar::-webkit-scrollbar-thumb:hover {
   background: hsl(var(--primary) / 0.75);
 }
+
+.snippet-highlight-wrap {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+.snippet-row {
+  display: grid;
+  grid-template-columns: 56px 1fr;
+  align-items: stretch;
+}
+
+.snippet-line-number {
+  user-select: none;
+  text-align: right;
+  padding: 0 10px 0 0;
+  color: #94a3b8;
+  border-right: 1px solid rgba(148, 163, 184, 0.25);
+}
+
+.snippet-line-content {
+  white-space: pre;
+  overflow-x: auto;
+  padding-left: 10px;
+}
+
+.snippet-editor-cm .cm-editor {
+  background: hsl(var(--card));
+  color: hsl(var(--foreground));
+}
+
+.snippet-editor-cm .cm-gutters {
+  background: hsl(var(--secondary));
+  color: hsl(var(--muted-foreground));
+  border-right: 1px solid hsl(var(--border));
+}
+
+.snippet-editor-cm .cm-activeLine,
+.snippet-editor-cm .cm-activeLineGutter {
+  background: hsl(var(--muted) / 0.55);
+}

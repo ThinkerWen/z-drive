@@ -11,6 +11,7 @@ from app.core.logging import logger
 from app.db.session import SessionLocal
 from app.services.cloud_share import DriveShareService
 from app.services.gallery import GalleryService
+from app.services.snippet import SnippetService
 
 CORN_TAG = "z-drive-corn"
 
@@ -23,6 +24,18 @@ def _cleanup_expired_shares_job() -> None:
             logger.info("cleaned {} expired cloud shares", cleaned_count)
     except Exception:  # noqa: BLE001
         logger.exception("failed to clean expired cloud shares")
+    finally:
+        db.close()
+
+
+def _cleanup_expired_snippet_shares_job() -> None:
+    db = SessionLocal()
+    try:
+        cleaned_count = SnippetService.cleanup_expired_shares(db)
+        if cleaned_count > 0:
+            logger.info("cleaned {} expired snippet shares", cleaned_count)
+    except Exception:  # noqa: BLE001
+        logger.exception("failed to clean expired snippet shares")
     finally:
         db.close()
 
@@ -47,6 +60,7 @@ def _sync_gallery_preview_job(settings: Settings) -> None:
 def _register_corn_jobs(settings: Settings) -> None:
     schedule.clear(CORN_TAG)
     schedule.every(1).minutes.do(_cleanup_expired_shares_job).tag(CORN_TAG)
+    schedule.every(1).minutes.do(_cleanup_expired_snippet_shares_job).tag(CORN_TAG)
     schedule.every(1).minutes.do(_sync_gallery_preview_job, settings=settings).tag(CORN_TAG)
 
 
@@ -64,6 +78,7 @@ def start_corn(app: FastAPI, settings: Settings) -> None:
 
     # Run once on startup so existing stale data can be fixed immediately.
     _cleanup_expired_shares_job()
+    _cleanup_expired_snippet_shares_job()
     _sync_gallery_preview_job(settings)
 
     stop_event = asyncio.Event()

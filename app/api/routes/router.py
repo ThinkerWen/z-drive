@@ -8,11 +8,13 @@ from app.api.routes.cloud import router as cloud_router, service as cloud_servic
 from app.api.routes.frontend import create_frontend_router
 from app.api.routes.gallery import gallery_router, public_router, service as gallery_service
 from app.api.routes.health import router as health_router
+from app.api.routes.snippet import router as snippet_router, service as snippet_service
 
 
 def ensure_storage_directories() -> None:
     gallery_service.ensure_directories()
     cloud_service.ensure_directories()
+    snippet_service.ensure_directories()
 
 
 def register_routes(app: FastAPI, index_file: Path | None = None) -> None:
@@ -23,3 +25,4 @@ def register_routes(app: FastAPI, index_file: Path | None = None) -> None:
     app.include_router(public_router)
     app.include_router(gallery_router, prefix="/api")
     app.include_router(cloud_router, prefix="/api")
+    app.include_router(snippet_router, prefix="/api")

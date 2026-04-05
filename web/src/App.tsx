@@ -4,8 +4,9 @@ import { useLocation, useNavigate } from "react-router-dom";
 
 import { Button } from "@/components/ui/button";
 import { CloudPage } from "@/components/cloud-page";
+import { SnippetPage } from "@/components/snippet-page";
 import { PlyrVideo } from "@/components/plyr-video";
-import { PublicErrorPage, PublicPreviewPage, PublicSharePage, parsePublicPreviewPath, parsePublicSharePath } from "@/components/public-pages";
+import { PublicErrorPage, PublicPreviewPage, PublicSharePage, PublicSnippetPage, parsePublicPreviewPath, parsePublicSharePath, parsePublicSnippetPath } from "@/components/public-pages";
 import {
   ApiError,
   deleteImage,
@@ -21,7 +22,8 @@ import type { AccessMode, ImageListItem, StatsResponse, UploadResultItem } from 
 const PAGE_SIZE = 8;
 type GallerySubPage = "upload" | "gallery" | "stats";
 type CloudSubPage = "upload" | "files" | "shares" | "stats";
-type ManageSection = "gallery" | "cloud";
+type SnippetSubPage = "editor" | "list" | "shares" | "stats";
+type ManageSection = "gallery" | "cloud" | "snippet";
 type UploadTaskStatus = "uploading" | "processing" | "success" | "error" | "cancelled";
 type ThemeName = "amber" | "ocean" | "forest" | "rose" | "midnight";
 type ToastKind = "success" | "error";
@@ -72,6 +74,19 @@ function getCloudRoute(page: CloudSubPage): string {
   return "/cloud/index";
 }
 
+function getSnippetRoute(page: SnippetSubPage): string {
+  if (page === "editor") {
+    return "/snippets/editor";
+  }
+  if (page === "shares") {
+    return "/snippets/shares";
+  }
+  if (page === "stats") {
+    return "/snippets/stats";
+  }
+  return "/snippets/index";
+}
+
 function resolveGalleryPage(pathname: string): GallerySubPage {
   if (pathname.endsWith("/upload")) {
     return "upload";
@@ -95,14 +110,29 @@ function resolveCloudPage(pathname: string): CloudSubPage {
   return "files";
 }
 
+function resolveSnippetPage(pathname: string): SnippetSubPage {
+  if (pathname.endsWith("/editor")) {
+    return "editor";
+  }
+  if (pathname.endsWith("/shares")) {
+    return "shares";
+  }
+  if (pathname.endsWith("/stats")) {
+    return "stats";
+  }
+  return "list";
+}
+
 export default function App() {
   const location = useLocation();
   const navigate = useNavigate();
   const pathname = location.pathname;
   const previewPath = parsePublicPreviewPath(pathname);
   const sharePath = parsePublicSharePath(pathname);
+  const snippetSharePath = parsePublicSnippetPath(pathname);
   const isPublicPreviewRoute = Boolean(previewPath);
   const isPublicShareRoute = Boolean(sharePath);
+  const isPublicSnippetRoute = Boolean(snippetSharePath);
   const isPublicErrorRoute = pathname === "/gallery/error";
   const isLoginRoute = pathname === "/login";
 
@@ -113,6 +143,7 @@ export default function App() {
   const [activeSection, setActiveSection] = useState<ManageSection>("gallery");
   const [activeGalleryPage, setActiveGalleryPage] = useState<GallerySubPage>("upload");
   const [activeCloudPage, setActiveCloudPage] = useState<CloudSubPage>("upload");
+  const [activeSnippetPage, setActiveSnippetPage] = useState<SnippetSubPage>("editor");
   const [busy, setBusy] = useState(false);
   const [toast, setToast] = useState<{ id: number; text: string; kind: ToastKind } | null>(null);
 
@@ -139,10 +170,10 @@ export default function App() {
   const activeUploadsRef = useRef<Record<string, XMLHttpRequest>>({});
 
   const pageCount = useMemo(() => Math.max(Math.ceil(total / PAGE_SIZE), 1), [total]);
-  const activeBrand = activeSection === "cloud" ? "Z-Drive Cloud" : "Z-Drive Gallery";
+  const activeBrand = activeSection === "cloud" ? "Z-Drive Cloud" : activeSection === "snippet" ? "Z-Drive Snippet" : "Z-Drive Gallery";
 
   useEffect(() => {
-    if (isPublicPreviewRoute || isPublicShareRoute || isPublicErrorRoute) {
+    if (isPublicPreviewRoute || isPublicShareRoute || isPublicSnippetRoute || isPublicErrorRoute) {
       return;
     }
 
@@ -156,12 +187,17 @@ export default function App() {
       return;
     }
 
+    if (pathname === "/snippets") {
+      navigate("/snippets/editor", { replace: true });
+      return;
+    }
+
     if (pathname === "/cloud/share-management") {
       navigate("/cloud/shares", { replace: true });
       return;
     }
 
-    if ((pathname.startsWith("/gallery") || pathname.startsWith("/cloud")) && !authLoading && !isAuthed) {
+    if ((pathname.startsWith("/gallery") || pathname.startsWith("/cloud") || pathname.startsWith("/snippets")) && !authLoading && !isAuthed) {
       navigate("/login", { replace: true });
       return;
     }
@@ -176,7 +212,7 @@ export default function App() {
     if (pathname === "/login" && isAuthed) {
       navigate("/gallery/index", { replace: true });
     }
-  }, [authLoading, isAuthed, isPublicErrorRoute, isPublicPreviewRoute, isPublicShareRoute, navigate, pathname]);
+  }, [authLoading, isAuthed, isPublicErrorRoute, isPublicPreviewRoute, isPublicShareRoute, isPublicSnippetRoute, navigate, pathname]);
 
   useEffect(() => {
     if (pathname.startsWith("/gallery")) {
@@ -188,6 +224,12 @@ export default function App() {
     if (pathname.startsWith("/cloud")) {
       setActiveSection("cloud");
       setActiveCloudPage(resolveCloudPage(pathname));
+      return;
+    }
+
+    if (pathname.startsWith("/snippets")) {
+      setActiveSection("snippet");
+      setActiveSnippetPage(resolveSnippetPage(pathname));
     }
   }, [pathname]);
 
@@ -253,15 +295,19 @@ export default function App() {
   }
 
   useEffect(() => {
-    if (isPublicPreviewRoute || isPublicShareRoute || isPublicErrorRoute || isLoginRoute) {
+    if (isPublicPreviewRoute || isPublicShareRoute || isPublicSnippetRoute || isPublicErrorRoute || isLoginRoute) {
       setAuthLoading(false);
       return;
     }
     void (async () => {
       setAuthLoading(true);
-      if (pathname.startsWith("/cloud")) {
+      if (pathname.startsWith("/cloud") || pathname.startsWith("/snippets")) {
         try {
-          await getCloudSummary();
+          if (pathname.startsWith("/cloud")) {
+            await getCloudSummary();
+          } else {
+            await listImages({ page: 1, pageSize: 1, query: "", fileType: "all" });
+          }
           setIsAuthed(true);
         } catch (error) {
           if (error instanceof ApiError && error.status === 401) {
@@ -278,10 +324,10 @@ export default function App() {
       setAuthLoading(false);
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isLoginRoute, isPublicErrorRoute, isPublicPreviewRoute, isPublicShareRoute, pathname]);
+  }, [isLoginRoute, isPublicErrorRoute, isPublicPreviewRoute, isPublicShareRoute, isPublicSnippetRoute, pathname]);
 
   useEffect(() => {
-    if (isPublicPreviewRoute || isPublicShareRoute || isPublicErrorRoute || isLoginRoute) {
+    if (isPublicPreviewRoute || isPublicShareRoute || isPublicSnippetRoute || isPublicErrorRoute || isLoginRoute) {
       return;
     }
     const saved = localStorage.getItem("z-drive-theme") as ThemeName | null;
@@ -292,7 +338,7 @@ export default function App() {
     } else {
       document.documentElement.setAttribute("data-theme", normalized);
     }
-  }, [isLoginRoute, isPublicErrorRoute, isPublicPreviewRoute, isPublicShareRoute]);
+  }, [isLoginRoute, isPublicErrorRoute, isPublicPreviewRoute, isPublicShareRoute, isPublicSnippetRoute]);
 
   if (isPublicPreviewRoute && previewPath) {
     return <PublicPreviewPage shortCode={previewPath.shortCode} ext={previewPath.ext} />;
@@ -300,6 +346,10 @@ export default function App() {
 
   if (isPublicShareRoute && sharePath) {
     return <PublicSharePage shareCode={sharePath.shareCode} />;
+  }
+
+  if (isPublicSnippetRoute && snippetSharePath) {
+    return <PublicSnippetPage shareCode={snippetSharePath.shareCode} />;
   }
 
   if (isPublicErrorRoute) {
@@ -764,6 +814,11 @@ export default function App() {
                 setActiveCloudPage("files");
                 navigate("/cloud/index");
               }}>云盘</TabButton>
+              <TabButton current={activeSection} target="snippet" onClick={() => {
+                setActiveSection("snippet");
+                setActiveSnippetPage("editor");
+                navigate("/snippets/editor");
+              }}>代码片</TabButton>
             </nav>
             {activeSection === "gallery" ? (
               <nav className="mt-3 flex flex-wrap gap-2 rounded-2xl border border-white/60 bg-white/55 p-2">
@@ -780,7 +835,7 @@ export default function App() {
                   navigate("/gallery/stats");
                 }}>统计</TabButton>
               </nav>
-            ) : (
+            ) : activeSection === "cloud" ? (
               <nav className="mt-3 flex flex-wrap gap-2 rounded-2xl border border-white/60 bg-white/55 p-2">
                 <TabButton current={activeCloudPage} target="upload" onClick={() => {
                   setActiveCloudPage("upload");
@@ -797,6 +852,25 @@ export default function App() {
                 <TabButton current={activeCloudPage} target="stats" onClick={() => {
                   setActiveCloudPage("stats");
                   navigate("/cloud/stats");
+                }}>数据统计</TabButton>
+              </nav>
+            ) : (
+              <nav className="mt-3 flex flex-wrap gap-2 rounded-2xl border border-white/60 bg-white/55 p-2">
+                <TabButton current={activeSnippetPage} target="editor" onClick={() => {
+                  setActiveSnippetPage("editor");
+                  navigate(getSnippetRoute("editor"));
+                }}>编辑器</TabButton>
+                <TabButton current={activeSnippetPage} target="list" onClick={() => {
+                  setActiveSnippetPage("list");
+                  navigate(getSnippetRoute("list"));
+                }}>代码片列表</TabButton>
+                <TabButton current={activeSnippetPage} target="shares" onClick={() => {
+                  setActiveSnippetPage("shares");
+                  navigate(getSnippetRoute("shares"));
+                }}>分享管理</TabButton>
+                <TabButton current={activeSnippetPage} target="stats" onClick={() => {
+                  setActiveSnippetPage("stats");
+                  navigate(getSnippetRoute("stats"));
                 }}>数据统计</TabButton>
               </nav>
             )}
@@ -1413,6 +1487,20 @@ export default function App() {
           {activeSection === "cloud" ? (
             <CloudPage
               mode={activeCloudPage}
+              onAuthExpired={() => {
+                setIsAuthed(false);
+                setActiveSection("gallery");
+                setActiveGalleryPage("gallery");
+                navigate("/login", { replace: true });
+                notify("登录已过期，请重新登录", "error");
+              }}
+              onNotify={notifyAuto}
+            />
+          ) : null}
+
+          {activeSection === "snippet" ? (
+            <SnippetPage
+              mode={activeSnippetPage}
               onAuthExpired={() => {
                 setIsAuthed(false);
                 setActiveSection("gallery");

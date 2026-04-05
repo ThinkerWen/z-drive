@@ -30,8 +30,14 @@ async def app_lifespan(app: FastAPI):
     finally:
         await stop_corn(app)
 
-
-app = FastAPI(title=settings.app_name, debug=settings.debug, lifespan=app_lifespan)
+app = FastAPI(
+    title=settings.app_name,
+    debug=settings.debug,
+    lifespan=app_lifespan,
+    docs_url="/docs" if settings.debug else None,
+    redoc_url="/redoc" if settings.debug else None,
+    openapi_url="/openapi.json" if settings.debug else None,
+)
 app.state.settings = settings
 register_http_handlers(app)
 

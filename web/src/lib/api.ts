@@ -11,6 +11,12 @@ import type {
   CloudSummaryResponse,
   ImageInfoResponse,
   ImageListResponse,
+  SnippetFolder,
+  SnippetItem,
+  SnippetListResponse,
+  SnippetPublicAccessResponse,
+  SnippetShare,
+  SnippetTag,
   StatsResponse,
   UploadMultipleResponse,
   UploadSingleResponse,
@@ -277,6 +283,103 @@ export async function cancelCloudShare(shareId: number): Promise<void> {
 
 export async function accessCloudShare(shareCode: string, password = ""): Promise<CloudShareAccessResponse> {
   return request<CloudShareAccessResponse>(`/api/cloud/public/${shareCode}/access`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ password }),
+  });
+}
+
+export async function listSnippetFolders(): Promise<SnippetFolder[]> {
+  return request<SnippetFolder[]>("/api/snippets/folders");
+}
+
+export async function createSnippetFolder(payload: { name: string; description?: string }): Promise<SnippetFolder> {
+  return request<SnippetFolder>("/api/snippets/folders", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ name: payload.name, description: payload.description ?? "" }),
+  });
+}
+
+export async function listSnippetTags(): Promise<SnippetTag[]> {
+  return request<SnippetTag[]>("/api/snippets/tags");
+}
+
+export async function listSnippets(params: {
+  query?: string;
+  language?: string;
+  folderId?: number | null;
+  tag?: string;
+}): Promise<SnippetListResponse> {
+  const search = new URLSearchParams();
+  if (params.query) search.set("query", params.query);
+  if (params.language) search.set("language", params.language);
+  if (params.folderId !== undefined && params.folderId !== null) search.set("folder_id", String(params.folderId));
+  if (params.tag) search.set("tag", params.tag);
+  const suffix = search.size > 0 ? `?${search.toString()}` : "";
+  return request<SnippetListResponse>(`/api/snippets${suffix}`);
+}
+
+export async function createSnippet(payload: {
+  title: string;
+  description: string;
+  language: string;
+  code_content: string;
+  folder_id: number | null;
+  tags: string[];
+  is_public: boolean;
+}): Promise<SnippetItem> {
+  return request<SnippetItem>("/api/snippets", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function updateSnippet(
+  snippetId: number,
+  payload: {
+    title: string;
+    description: string;
+    language: string;
+    code_content: string;
+    folder_id: number | null;
+    tags: string[];
+    is_public: boolean;
+  },
+): Promise<SnippetItem> {
+  return request<SnippetItem>(`/api/snippets/${snippetId}`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function deleteSnippet(snippetId: number): Promise<void> {
+  await request<{ message: string }>(`/api/snippets/${snippetId}`, { method: "DELETE" });
+}
+
+export async function createSnippetShare(
+  snippetId: number,
+  payload: { password?: string; expires_minutes?: number; max_access_count?: number; is_one_time?: boolean },
+): Promise<SnippetShare> {
+  return request<SnippetShare>(`/api/snippets/${snippetId}/shares`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function listSnippetShares(): Promise<SnippetShare[]> {
+  return request<SnippetShare[]>("/api/snippets/shares/list");
+}
+
+export async function cancelSnippetShare(shareId: number): Promise<void> {
+  await request<{ message: string }>(`/api/snippets/shares/${shareId}`, { method: "DELETE" });
+}
+
+export async function accessSnippetShare(shareCode: string, password = ""): Promise<SnippetPublicAccessResponse> {
+  return request<SnippetPublicAccessResponse>(`/api/snippets/public/${shareCode}/access`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ password }),

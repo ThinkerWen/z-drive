@@ -165,3 +165,59 @@ export interface CloudBatchResultResponse {
   failed: number;
   message: string;
 }
+
+export interface SnippetFolder {
+  id: number;
+  name: string;
+  description: string;
+}
+
+export interface SnippetTag {
+  id: number;
+  name: string;
+}
+
+export interface SnippetItem {
+  id: number;
+  title: string;
+  description: string;
+  language: string;
+  detected_language: string;
+  effective_language: string;
+  code_content: string;
+  highlighted_html: string;
+  line_count: number;
+  folder_id: number | null;
+  folder_name: string | null;
+  tags: string[];
+  is_public: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface SnippetListResponse {
+  total: number;
+  items: SnippetItem[];
+}
+
+export interface SnippetShare {
+  id: number;
+  snippet_id: number;
+  snippet_title: string;
+  share_code: string;
+  share_url: string;
+  has_password: boolean;
+  expires_at: string | null;
+  max_access_count: number | null;
+  access_count: number;
+  is_one_time: boolean;
+  is_active: boolean;
+  created_at: string;
+  last_accessed_at: string | null;
+}
+
+export interface SnippetPublicAccessResponse {
+  share_code: string;
+  snippet: SnippetItem;
+  download_url: string;
+}

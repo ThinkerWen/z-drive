@@ -2,8 +2,9 @@ import { useEffect, useMemo, useState } from "react";
 import { XCircle } from "lucide-react";
 
 import { PlyrVideo } from "@/components/plyr-video";
-import { ApiError, accessCloudShare, getImageInfo } from "@/lib/api";
-import type { CloudShareAccessResponse, ImageInfoResponse } from "@/lib/types";
+import { ApiError, accessCloudShare, accessSnippetShare, getImageInfo } from "@/lib/api";
+import { renderSnippetWithLineNumbers } from "@/lib/snippet-code";
+import type { CloudShareAccessResponse, ImageInfoResponse, SnippetPublicAccessResponse } from "@/lib/types";
 
 export function parsePublicPreviewPath(pathname: string): { shortCode: string; ext: string } | null {
   const matched = pathname.match(/^\/gallery\/preview\/([^/.]+)\.([A-Za-z0-9]+)$/);
@@ -15,6 +16,14 @@ export function parsePublicPreviewPath(pathname: string): { shortCode: string; e
 
 export function parsePublicSharePath(pathname: string): { shareCode: string } | null {
   const matched = pathname.match(/^\/f\/([A-Za-z0-9]+)$/);
+  if (!matched) {
+    return null;
+  }
+  return { shareCode: matched[1] };
+}
+
+export function parsePublicSnippetPath(pathname: string): { shareCode: string } | null {
+  const matched = pathname.match(/^\/p\/([A-Za-z0-9]+)$/);
   if (!matched) {
     return null;
   }
@@ -293,6 +302,153 @@ export function PublicSharePage({ shareCode }: { shareCode: string }) {
 
         <div className="mt-4 flex flex-wrap gap-2">
           {!item.is_folder ? <a className="rounded-xl bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground" href={downloadUrl}>下载文件</a> : null}
+        </div>
+      </div>
+      <p className="mt-auto pt-3 text-center text-xs text-muted-foreground">
+        powered by <a className="font-semibold text-teal-700 hover:underline" href="https://github.com/ThinkerWen/z-drive" target="_blank" rel="noreferrer noopener">z-drive</a>
+      </p>
+    </div>
+  );
+}
+
+export function PublicSnippetPage({ shareCode }: { shareCode: string }) {
+  const [loading, setLoading] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
+  const [fatalError, setFatalError] = useState("");
+  const [errorToast, setErrorToast] = useState("");
+  const [requiresPassword, setRequiresPassword] = useState(false);
+  const [password, setPassword] = useState("");
+  const [data, setData] = useState<SnippetPublicAccessResponse | null>(null);
+  const [copiedCode, setCopiedCode] = useState(false);
+
+  const initialPassword = useMemo(() => {
+    const search = new URLSearchParams(window.location.search);
+    return search.get("password") || "";
+  }, []);
+
+  async function accessShare(pass: string, withLoading = false) {
+    if (withLoading) {
+      setLoading(true);
+    }
+    setSubmitting(true);
+    try {
+      const payload = await accessSnippetShare(shareCode, pass);
+      setData(payload);
+      setRequiresPassword(false);
+      setFatalError("");
+      setErrorToast("");
+      setPassword(pass);
+    } catch (error) {
+      if (error instanceof ApiError && error.status === 403) {
+        setRequiresPassword(true);
+        setData(null);
+        setFatalError("");
+        setErrorToast(error.message || "分享密码错误");
+      } else if (error instanceof ApiError && error.status === 404) {
+        setFatalError("代码片分享不存在或已关闭");
+        setErrorToast("");
+      } else {
+        setFatalError(error instanceof Error ? error.message : "代码片分享访问失败");
+        setErrorToast("");
+      }
+    } finally {
+      setSubmitting(false);
+      if (withLoading) {
+        setLoading(false);
+      }
+    }
+  }
+
+  useEffect(() => {
+    if (!errorToast) {
+      return;
+    }
+    const timer = window.setTimeout(() => setErrorToast(""), 2200);
+    return () => window.clearTimeout(timer);
+  }, [errorToast]);
+
+  useEffect(() => {
+    void accessShare(initialPassword, true);
+  }, [initialPassword, shareCode]);
+
+  if (loading) {
+    return <div className="flex min-h-screen items-center justify-center text-sm text-muted-foreground">加载中...</div>;
+  }
+
+  if (fatalError) {
+    return <PublicErrorPage message={fatalError} />;
+  }
+
+  if (requiresPassword || !data) {
+    return (
+      <div className="mx-auto flex min-h-screen w-full max-w-3xl items-center justify-center px-4 py-10 sm:px-8">
+        {errorToast ? (
+          <div className="pointer-events-none fixed right-6 top-6 z-[120]">
+            <div className="flex items-center gap-2 rounded-xl border border-rose-200 bg-rose-50/95 px-4 py-2.5 text-sm text-rose-700 shadow-lg">
+              <XCircle className="h-4 w-4 animate-pulse" />
+              <span>{errorToast}</span>
+            </div>
+          </div>
+        ) : null}
+        <div className="soft-panel w-full rounded-3xl border border-white/70 bg-white/90 p-8 shadow-[0_18px_48px_rgba(0,0,0,0.18)]">
+          <h1 className="text-2xl font-semibold tracking-tight">访问代码片分享</h1>
+          <p className="mt-2 text-sm text-muted-foreground">该分享需要密码，请输入后继续。</p>
+          <form
+            className="mt-5 space-y-3"
+            onSubmit={(event) => {
+              event.preventDefault();
+              void accessShare(password);
+            }}
+          >
+            <input
+              className="w-full rounded-xl border border-white/80 bg-white/80 px-3 py-2.5 text-sm outline-none ring-offset-2 transition focus-visible:ring-2 focus-visible:ring-primary"
+              placeholder="请输入分享密码"
+              value={password}
+              onChange={(event) => setPassword(event.target.value)}
+            />
+            <ButtonLike disabled={submitting || !password.trim()}>{submitting ? "验证中..." : "进入查看"}</ButtonLike>
+          </form>
+        </div>
+      </div>
+    );
+  }
+
+  const snippet = data.snippet;
+  const renderedCode = renderSnippetWithLineNumbers(snippet.code_content, snippet.effective_language);
+
+  async function copySnippetCode() {
+    try {
+      await navigator.clipboard.writeText(snippet.code_content || "");
+      setCopiedCode(true);
+      window.setTimeout(() => setCopiedCode(false), 1800);
+    } catch {
+      setCopiedCode(false);
+    }
+  }
+
+  return (
+    <div className="mx-auto flex min-h-screen w-full max-w-6xl flex-col px-4 py-8 sm:px-8">
+      <div className="mt-auto rounded-3xl border border-slate-200 bg-white p-6 shadow-[0_16px_40px_rgba(15,23,42,0.08)] sm:p-7">
+        <h1 className="truncate text-xl font-semibold sm:text-2xl" title={snippet.title}>{snippet.title}</h1>
+        <p className="mt-2 text-xs text-muted-foreground">
+          语言 {snippet.effective_language} · 行数 {snippet.line_count} · 更新时间 {snippet.updated_at}
+        </p>
+
+        {snippet.description ? <p className="mt-3 text-sm text-muted-foreground">{snippet.description}</p> : null}
+
+        <div className="theme-scrollbar mt-4 max-h-[66vh] overflow-auto rounded-2xl border border-slate-200 bg-slate-50 p-3 text-xs text-foreground">
+          <div dangerouslySetInnerHTML={{ __html: renderedCode }} />
+        </div>
+
+        <div className="mt-4 flex flex-wrap gap-2">
+          <a className="rounded-xl bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground" href={data.download_url}>下载代码文件</a>
+          <button
+            type="button"
+            className="rounded-xl border border-border bg-white px-4 py-2 text-sm font-semibold text-foreground hover:bg-muted/40"
+            onClick={() => void copySnippetCode()}
+          >
+            {copiedCode ? "已复制" : "复制"}
+          </button>
         </div>
       </div>
       <p className="mt-auto pt-3 text-center text-xs text-muted-foreground">
