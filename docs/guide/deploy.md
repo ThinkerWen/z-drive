@@ -8,30 +8,29 @@
 version: "3.9"
 
 services:
-	z-drive:
-		image: designerwang/z-drive:latest
-		container_name: z-drive
-		restart: unless-stopped
-		ports:
-			- "8000:8000"
-		environment:
-			APP_NAME: z-drive
-			DEBUG: "false"
-			DATABASE_URL: sqlite:////data/storage/z_drive.db
-			STORAGE_PATH: /data/storage
-			VIEW_ORIGIN: "false"
-			ENABLE_BROWSER_CACHE: "true"
-			IMAGE_MAX_FILE_SIZE_MB: "50"
-			CLOUD_TOTAL_SPACE_MB: "10240"
-			IMAGE_AUTH_MODE: none
-			SIGN_SALT: ${SIGN_SALT:-change-me}
-			ADMIN_USERNAME: ${ADMIN_USERNAME:-admin}
-			ADMIN_PASSWORD: ${ADMIN_PASSWORD:-change-me}
-			ADMIN_TOKEN: ${ADMIN_TOKEN:-z-drive-change-me-admin-token}
-			JWT_SECRET: ${JWT_SECRET:-z-drive-change-me-secret-key-at-least-32-bytes}
-			JWT_EXPIRE_MINUTES: ${JWT_EXPIRE_MINUTES:-10080}
-		volumes:
-			- ./storage:/data/storage
+  z-drive:
+    image: designerwang/z-drive:latest
+    container_name: z-drive
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    environment:
+      APP_NAME: z-drive
+      DEBUG: "false"
+      DATABASE_URL: sqlite:////data/storage/z_drive.db
+      STORAGE_PATH: /data/storage
+      VIEW_ORIGIN: "false"
+      ENABLE_BROWSER_CACHE: "true"
+      IMAGE_MAX_FILE_SIZE_MB: "50"
+      IMAGE_AUTH_MODE: none
+      SIGN_SALT: ${SIGN_SALT:-change-me}
+      ADMIN_USERNAME: ${ADMIN_USERNAME:-admin}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-change-me}
+      ADMIN_TOKEN: ${ADMIN_TOKEN:-z-drive-change-me-admin-token}
+      JWT_SECRET: ${JWT_SECRET:-z-drive-change-me-secret-key-at-least-32-bytes}
+      JWT_EXPIRE_MINUTES: ${JWT_EXPIRE_MINUTES:-10080}
+    volumes:
+      - ./storage:/data/storage
 ```
 
 ### 对应 `.env`
