@@ -3,6 +3,7 @@ from __future__ import annotations
 import io
 import mimetypes
 import shutil
+import uuid
 from datetime import date
 from pathlib import Path
 
@@ -15,7 +16,6 @@ from app.core.security import (
     build_global_sign,
     generate_individual_sign,
     generate_short_code,
-    sanitize_filename,
     verify_global_sign,
 )
 from app.models.image import Image, ImageAccessLog, ImageStats
@@ -96,8 +96,8 @@ class GalleryService:
                 return short_code
 
     def _build_paths(self, short_code: str, original_name: str) -> tuple[Path, Path]:
-        safe_name = sanitize_filename(original_name) or "file"
-        storage_name = f"{short_code}_{safe_name}"
+        suffix = Path(original_name or "").suffix.lower()
+        storage_name = f"{uuid.uuid4().hex}{suffix}" if suffix else uuid.uuid4().hex
         original_path = self._original_dir() / storage_name
         preview_path = self._preview_dir() / f"{short_code}.webp"
         return original_path, preview_path

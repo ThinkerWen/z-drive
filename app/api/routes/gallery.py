@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import ipaddress
+from urllib.parse import quote
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, Response, UploadFile
 from fastapi.responses import JSONResponse, RedirectResponse
@@ -90,13 +91,14 @@ def _split_file_key(file_key: str) -> tuple[str, str]:
 
 
 def _build_original_file_response(request: Request, db: Session, file_key: str, sign: str) -> Response:
-    short_code, _ = _split_file_key(file_key)
+    short_code, ext = _split_file_key(file_key)
     image = service.get_image(db, short_code, sign)
     ip, user_agent, referer = _request_meta(request)
     service.record_access(db, image, "download", ip, user_agent, referer)
     data = service.get_original_image_data(image)
     headers = _cache_headers()
-    headers["Content-Disposition"] = f'attachment; filename="{str(image.file_name)}"'
+    download_name = f"{short_code}.{ext}"
+    headers["Content-Disposition"] = f"attachment; filename*=UTF-8''{quote(download_name, safe='')}"
     return Response(content=data, media_type=str(image.mime_type), headers=headers)
 
 

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import importlib
+import uuid
 from datetime import datetime, timedelta
 from html import escape
 from pathlib import Path
@@ -10,7 +11,7 @@ from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session
 
 from app.core.config import get_settings
-from app.core.security import generate_short_code, sanitize_filename
+from app.core.security import generate_short_code
 from app.models.snippet import Snippet, SnippetFolder, SnippetShare, SnippetTag, SnippetTagBinding
 
 
@@ -28,7 +29,7 @@ class SnippetService:
     def _write_content(self, snippet_id: int, code_content: str) -> tuple[str, int, str]:
         content_hash = hashlib.sha256(code_content.encode("utf-8")).hexdigest()
         bucket = f"{snippet_id % 256:02x}"
-        relative_path = f"{bucket}/{snippet_id}_{content_hash[:16]}.code"
+        relative_path = f"{bucket}/{uuid.uuid4().hex}.code"
         file_path = self._content_file(relative_path)
         file_path.parent.mkdir(parents=True, exist_ok=True)
         file_path.write_text(code_content, encoding="utf-8")
@@ -508,7 +509,9 @@ class SnippetService:
             "plaintext": "txt",
         }
         ext = extension_map.get(resolved, "txt")
-        base = sanitize_filename(snippet.title or f"snippet-{snippet.id}")
+        base = (snippet.title or f"snippet-{snippet.id}").strip()
+        if not base:
+            base = f"snippet-{snippet.id}"
         if not base.lower().endswith(f".{ext}"):
             return f"{base}.{ext}"
         return base

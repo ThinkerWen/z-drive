@@ -5,6 +5,7 @@ import mimetypes
 import os
 import shutil
 import tempfile
+import uuid
 import zipfile
 from pathlib import Path
 
@@ -59,6 +60,14 @@ class DriveService:
     @staticmethod
     def _join_rel(parent_path: str, name: str) -> str:
         return f"{parent_path}/{name}" if parent_path else name
+
+    def _build_file_storage_rel(self, parent_path: str, source_name: str) -> str:
+        ext = Path(source_name or "").suffix.lower()
+        while True:
+            storage_file = f"{uuid.uuid4().hex}{ext}" if ext else uuid.uuid4().hex
+            relative_path = self._join_rel(parent_path, storage_file)
+            if not (self._drive_root() / relative_path).exists():
+                return relative_path
 
     def _unique_name(self, db: Session, parent_id: int | None, base_name: str) -> str:
         if not self._exists_sibling(db, parent_id, base_name):
@@ -204,7 +213,7 @@ class DriveService:
         file_name = self._unique_name(db, parent_id, safe_name)
 
         parent_path = parent.storage_path if parent else ""
-        relative_path = self._join_rel(parent_path, file_name)
+        relative_path = self._build_file_storage_rel(parent_path, file_name)
         disk_path = self._drive_root() / relative_path
         disk_path.parent.mkdir(parents=True, exist_ok=True)
 
@@ -241,7 +250,7 @@ class DriveService:
         safe_name = self._clean_name(file_name)
         target_name = self._unique_name(db, parent_id, safe_name)
         parent_path = parent.storage_path if parent else ""
-        target_rel = self._join_rel(parent_path, target_name)
+        target_rel = self._build_file_storage_rel(parent_path, target_name)
         target_disk = self._drive_root() / target_rel
         target_disk.parent.mkdir(parents=True, exist_ok=True)
         shutil.copy2(source_disk, target_disk)
@@ -272,12 +281,20 @@ class DriveService:
         target_name = self._unique_name(db, target_parent_id, item.name)
         new_parent_path = target_parent.storage_path if target_parent else ""
         old_rel = item.storage_path
-        new_rel = self._join_rel(new_parent_path, target_name)
+        if item.is_folder:
+            new_rel = self._join_rel(new_parent_path, target_name)
+        else:
+            old_storage_file = Path(item.storage_path).name
+            candidate_rel = self._join_rel(new_parent_path, old_storage_file)
+            if candidate_rel == old_rel or not (self._drive_root() / candidate_rel).exists():
+                new_rel = candidate_rel
+            else:
+                new_rel = self._build_file_storage_rel(new_parent_path, old_storage_file)
 
         old_disk = self._drive_root() / old_rel
         new_disk = self._drive_root() / new_rel
         new_disk.parent.mkdir(parents=True, exist_ok=True)
-        if old_disk.exists():
+        if old_rel != new_rel and old_disk.exists():
             old_disk.rename(new_disk)
 
         item.parent_id = target_parent_id
@@ -302,7 +319,10 @@ class DriveService:
         target_name = self._unique_name(db, target_parent_id, base_name)
 
         parent_path = target_parent.storage_path if target_parent else ""
-        new_rel = self._join_rel(parent_path, target_name)
+        if source.is_folder:
+            new_rel = self._join_rel(parent_path, target_name)
+        else:
+            new_rel = self._build_file_storage_rel(parent_path, target_name)
         src_disk = self._drive_root() / source.storage_path
         dst_disk = self._drive_root() / new_rel
         dst_disk.parent.mkdir(parents=True, exist_ok=True)
@@ -396,17 +416,15 @@ class DriveService:
 
         old_rel = item.storage_path
         parent_path = old_rel.rsplit("/", 1)[0] if "/" in old_rel else ""
-        new_rel = self._join_rel(parent_path, target_name)
-
-        old_disk = self._drive_root() / old_rel
-        new_disk = self._drive_root() / new_rel
-        if old_disk.exists():
-            old_disk.rename(new_disk)
-
         item.name = target_name
-        item.storage_path = new_rel
-
         if item.is_folder:
+            new_rel = self._join_rel(parent_path, target_name)
+            old_disk = self._drive_root() / old_rel
+            new_disk = self._drive_root() / new_rel
+            if old_disk.exists():
+                old_disk.rename(new_disk)
+
+            item.storage_path = new_rel
             descendants = db.scalars(
                 select(DriveItem).where(
                     DriveItem.is_delete.is_(False),
