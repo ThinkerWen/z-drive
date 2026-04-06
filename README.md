@@ -4,7 +4,7 @@
 
 <h1 align="center">Z-Drive</h1>
 
-<p align="center">一个面向个人场景的现代化云平台：图库 + 云盘</p>
+<p align="center">一个面向个人场景的现代化云平台：图库 + 云盘 + 代码片</p>
 
 <p align="center">中文 | <a href="README_en.md">English</a></p>
 
@@ -23,14 +23,15 @@
 
 ## 项目亮点
 
-- 图库（Gallery）
+- 图库（✅）
 	- 上传、管理、统计、短链访问与预览
-	- 支持全局/独立两种权限模式
-- 云盘（Cloud）
+	- 支持全局 / 独立两种权限模式
+- 云盘（✅）
 	- 上传、文件管理、分享管理、数据统计
 	- 支持目录层级、文件预览、批量操作、分享下载
-- 代码片（Paste）
-	- TODO
+- 代码片（✅）
+	- 在线编辑、实时预览、标签筛选、分享管理与数据统计
+	- 支持密码、过期时间、访问次数与一次性分享
 
 ## 界面预览
 
@@ -42,9 +43,15 @@
 
 ### 云盘页面
 
-| 列表页 | 预览页 | 分享页 |
+| 列表页 | 预览页 | 管理页 |
 | --- | --- | --- |
 | <img src="https://raw.githubusercontent.com/ThinkerWen/z-drive/refs/heads/main/images/cloud-list.png" width="500" alt="cloud-list" /> | <img src="https://raw.githubusercontent.com/ThinkerWen/z-drive/refs/heads/main/images/cloud-preview.png" width="500" alt="cloud-preview" /> | <img src="https://raw.githubusercontent.com/ThinkerWen/z-drive/refs/heads/main/images/cloud-share.png" width="500" alt="cloud-share" /> |
+
+### 代码片页面
+
+| 编辑页 | 列表页 | 分享页 |
+| --- | --- | --- |
+| <img src="https://raw.githubusercontent.com/ThinkerWen/z-drive/refs/heads/main/images/snippet-editor.png" width="500" alt="snippet-editor" /> | <img src="https://raw.githubusercontent.com/ThinkerWen/z-drive/refs/heads/main/images/snippet-list.png" width="500" alt="snippet-list" /> | <img src="https://raw.githubusercontent.com/ThinkerWen/z-drive/refs/heads/main/images/snippet-preview.png" width="500" alt="snippet-preview" /> |
 
 ## 快速启动
 

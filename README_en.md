@@ -4,7 +4,7 @@
 
 <h1 align="center">Z-Drive</h1>
 
-<p align="center">A modern personal cloud platform: Gallery + Cloud</p>
+<p align="center">A modern personal cloud platform: Gallery + Cloud + Paste</p>
 
 <p align="center"><a href="README.md">中文</a> | English</p>
 
@@ -23,14 +23,15 @@
 
 ## Highlights
 
-- Gallery
-	- Upload, management, analytics, short-link access and preview
-	- Supports global / per-item access modes
-- Cloud
-	- Upload, file management, share management, analytics
-	- Supports folder hierarchy, file preview, batch operations and share download
-- Paste
-	- TODO
+- Gallery (✅)
+	- Upload, management, statistics, short-link access and preview
+	- Supports global / isolated permission modes
+- Cloud (✅)
+	- Upload, file management, share management, statistics
+	- Supports folder hierarchy, file preview, batch operations and share downloads
+- Snippets (✅)
+	- Online editing, live preview, tag filtering, share management and statistics
+	- Supports password, expiration time, access count and one-time sharing
 
 ## UI Preview
 
@@ -45,6 +46,12 @@
 | List | Preview | Share |
 | --- | --- | --- |
 | <img src="https://raw.githubusercontent.com/ThinkerWen/z-drive/refs/heads/main/images/cloud-list.png" width="500" alt="cloud-list" /> | <img src="https://raw.githubusercontent.com/ThinkerWen/z-drive/refs/heads/main/images/cloud-preview.png" width="500" alt="cloud-preview" /> | <img src="https://raw.githubusercontent.com/ThinkerWen/z-drive/refs/heads/main/images/cloud-share.png" width="500" alt="cloud-share" /> |
+
+### Snippets
+
+| Editor | List | Share |
+| --- | --- | --- |
+| <img src="https://raw.githubusercontent.com/ThinkerWen/z-drive/refs/heads/main/images/snippet-editor.png" width="500" alt="snippet-editor" /> | <img src="https://raw.githubusercontent.com/ThinkerWen/z-drive/refs/heads/main/images/snippet-list.png" width="500" alt="snippet-list" /> | <img src="https://raw.githubusercontent.com/ThinkerWen/z-drive/refs/heads/main/images/snippet-preview.png" width="500" alt="snippet-preview" /> |
 
 ## Quick Start
 
