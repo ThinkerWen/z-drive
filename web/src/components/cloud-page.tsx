@@ -102,6 +102,8 @@ export function CloudPage({ mode, onAuthExpired, onNotify }: CloudPageProps) {
   const [selectedIds, setSelectedIds] = useState<number[]>([]);
   const [batchActionMenuOpen, setBatchActionMenuOpen] = useState(false);
   const [createMenuOpen, setCreateMenuOpen] = useState(false);
+  const [createFolderModalOpen, setCreateFolderModalOpen] = useState(false);
+  const [createFolderName, setCreateFolderName] = useState("新建文件夹");
   const [targetPickerAction, setTargetPickerAction] = useState<TargetPickerAction | null>(null);
   const [targetPickerPathNodes, setTargetPickerPathNodes] = useState<Array<{ id: number | null; name: string }>>([ROOT_NODE]);
   const [targetPickerFolders, setTargetPickerFolders] = useState<CloudItem[]>([]);
@@ -366,12 +368,19 @@ export function CloudPage({ mode, onAuthExpired, onNotify }: CloudPageProps) {
     jumpToPath(pathNodes.length - 2);
   }
 
-  async function handleCreateFolder() {
-    const raw = window.prompt("输入新建文件夹名称", "新建文件夹");
-    if (raw === null) {
-      return;
-    }
-    const name = raw.trim();
+  function openCreateFolderModal() {
+    setCreateMenuOpen(false);
+    setCreateFolderName("新建文件夹");
+    setCreateFolderModalOpen(true);
+  }
+
+  function closeCreateFolderModal() {
+    setCreateFolderModalOpen(false);
+    setCreateFolderName("新建文件夹");
+  }
+
+  async function submitCreateFolder() {
+    const name = createFolderName.trim();
     if (!name) {
       onNotify("请输入目录名");
       return;
@@ -380,6 +389,7 @@ export function CloudPage({ mode, onAuthExpired, onNotify }: CloudPageProps) {
     try {
       await createCloudFolder(currentParentId, name);
       onNotify("目录创建成功");
+      closeCreateFolderModal();
       await refreshAll(currentParentId);
     } catch (error) {
       if (error instanceof ApiError && error.status === 401) {
@@ -1171,7 +1181,7 @@ export function CloudPage({ mode, onAuthExpired, onNotify }: CloudPageProps) {
                         className="flex w-full items-center rounded-md px-2.5 py-1.5 text-left text-xs transition hover:bg-muted"
                         onClick={() => {
                           setCreateMenuOpen(false);
-                          void handleCreateFolder();
+                          openCreateFolderModal();
                         }}
                       >
                         新建文件夹
@@ -1379,6 +1389,40 @@ export function CloudPage({ mode, onAuthExpired, onNotify }: CloudPageProps) {
                   <Button type="button" variant="outline" onClick={() => setShareModalItem(null)} disabled={loading}>取消</Button>
                   <Button type="button" onClick={() => void submitCreateShare()} disabled={loading}>创建</Button>
                 </div>
+              </div>
+            </div>
+          ) : null}
+
+          {createFolderModalOpen ? (
+            <div
+              className="fixed inset-0 z-[75] flex items-center justify-center bg-black/45 p-4"
+              onClick={closeCreateFolderModal}
+            >
+              <div
+                className="w-full max-w-md rounded-2xl border border-white/70 bg-white p-4 shadow-[0_18px_48px_rgba(0,0,0,0.22)]"
+                onClick={(event) => event.stopPropagation()}
+              >
+                <h3 className="text-sm font-semibold">新建文件夹</h3>
+                <p className="mt-1 text-xs text-muted-foreground">输入目录名称后创建到当前目录。</p>
+                <form
+                  className="mt-4 space-y-4"
+                  onSubmit={(event) => {
+                    event.preventDefault();
+                    void submitCreateFolder();
+                  }}
+                >
+                  <input
+                    autoFocus
+                    className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-900 placeholder:text-slate-500 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/30"
+                    value={createFolderName}
+                    onChange={(event) => setCreateFolderName(event.target.value)}
+                    placeholder="请输入文件夹名称"
+                  />
+                  <div className="flex justify-end gap-2">
+                    <Button type="button" variant="outline" onClick={closeCreateFolderModal} disabled={loading}>取消</Button>
+                    <Button type="submit" disabled={loading || !createFolderName.trim()}>创建</Button>
+                  </div>
+                </form>
               </div>
             </div>
           ) : null}

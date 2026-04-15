@@ -302,73 +302,6 @@ async def download_shared_item(share_code: str, password: str = "", db: Session 
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 
-@router.patch("/items/{item_id}", response_model=DriveItemResponse)
-async def rename_item(
-    item_id: int,
-    payload: DriveRenameRequest,
-    db: Session = Depends(get_db),
-    _: str = Depends(admin_auth),
-) -> DriveItemResponse:
-    try:
-        item = service.rename_item(db, item_id, payload.name)
-        return _to_item_payload(item)
-    except LookupError as exc:
-        raise HTTPException(status_code=404, detail=str(exc)) from exc
-
-
-@router.post("/items/{item_id}/move", response_model=DriveItemResponse)
-async def move_item(
-    item_id: int,
-    payload: DriveMoveRequest,
-    db: Session = Depends(get_db),
-    _: str = Depends(admin_auth),
-) -> DriveItemResponse:
-    try:
-        item = service.move_item(db, item_id, payload.target_parent_id)
-        return _to_item_payload(item)
-    except LookupError as exc:
-        raise HTTPException(status_code=404, detail=str(exc)) from exc
-    except ValueError as exc:
-        raise HTTPException(status_code=400, detail=str(exc)) from exc
-
-
-@router.post("/items/{item_id}/copy", response_model=DriveItemResponse)
-async def copy_item(
-    item_id: int,
-    payload: DriveCopyRequest,
-    db: Session = Depends(get_db),
-    _: str = Depends(admin_auth),
-) -> DriveItemResponse:
-    try:
-        item = service.copy_item(db, item_id, payload.target_parent_id, payload.name)
-        return _to_item_payload(item)
-    except LookupError as exc:
-        raise HTTPException(status_code=404, detail=str(exc)) from exc
-
-
-@router.patch("/items/{item_id}/visibility", response_model=DriveItemResponse)
-async def set_visibility(
-    item_id: int,
-    payload: DriveVisibilityRequest,
-    db: Session = Depends(get_db),
-    _: str = Depends(admin_auth),
-) -> DriveItemResponse:
-    try:
-        item = service.set_visibility(db, item_id, payload.is_public)
-        return _to_item_payload(item)
-    except LookupError as exc:
-        raise HTTPException(status_code=404, detail=str(exc)) from exc
-
-
-@router.delete("/items/{item_id}")
-async def delete_item(item_id: int, db: Session = Depends(get_db), _: str = Depends(admin_auth)) -> dict[str, str]:
-    try:
-        service.delete_item(db, item_id)
-        return {"message": "删除成功"}
-    except LookupError as exc:
-        raise HTTPException(status_code=404, detail=str(exc)) from exc
-
-
 @router.post("/items/batch/delete", response_model=DriveBatchResultResponse)
 async def batch_delete_items(
     payload: DriveBatchDeleteRequest,
@@ -463,6 +396,73 @@ async def batch_download_items(
 
     background_tasks.add_task(_cleanup, zip_path)
     return FileResponse(path=zip_path, media_type="application/zip", filename=file_name)
+
+
+@router.patch("/items/{item_id}", response_model=DriveItemResponse)
+async def rename_item(
+    item_id: int,
+    payload: DriveRenameRequest,
+    db: Session = Depends(get_db),
+    _: str = Depends(admin_auth),
+) -> DriveItemResponse:
+    try:
+        item = service.rename_item(db, item_id, payload.name)
+        return _to_item_payload(item)
+    except LookupError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+
+@router.post("/items/{item_id}/move", response_model=DriveItemResponse)
+async def move_item(
+    item_id: int,
+    payload: DriveMoveRequest,
+    db: Session = Depends(get_db),
+    _: str = Depends(admin_auth),
+) -> DriveItemResponse:
+    try:
+        item = service.move_item(db, item_id, payload.target_parent_id)
+        return _to_item_payload(item)
+    except LookupError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@router.post("/items/{item_id}/copy", response_model=DriveItemResponse)
+async def copy_item(
+    item_id: int,
+    payload: DriveCopyRequest,
+    db: Session = Depends(get_db),
+    _: str = Depends(admin_auth),
+) -> DriveItemResponse:
+    try:
+        item = service.copy_item(db, item_id, payload.target_parent_id, payload.name)
+        return _to_item_payload(item)
+    except LookupError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+
+@router.patch("/items/{item_id}/visibility", response_model=DriveItemResponse)
+async def set_visibility(
+    item_id: int,
+    payload: DriveVisibilityRequest,
+    db: Session = Depends(get_db),
+    _: str = Depends(admin_auth),
+) -> DriveItemResponse:
+    try:
+        item = service.set_visibility(db, item_id, payload.is_public)
+        return _to_item_payload(item)
+    except LookupError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+
+@router.delete("/items/{item_id}")
+async def delete_item(item_id: int, db: Session = Depends(get_db), _: str = Depends(admin_auth)) -> dict[str, str]:
+    try:
+        service.delete_item(db, item_id)
+        return {"message": "删除成功"}
+    except LookupError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
 
 
 @router.post("/uploads/chunk/init", response_model=DriveChunkInitResponse)
