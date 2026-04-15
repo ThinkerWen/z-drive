@@ -223,12 +223,16 @@ h6 {
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
   font-size: 12px;
   line-height: 1.6;
+  width: max-content;
+  min-width: 100%;
 }
 
 .snippet-row {
   display: grid;
-  grid-template-columns: 56px 1fr;
+  grid-template-columns: 56px auto;
   align-items: stretch;
+  width: max-content;
+  min-width: 100%;
 }
 
 .snippet-line-number {
@@ -241,13 +245,19 @@ h6 {
 
 .snippet-line-content {
   white-space: pre;
-  overflow-x: auto;
+  overflow: visible;
   padding-left: 10px;
 }
 
 .snippet-editor-cm .cm-editor {
   background: hsl(var(--card));
   color: hsl(var(--foreground));
+  max-width: 100%;
+}
+
+.snippet-editor-cm .cm-scroller {
+  overflow: auto;
+  max-width: 100%;
 }
 
 .snippet-editor-cm .cm-gutters {

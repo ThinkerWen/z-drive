@@ -589,15 +589,16 @@ export function SnippetPage({ mode, onAuthExpired, onNotify }: SnippetPageProps)
         </div>
 
         <div className="grid gap-4 xl:grid-cols-[1.25fr_0.95fr]">
-          <div className="rounded-2xl border border-border/70 bg-white/90 p-3">
+          <div className="min-w-0 rounded-2xl border border-border/70 bg-white/90 p-3">
             <div className="mb-2 grid gap-2 sm:grid-cols-2">
               <input className="rounded-xl border border-border/80 bg-white px-3 py-2 text-sm" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="标题" />
               <CustomSelect value={language} options={languageEditorOptions} onChange={setLanguage} />
             </div>
             <textarea className="mb-2 min-h-[60px] w-full rounded-xl border border-border/80 bg-white px-3 py-2 text-sm" value={description} onChange={(e) => setDescription(e.target.value)} placeholder="描述（可选）" />
             <input className="mb-2 w-full rounded-xl border border-border/80 bg-white px-3 py-2 text-sm" value={tagInput} onChange={(e) => setTagInput(e.target.value)} placeholder="标签：python,api" />
-            <div className="overflow-hidden rounded-xl border border-border/80">
+            <div className="theme-scrollbar overflow-auto rounded-xl border border-border/80">
               <CodeMirror
+                className="snippet-editor-cm"
                 value={codeContent}
                 height="420px"
                 theme={isMidnightTheme ? oneDark : undefined}
@@ -615,7 +616,7 @@ export function SnippetPage({ mode, onAuthExpired, onNotify }: SnippetPageProps)
             </div>
           </div>
 
-          <div className="space-y-3">
+          <div className="min-w-0 space-y-3">
             <div className={isMidnightTheme ? "rounded-2xl border border-border/70 bg-[#0f172a] p-3" : "rounded-2xl border border-border/70 bg-white/90 p-3"}>
               <p className="mb-2 text-xs uppercase tracking-[0.18em] text-muted-foreground">Live Preview</p>
               <div className={isMidnightTheme ? "theme-scrollbar max-h-[420px] overflow-auto rounded-xl border border-slate-600/60 bg-[#0b1220] p-2 text-xs text-slate-100" : "theme-scrollbar max-h-[420px] overflow-auto rounded-xl border border-border/70 bg-white p-2 text-xs text-foreground"}>
@@ -815,9 +816,8 @@ export function SnippetPage({ mode, onAuthExpired, onNotify }: SnippetPageProps)
         ) : null}
 
         {editTarget ? (
-          <Modal onClose={() => setEditTarget(null)} title={`编辑代码片 · ${editTarget.title}`} maxWidthClass="max-w-5xl">
-            <div className="grid gap-3 lg:grid-cols-[1fr_0.95fr]">
-              <div className="space-y-2">
+          <Modal onClose={() => setEditTarget(null)} title={`编辑代码片 · ${editTarget.title}`} maxWidthClass="max-w-4xl">
+            <div className="space-y-2 min-w-0">
                 <div className="grid gap-2 sm:grid-cols-2">
                   <input className="rounded-xl border border-border/80 bg-white px-3 py-2 text-sm" value={editTitle} onChange={(e) => setEditTitle(e.target.value)} placeholder="标题" />
                   <CustomSelect value={editLanguage} options={languageEditorOptions} onChange={setEditLanguage} />
@@ -828,8 +828,9 @@ export function SnippetPage({ mode, onAuthExpired, onNotify }: SnippetPageProps)
                   <input type="checkbox" checked={editIsPublic} onChange={(e) => setEditIsPublic(e.target.checked)} />
                   公开代码片
                 </label>
-                <div className="overflow-hidden rounded-xl border border-border/80">
+                <div className="theme-scrollbar overflow-auto rounded-xl border border-border/80">
                   <CodeMirror
+                    className="snippet-editor-cm"
                     value={editCodeContent}
                     height="58vh"
                     theme={isMidnightTheme ? oneDark : undefined}
@@ -845,14 +846,6 @@ export function SnippetPage({ mode, onAuthExpired, onNotify }: SnippetPageProps)
                     onChange={(value) => setEditCodeContent(value)}
                   />
                 </div>
-              </div>
-
-              <div className={isMidnightTheme ? "rounded-2xl border border-slate-600/60 bg-[#0b1220] p-3" : "rounded-2xl border border-border/70 bg-white p-3"}>
-                <p className="mb-2 text-xs uppercase tracking-[0.18em] text-muted-foreground">实时预览</p>
-                <div className={isMidnightTheme ? "theme-scrollbar max-h-[58vh] overflow-auto rounded-xl border border-slate-600/60 bg-[#0f172a] p-2 text-xs text-slate-100" : "theme-scrollbar max-h-[58vh] overflow-auto rounded-xl border border-border/70 bg-white p-2 text-xs text-foreground"}>
-                  <div dangerouslySetInnerHTML={{ __html: renderSnippetWithLineNumbers(editCodeContent, editLanguage) }} />
-                </div>
-              </div>
             </div>
 
             <div className="mt-4 flex justify-end gap-2">
