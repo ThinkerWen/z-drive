@@ -1,9 +1,11 @@
 from __future__ import annotations
 
+import os
 from collections.abc import Generator
 from typing import Any
 
 from sqlalchemy import create_engine, text
+from sqlalchemy.engine import make_url
 from sqlalchemy.orm import DeclarativeBase, sessionmaker
 
 from app.core.config import get_settings
@@ -35,6 +37,15 @@ def init_db() -> None:
     from app.models.cloud_share import DriveShare, DriveShareAccessLog  # noqa: F401
     from app.models.image import Image, ImageAccessLog, ImageStats  # noqa: F401
     from app.models.snippet import Snippet, SnippetFolder, SnippetShare, SnippetTag, SnippetTagBinding  # noqa: F401
+
+    if settings.database_url.startswith("sqlite"):
+        try:
+            url = make_url(settings.database_url)
+            db_file = url.database
+            db_dir = os.path.dirname(db_file) or "."
+            os.makedirs(db_dir, exist_ok=True)
+        except Exception:
+            pass
 
     Base.metadata.create_all(bind=engine)
     _ensure_sqlite_snippet_columns()
