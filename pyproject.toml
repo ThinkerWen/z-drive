@@ -15,6 +15,7 @@ dependencies = [
     "pydantic>=2.12.5",
     "schedule>=1.2.2",
     "pygments>=2.19.2",
+    "tzdata>=2025.2",
 ]
 
 [project.scripts]

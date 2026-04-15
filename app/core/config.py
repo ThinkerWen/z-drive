@@ -1,8 +1,38 @@
 from functools import lru_cache
+from datetime import timedelta, timezone, tzinfo
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+
+_FALLBACK_OFFSET_HOURS: dict[str, int] = {
+    "UTC": 0,
+    "PRC": 8,
+    "Etc/UTC": 0,
+    "Asia/Tokyo": 9,
+    "Asia/Shanghai": 8,
+    "Asia/Chongqing": 8,
+}
+
+
+def parse_timezone(value: str) -> tzinfo:
+    key = value.strip()
+    if not key:
+        raise ValueError("Timezone cannot be empty")
+
+    try:
+        return ZoneInfo(key)
+    except ZoneInfoNotFoundError:
+        offset_hours = _FALLBACK_OFFSET_HOURS.get(key)
+        if offset_hours is None:
+            raise ValueError(f"Invalid timezone: {value}")
+        return timezone(timedelta(hours=offset_hours), name=key)
+
+
+def validate_timezone(value: str) -> str:
+    parse_timezone(value)
+    return value.strip()
 
 
 class Settings(BaseSettings):
@@ -31,11 +61,7 @@ class Settings(BaseSettings):
     @field_validator("app_timezone")
     @classmethod
     def validate_app_timezone(cls, value: str) -> str:
-        try:
-            ZoneInfo(value)
-        except ZoneInfoNotFoundError as exc:
-            raise ValueError(f"Invalid timezone: {value}") from exc
-        return value
+        return validate_timezone(value)
 
 
 @lru_cache

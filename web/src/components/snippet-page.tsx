@@ -19,6 +19,7 @@ import {
 } from "@/lib/api";
 import { renderSnippetWithLineNumbers, snippetEditorExtensions } from "@/lib/snippet-code";
 import type { SnippetItem, SnippetShare } from "@/lib/types";
+import { copyText } from "@/lib/utils";
 
 interface SnippetPageProps {
   mode: "editor" | "list" | "shares" | "stats";
@@ -359,12 +360,12 @@ export function SnippetPage({ mode, onAuthExpired, onNotify }: SnippetPageProps)
         max_access_count: shareMaxAccessCount ? Number(shareMaxAccessCount) : undefined,
         is_one_time: shareOneTime,
       });
-      await navigator.clipboard.writeText(share.share_url + (sharePassword ? `?password=${encodeURIComponent(sharePassword)}` : ""));
+      const copied = await copyText(share.share_url + (sharePassword ? `?password=${encodeURIComponent(sharePassword)}` : ""));
       setSharePassword("");
       setShareExpiresMinutes("");
       setShareMaxAccessCount("");
       setShareOneTime(false);
-      onNotify("分享创建成功，链接已复制");
+      onNotify(copied ? "分享创建成功，链接已复制" : "分享创建成功，请手动复制链接");
       await refreshShares();
       return true;
     } catch (error) {
@@ -402,7 +403,11 @@ export function SnippetPage({ mode, onAuthExpired, onNotify }: SnippetPageProps)
 
   async function handleCopyCode(content: string) {
     try {
-      await navigator.clipboard.writeText(content);
+      const copied = await copyText(content);
+      if (!copied) {
+        onNotify("复制失败，请手动复制");
+        return;
+      }
       onNotify("代码已复制");
     } catch {
       onNotify("复制失败，请手动复制");
@@ -411,7 +416,11 @@ export function SnippetPage({ mode, onAuthExpired, onNotify }: SnippetPageProps)
 
   async function handlePreviewCopy(content: string) {
     try {
-      await navigator.clipboard.writeText(content);
+      const copied = await copyText(content);
+      if (!copied) {
+        setPreviewCopied(false);
+        return;
+      }
       setPreviewCopied(true);
       window.setTimeout(() => setPreviewCopied(false), 1600);
     } catch {
@@ -421,8 +430,8 @@ export function SnippetPage({ mode, onAuthExpired, onNotify }: SnippetPageProps)
 
   async function handleCopyShareUrl(url: string) {
     try {
-      await navigator.clipboard.writeText(url);
-      onNotify("分享链接已复制");
+      const copied = await copyText(url);
+      onNotify(copied ? "分享链接已复制" : "复制失败，请手动复制链接");
     } catch {
       onNotify("复制失败，请手动复制链接");
     }

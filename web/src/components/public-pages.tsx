@@ -5,6 +5,7 @@ import { PlyrVideo } from "@/components/plyr-video";
 import { ApiError, accessCloudShare, accessSnippetShare, getImageInfo } from "@/lib/api";
 import { renderSnippetWithLineNumbers } from "@/lib/snippet-code";
 import type { CloudShareAccessResponse, ImageInfoResponse, SnippetPublicAccessResponse } from "@/lib/types";
+import { copyText as copyToClipboard } from "@/lib/utils";
 
 export function parsePublicPreviewPath(pathname: string): { shortCode: string; ext: string } | null {
   const matched = pathname.match(/^\/gallery\/preview\/([^/.]+)\.([A-Za-z0-9]+)$/);
@@ -84,43 +85,16 @@ export function PublicPreviewPage({ shortCode, ext }: { shortCode: string; ext: 
     })();
   }, [shortCode, ext, sign]);
 
-  function fallbackCopyText(text: string): boolean {
-    const textArea = document.createElement("textarea");
-    textArea.value = text;
-    textArea.setAttribute("readonly", "readonly");
-    textArea.style.position = "fixed";
-    textArea.style.opacity = "0";
-    textArea.style.pointerEvents = "none";
-    document.body.appendChild(textArea);
-    textArea.focus();
-    textArea.select();
-
-    let copiedWithFallback = false;
+  async function copyPreviewText(text: string, key: string) {
     try {
-      copiedWithFallback = document.execCommand("copy");
-    } finally {
-      document.body.removeChild(textArea);
-    }
-    return copiedWithFallback;
-  }
-
-  async function copyText(text: string, key: string) {
-    try {
-      if (navigator.clipboard?.writeText) {
-        await navigator.clipboard.writeText(text);
-      } else if (!fallbackCopyText(text)) {
+      const copiedOk = await copyToClipboard(text);
+      if (!copiedOk) {
         throw new Error("clipboard not available");
       }
       setCopied(key);
       setCopyError("");
       window.setTimeout(() => setCopied(""), 1200);
     } catch {
-      if (fallbackCopyText(text)) {
-        setCopied(key);
-        setCopyError("");
-        window.setTimeout(() => setCopied(""), 1200);
-        return;
-      }
       setCopyError("复制失败，请长按文本手动复制");
     }
   }
@@ -163,11 +137,11 @@ export function PublicPreviewPage({ shortCode, ext }: { shortCode: string; ext: 
         <div className="mt-5 space-y-2">
           {copyError ? <p className="text-xs text-orange-600">{copyError}</p> : null}
           {info.file_type === "video" ? (
-            <CopyItem label="VIDEO" value={videoTag} copied={copied === "video"} onCopy={() => void copyText(videoTag, "video")} />
+            <CopyItem label="VIDEO" value={videoTag} copied={copied === "video"} onCopy={() => void copyPreviewText(videoTag, "video")} />
           ) : (
             <>
-              <CopyItem label="Markdown" value={markdown} copied={copied === "md"} onCopy={() => void copyText(markdown, "md")} />
-              <CopyItem label="IMG" value={imgTag} copied={copied === "img"} onCopy={() => void copyText(imgTag, "img")} />
+              <CopyItem label="Markdown" value={markdown} copied={copied === "md"} onCopy={() => void copyPreviewText(markdown, "md")} />
+              <CopyItem label="IMG" value={imgTag} copied={copied === "img"} onCopy={() => void copyPreviewText(imgTag, "img")} />
             </>
           )}
         </div>
@@ -418,7 +392,10 @@ export function PublicSnippetPage({ shareCode }: { shareCode: string }) {
 
   async function copySnippetCode() {
     try {
-      await navigator.clipboard.writeText(snippet.code_content || "");
+      const copiedOk = await copyToClipboard(snippet.code_content || "");
+      if (!copiedOk) {
+        throw new Error("clipboard not available");
+      }
       setCopiedCode(true);
       window.setTimeout(() => setCopiedCode(false), 1800);
     } catch {

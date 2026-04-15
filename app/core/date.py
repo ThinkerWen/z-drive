@@ -1,9 +1,8 @@
 from __future__ import annotations
 
-from datetime import datetime, timezone
-from zoneinfo import ZoneInfo
+from datetime import datetime, timezone, tzinfo
 
-from app.core.config import get_settings
+from app.core.config import get_settings, parse_timezone
 
 
 def utc_now_naive() -> datetime:
@@ -11,9 +10,9 @@ def utc_now_naive() -> datetime:
     return datetime.now(timezone.utc).replace(tzinfo=None)
 
 
-def app_timezone() -> ZoneInfo:
+def app_timezone() -> tzinfo:
     settings = get_settings()
-    return ZoneInfo(settings.app_timezone)
+    return parse_timezone(settings.app_timezone)
 
 
 def to_app_timezone(value: datetime | None) -> datetime | None:
