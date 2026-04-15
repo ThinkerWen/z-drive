@@ -91,25 +91,25 @@ export function renderSnippetWithLineNumbers(codeContent: string, languageHint: 
   const code = codeContent || "";
   const normalized = normalizeLanguage(languageHint);
 
-  let highlighted = "";
-  if (normalized !== "text" && hljs.getLanguage(normalized)) {
-    highlighted = hljs.highlight(code, { language: normalized, ignoreIllegals: true }).value;
-  } else {
-    highlighted = escapeHtml(code);
-  }
-
-  if (!highlighted) {
-    highlighted = escapeHtml(code);
-  }
-
-  const lines = highlighted.split(/\r?\n/);
+  const canHighlight = normalized !== "text" && Boolean(hljs.getLanguage(normalized));
+  const lines = code.split(/\r?\n/);
   if (lines.length === 0) {
     lines.push("");
   }
 
   const rows = lines
     .map((line, index) => {
-      const content = line.length > 0 ? line : "&nbsp;";
+      let content = "";
+      if (line.length > 0) {
+        if (canHighlight) {
+          content = hljs.highlight(line, { language: normalized, ignoreIllegals: true }).value;
+        } else {
+          content = escapeHtml(line);
+        }
+      }
+      if (!content) {
+        content = "&nbsp;";
+      }
       return `<div class="snippet-row"><span class="snippet-line-number">${index + 1}</span><span class="snippet-line-content">${content}</span></div>`;
     })
     .join("");
