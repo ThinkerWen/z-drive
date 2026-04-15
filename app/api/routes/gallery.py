@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session
 
 from app.core.config import get_settings
 from app.core.security import build_admin_auth_dependency, create_admin_token
+from app.core.urls import get_external_base_url
 from app.db.session import get_db
 from app.schemas.image import DeleteImageRequest, ImageInfoResponse, LoginRequest, UpdateImageRequest
 from app.services.cloud_share import DriveShareService
@@ -23,7 +24,7 @@ admin_auth = build_admin_auth_dependency(settings.jwt_secret, settings.admin_tok
 
 
 def _base_url(request: Request) -> str:
-    return str(request.base_url).rstrip("/")
+    return get_external_base_url(request)
 
 
 def _cache_headers() -> dict[str, str]:
