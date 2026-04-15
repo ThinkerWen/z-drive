@@ -2,9 +2,10 @@ from __future__ import annotations
 
 import json
 import shutil
-from datetime import datetime
 import uuid
 from pathlib import Path
+
+from app.core.date import utc_now_naive
 
 
 class DriveChunkUploadService:
@@ -39,14 +40,14 @@ class DriveChunkUploadService:
             "mime_type": mime_type,
             "paused": False,
             "uploaded_bytes": 0,
-            "created_at": datetime.now().isoformat(),
-            "updated_at": datetime.now().isoformat(),
+            "created_at": utc_now_naive().isoformat(),
+            "updated_at": utc_now_naive().isoformat(),
         }
         self._meta_path(upload_id).write_text(json.dumps(meta, ensure_ascii=True), encoding="utf-8")
         return meta
 
     def _save_meta(self, upload_id: str, meta: dict) -> None:
-        meta["updated_at"] = datetime.now().isoformat()
+        meta["updated_at"] = utc_now_naive().isoformat()
         self._meta_path(upload_id).write_text(json.dumps(meta, ensure_ascii=True), encoding="utf-8")
 
     def get_meta(self, upload_id: str) -> dict:

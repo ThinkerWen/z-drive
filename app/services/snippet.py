@@ -3,7 +3,7 @@ from __future__ import annotations
 import hashlib
 import importlib
 import uuid
-from datetime import datetime, timedelta
+from datetime import timedelta
 from html import escape
 from pathlib import Path
 
@@ -11,6 +11,7 @@ from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session
 
 from app.core.config import get_settings
+from app.core.date import utc_now_naive
 from app.core.security import generate_short_code
 from app.models.snippet import Snippet, SnippetFolder, SnippetShare, SnippetTag, SnippetTagBinding
 
@@ -377,7 +378,7 @@ class SnippetService:
 
         expires_at = None
         if expires_minutes is not None and expires_minutes > 0:
-            expires_at = datetime.now() + timedelta(minutes=expires_minutes)
+            expires_at = utc_now_naive() + timedelta(minutes=expires_minutes)
 
         share = SnippetShare(
             snippet_id=snippet_id,
@@ -396,7 +397,7 @@ class SnippetService:
 
     @staticmethod
     def list_shares(db: Session) -> list[tuple[SnippetShare, Snippet]]:
-        now = datetime.now()
+        now = utc_now_naive()
         rows = db.execute(
             select(SnippetShare, Snippet)
             .join(Snippet, Snippet.id == SnippetShare.snippet_id)
@@ -411,7 +412,7 @@ class SnippetService:
 
     @staticmethod
     def cleanup_expired_shares(db: Session) -> int:
-        now = datetime.now()
+        now = utc_now_naive()
         expired = db.scalars(
             select(SnippetShare).where(
                 SnippetShare.is_active.is_(True),
@@ -442,7 +443,7 @@ class SnippetService:
         if not share.is_active:
             raise LookupError("分享不存在或已关闭")
 
-        if share.expires_at is not None and share.expires_at < datetime.now():
+        if share.expires_at is not None and share.expires_at < utc_now_naive():
             raise PermissionError("分享已过期")
 
         if share.max_access_count is not None and share.access_count >= share.max_access_count:
@@ -464,7 +465,7 @@ class SnippetService:
         SnippetService._check_share_valid(share, password)
 
         share.access_count = int(share.access_count or 0) + 1
-        share.last_accessed_at = datetime.now()
+        share.last_accessed_at = utc_now_naive()
         if share.is_one_time:
             share.is_active = False
         if share.max_access_count is not None and share.access_count >= share.max_access_count:

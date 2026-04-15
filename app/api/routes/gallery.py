@@ -8,6 +8,7 @@ from fastapi.responses import JSONResponse, RedirectResponse
 from sqlalchemy.orm import Session
 
 from app.core.config import get_settings
+from app.core.date import format_app_datetime
 from app.core.security import build_admin_auth_dependency, create_admin_token
 from app.core.urls import get_external_base_url
 from app.db.session import get_db
@@ -219,7 +220,7 @@ async def get_image_info(request: Request, file_key: str, sign: str = "", db: Se
             height=int(image.height),
             view_count=int(image.view_count),
             download_count=int(image.download_count),
-            created_at=image.created_at.strftime("%Y-%m-%d %H:%M:%S"),
+            created_at=format_app_datetime(image.created_at) or "",
         ).model_dump()
     except LookupError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc

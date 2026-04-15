@@ -1,6 +1,7 @@
 from functools import lru_cache
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
-from pydantic import Field
+from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -12,6 +13,7 @@ class Settings(BaseSettings):
 
     database_url: str = Field(default="sqlite:///./storage/z_drive.db")
     storage_path: str = Field(default="storage")
+    app_timezone: str = Field(default="Asia/Shanghai")
 
     view_origin: bool = False
     enable_browser_cache: bool = True
@@ -25,6 +27,15 @@ class Settings(BaseSettings):
     admin_token: str = "z-drive-change-me-admin-token"
     jwt_secret: str = "z-drive-change-me-secret-key-at-least-32-bytes"
     jwt_expire_minutes: int = 7 * 24 * 60
+
+    @field_validator("app_timezone")
+    @classmethod
+    def validate_app_timezone(cls, value: str) -> str:
+        try:
+            ZoneInfo(value)
+        except ZoneInfoNotFoundError as exc:
+            raise ValueError(f"Invalid timezone: {value}") from exc
+        return value
 
 
 @lru_cache

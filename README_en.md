@@ -69,6 +69,8 @@ cd ..
 uv run z-drive
 ```
 
+Optional timezone config: set `APP_TIMEZONE` in `.env` (for example `Asia/Shanghai`, `UTC`, or `Asia/Tokyo`). API datetime strings will be formatted using this timezone.
+
 ### Docker Run
 
 ```bash

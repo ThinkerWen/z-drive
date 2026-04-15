@@ -12,6 +12,7 @@ services:
       DEBUG: "false"
       DATABASE_URL: sqlite:////data/storage/z_drive.db
       STORAGE_PATH: /data/storage
+      APP_TIMEZONE: ${APP_TIMEZONE:-Asia/Shanghai}
       VIEW_ORIGIN: "false"
       ENABLE_BROWSER_CACHE: "true"
       IMAGE_MAX_FILE_SIZE_MB: "50"

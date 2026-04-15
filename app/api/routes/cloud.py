@@ -10,6 +10,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.core.config import get_settings
+from app.core.date import format_app_datetime, utc_now_naive
 from app.core.security import build_admin_auth_dependency
 from app.core.urls import get_external_base_url
 from app.db.session import get_db
@@ -75,8 +76,8 @@ def _to_item_payload(item, duplicate_of_id: int | None = None) -> DriveItemRespo
         file_ext=str(item.file_ext or ""),
         is_public=bool(item.is_public),
         duplicate_of_id=duplicate_of_id,
-        created_at=item.created_at.strftime("%Y-%m-%d %H:%M:%S"),
-        updated_at=item.updated_at.strftime("%Y-%m-%d %H:%M:%S"),
+        created_at=format_app_datetime(item.created_at) or "",
+        updated_at=format_app_datetime(item.updated_at) or "",
     )
 
 
@@ -88,8 +89,8 @@ def _to_share_payload(share, base_url: str, item_name: str = "") -> DriveShareRe
         share_code=str(share.share_code),
         has_password=bool(share.password_hash),
         is_active=bool(share.is_active),
-        expires_at=share.expires_at.strftime("%Y-%m-%d %H:%M:%S") if share.expires_at else None,
-        created_at=share.created_at.strftime("%Y-%m-%d %H:%M:%S"),
+        expires_at=format_app_datetime(share.expires_at),
+        created_at=format_app_datetime(share.created_at) or "",
         share_url=f"{base_url}/f/{share.share_code}",
     )
 
@@ -237,7 +238,7 @@ async def list_share_logs(
             access_ip=str(log.access_ip),
             user_agent=str(log.user_agent),
             referer=str(log.referer),
-            created_at=log.created_at.strftime("%Y-%m-%d %H:%M:%S"),
+            created_at=format_app_datetime(log.created_at) or "",
         )
         for log in logs
     ]
@@ -498,8 +499,8 @@ async def chunk_status(upload_id: str, _: str = Depends(admin_auth)) -> DriveChu
     try:
         meta = chunk_service.get_meta(upload_id)
         uploaded = chunk_service.uploaded_chunks(upload_id)
-        created_at = datetime.fromisoformat(str(meta.get("created_at") or datetime.now().isoformat()))
-        elapsed = max((datetime.now() - created_at).total_seconds(), 1.0)
+        created_at = datetime.fromisoformat(str(meta.get("created_at") or utc_now_naive().isoformat()))
+        elapsed = max((utc_now_naive() - created_at).total_seconds(), 1.0)
         uploaded_bytes = int(meta.get("uploaded_bytes", 0))
         avg_speed = int(uploaded_bytes / elapsed)
         return DriveChunkStatusResponse(

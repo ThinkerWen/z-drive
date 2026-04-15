@@ -2,12 +2,13 @@ from __future__ import annotations
 
 import hashlib
 import ipaddress
-from datetime import datetime, timedelta
+from datetime import timedelta
 
 from fastapi import Request
 from sqlalchemy import or_, select
 from sqlalchemy.orm import Session
 
+from app.core.date import utc_now_naive
 from app.core.security import generate_short_code
 from app.models.cloud_item import DriveItem
 from app.models.cloud_share import DriveShare, DriveShareAccessLog
@@ -71,7 +72,7 @@ class DriveShareService:
 
         expires_at = None
         if expires_minutes is not None and expires_minutes > 0:
-            expires_at = datetime.now() + timedelta(minutes=expires_minutes)
+            expires_at = utc_now_naive() + timedelta(minutes=expires_minutes)
 
         share = DriveShare(
             item_id=item_id,
@@ -87,7 +88,7 @@ class DriveShareService:
 
     @staticmethod
     def list_shares(db: Session) -> list[DriveShare]:
-        now = datetime.now()
+        now = utc_now_naive()
         return db.scalars(
             select(DriveShare)
             .where(
@@ -99,7 +100,7 @@ class DriveShareService:
 
     @staticmethod
     def cleanup_expired_shares(db: Session) -> int:
-        now = datetime.now()
+        now = utc_now_naive()
         expired = db.scalars(
             select(DriveShare).where(
                 DriveShare.is_active.is_(True),
@@ -137,7 +138,7 @@ class DriveShareService:
         if share is None or not share.is_active:
             raise LookupError("分享不存在或已关闭")
 
-        if share.expires_at is not None and share.expires_at < datetime.now():
+        if share.expires_at is not None and share.expires_at < utc_now_naive():
             share.is_active = False
             db.commit()
             raise PermissionError("分享已过期")

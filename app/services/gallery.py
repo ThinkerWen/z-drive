@@ -12,6 +12,7 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.core.config import Settings
+from app.core.date import format_app_datetime
 from app.core.security import (
     build_global_sign,
     generate_individual_sign,
@@ -408,7 +409,7 @@ class GalleryService:
                 "download_url": public_urls["download_url"],
                 "access_mode": image.access_mode,
                 "sign": sign or None,
-                "created_at": image.created_at.strftime("%Y-%m-%d %H:%M:%S"),
+                "created_at": format_app_datetime(image.created_at) or "",
             }
             items.append(item)
 

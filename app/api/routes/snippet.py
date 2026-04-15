@@ -7,6 +7,7 @@ from fastapi.responses import HTMLResponse, Response
 from sqlalchemy.orm import Session
 
 from app.core.config import get_settings
+from app.core.date import format_app_datetime
 from app.core.security import build_admin_auth_dependency
 from app.core.urls import get_external_base_url
 from app.db.session import get_db
@@ -37,9 +38,7 @@ def _base_url(request: Request) -> str:
 
 
 def _dt(value) -> str | None:
-    if value is None:
-        return None
-    return value.strftime("%Y-%m-%d %H:%M:%S")
+    return format_app_datetime(value)
 
 
 def _snippet_to_payload(db: Session, snippet: Snippet) -> SnippetResponse:

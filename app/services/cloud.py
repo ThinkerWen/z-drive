@@ -15,6 +15,7 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.core.config import Settings
+from app.core.date import format_app_datetime
 from app.models.cloud_item import DriveItem
 from app.models.cloud_share import DriveShare, DriveShareAccessLog
 
@@ -598,7 +599,7 @@ class DriveService:
                     "item_id": int(item_id),
                     "item_name": str(item_name),
                     "visit_count": int(visit_count or 0),
-                    "last_accessed_at": last_accessed_at.strftime("%Y-%m-%d %H:%M:%S") if hasattr(last_accessed_at, "strftime") else None,
+                    "last_accessed_at": format_app_datetime(last_accessed_at),
                 }
             )
 

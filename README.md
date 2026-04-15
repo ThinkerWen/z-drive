@@ -69,6 +69,8 @@ cd ..
 uv run z-drive
 ```
 
+可选时区配置：在 `.env` 中设置 `APP_TIMEZONE`（例如 `Asia/Shanghai`、`UTC`、`Asia/Tokyo`），接口返回的时间会按该时区格式化。
+
 ### Docker 启动
 
 ```bash
