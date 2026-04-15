@@ -19,6 +19,7 @@ services:
       DEBUG: "false"
       DATABASE_URL: sqlite:////data/storage/z_drive.db
       STORAGE_PATH: /data/storage
+      APP_TIMEZONE: Asia/Shanghai
       VIEW_ORIGIN: "false"
       ENABLE_BROWSER_CACHE: "true"
       IMAGE_MAX_FILE_SIZE_MB: "50"
@@ -44,6 +45,7 @@ DEBUG=false
 
 DATABASE_URL=sqlite:///./storage/z_drive.db
 STORAGE_PATH=storage
+APP_TIMEZONE=Asia/Shanghai
 
 VIEW_ORIGIN=false
 ENABLE_BROWSER_CACHE=true
@@ -95,6 +97,7 @@ uv run z-drive
 
 - 生产环境下请务必修改 `.env` 里的 `ADMIN_PASSWORD`、`JWT_SECRET` 和 `SIGN_SALT`。
 - 如果你需要静态令牌访问，把 `.env` 里的 `ADMIN_TOKEN` 也改成随机长字符串；Compose 示例中的默认占位值是 `z-drive-change-me-admin-token`，`.env.example` 示例值是 `replace-with-long-random-admin-token`。
+- 如果你的服务器不在东八区，记得把 `APP_TIMEZONE` 改成与你业务一致的 IANA 时区名，例如 `UTC`、`Asia/Shanghai` 或 `Europe/Berlin`。
 - 如果你希望保留上传文件和数据库，记得把 `./storage` 目录持久化到宿主机或云盘卷。
 - 如果是反向代理部署，建议在代理层开启 HTTPS，并把请求头中的真实客户端 IP 透传给后端。
 - 如果你不想暴露 Swagger / OpenAPI，把 `.env` 里的 `DEBUG` 保持为 `false`；只有 `DEBUG=true` 时，`/docs`、`/redoc` 和 `/openapi.json` 才会开放。

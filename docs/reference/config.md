@@ -13,6 +13,7 @@ DEBUG=false
 
 DATABASE_URL=sqlite:///./storage/z_drive.db
 STORAGE_PATH=storage
+APP_TIMEZONE=Asia/Shanghai
 
 VIEW_ORIGIN=false
 ENABLE_BROWSER_CACHE=true
@@ -36,6 +37,7 @@ JWT_EXPIRE_MINUTES=10080
 | `DEBUG` | `false` | 开启调试模式。`DEBUG=true` 时会同时暴露 `/docs`、`/redoc` 和 `/openapi.json`。生产环境建议保持关闭。 |
 | `DATABASE_URL` | `sqlite:///./storage/z_drive.db` | 数据库连接串。默认使用本地 SQLite，数据库文件保存在 `storage/` 下。 |
 | `STORAGE_PATH` | `storage` | 文件存储根目录。图库与云盘相关文件都会写入这里。 |
+| `APP_TIMEZONE` | `Asia/Shanghai` | 应用时区。接口返回的时间字段、列表页和统计页的时间展示都会按这个时区转换；建议填写标准 IANA 时区名。 |
 | `VIEW_ORIGIN` | `false` | 图库访问时是否始终返回原图；关闭时会优先返回压缩预览。 |
 | `ENABLE_BROWSER_CACHE` | `true` | 是否给图片/文件响应添加长期缓存头。 |
 | `IMAGE_MAX_FILE_SIZE_MB` | `50` | 图库上传单文件大小上限，单位 MB。 |
@@ -51,6 +53,7 @@ JWT_EXPIRE_MINUTES=10080
 ## 配置要点
 
 - `DATABASE_URL` 和 `STORAGE_PATH` 是最先需要确认的两个参数。前者决定元数据存到哪里，后者决定文件写到哪里。
+- `APP_TIMEZONE` 决定时间展示和转换的基准时区；如果你的部署环境不在东八区，建议改成与实际业务一致的 IANA 时区名，例如 `UTC`、`Asia/Shanghai` 或 `Europe/Berlin`。
 - 如果你想在图床链接中启用签名校验，把 `IMAGE_AUTH_MODE` 改为 `sign`，并同步配置 `SIGN_SALT`。
 - 管理端账号密码不要沿用默认值，否则任何能访问站点的人都能登录后台。
 - 如果你不需要静态令牌，可以把 `ADMIN_TOKEN` 留空；如果需要用于外部系统或脚本接入，请改成随机长字符串。文档示例默认使用 `replace-with-long-random-admin-token`。
