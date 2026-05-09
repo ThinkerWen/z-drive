@@ -1,7 +1,11 @@
 import { Suspense, lazy, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { BarChart3, CheckCircle2, Copy, ExternalLink, Loader2, LogOut, Palette, Shield, Trash2, Upload, XCircle } from "lucide-react";
+import { BarChart3, CheckCircle2, Copy, ExternalLink, Loader2, LogOut, Shield, Trash2, Upload, XCircle } from "lucide-react";
 import { useLocation, useNavigate } from "react-router-dom";
 
+import { SidebarProvider, SidebarInset, SidebarTrigger } from "@/components/ui/sidebar";
+import { AppSidebar } from "@/components/app-sidebar";
+import { Breadcrumb, BreadcrumbItem, BreadcrumbList, BreadcrumbPage } from "@/components/ui/breadcrumb";
+import { Separator } from "@/components/ui/separator";
 import { Button } from "@/components/ui/button";
 import { CloudPage } from "@/components/cloud-page";
 import { SnippetPage } from "@/components/snippet-page";
@@ -25,16 +29,7 @@ type CloudSubPage = "upload" | "files" | "shares" | "stats";
 type SnippetSubPage = "editor" | "list" | "shares" | "stats";
 type ManageSection = "gallery" | "cloud" | "snippet";
 type UploadTaskStatus = "uploading" | "processing" | "success" | "error" | "cancelled";
-type ThemeName = "amber" | "ocean" | "forest" | "rose" | "midnight";
 type ToastKind = "success" | "error";
-
-const THEME_OPTIONS: Array<{ key: ThemeName; label: string; preview: string }> = [
-  { key: "amber", label: "琥珀", preview: "#ea580c" },
-  { key: "ocean", label: "海蓝", preview: "#0ea5e9" },
-  { key: "forest", label: "森林", preview: "#16a34a" },
-  { key: "rose", label: "玫红", preview: "#f43f5e" },
-  { key: "midnight", label: "黑夜", preview: "#111827" },
-];
 
 interface UploadTask {
   id: string;
@@ -165,8 +160,6 @@ export default function App() {
   const [accessModalPassword, setAccessModalPassword] = useState("");
   const [accessModalKeepExisting, setAccessModalKeepExisting] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<ImageListItem | null>(null);
-  const [theme, setTheme] = useState<ThemeName>("amber");
-  const [themePickerOpen, setThemePickerOpen] = useState(false);
   const activeUploadsRef = useRef<Record<string, XMLHttpRequest>>({});
 
   const pageCount = useMemo(() => Math.max(Math.ceil(total / PAGE_SIZE), 1), [total]);
@@ -326,20 +319,6 @@ export default function App() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isLoginRoute, isPublicErrorRoute, isPublicPreviewRoute, isPublicShareRoute, isPublicSnippetRoute, pathname]);
 
-  useEffect(() => {
-    if (isPublicPreviewRoute || isPublicShareRoute || isPublicSnippetRoute || isPublicErrorRoute || isLoginRoute) {
-      return;
-    }
-    const saved = localStorage.getItem("z-drive-theme") as ThemeName | null;
-    const normalized = saved && THEME_OPTIONS.some((option) => option.key === saved) ? saved : "amber";
-    setTheme(normalized);
-    if (normalized === "amber") {
-      document.documentElement.removeAttribute("data-theme");
-    } else {
-      document.documentElement.setAttribute("data-theme", normalized);
-    }
-  }, [isLoginRoute, isPublicErrorRoute, isPublicPreviewRoute, isPublicShareRoute, isPublicSnippetRoute]);
-
   if (isPublicPreviewRoute && previewPath) {
     return <PublicPreviewPage shortCode={previewPath.shortCode} ext={previewPath.ext} />;
   }
@@ -354,17 +333,6 @@ export default function App() {
 
   if (isPublicErrorRoute) {
     return <PublicErrorPage />;
-  }
-
-  function applyTheme(nextTheme: ThemeName) {
-    setTheme(nextTheme);
-    localStorage.setItem("z-drive-theme", nextTheme);
-    if (nextTheme === "amber") {
-      document.documentElement.removeAttribute("data-theme");
-    } else {
-      document.documentElement.setAttribute("data-theme", nextTheme);
-    }
-    setThemePickerOpen(false);
   }
 
   async function handleLogin(event: React.FormEvent<HTMLFormElement>) {
@@ -722,20 +690,20 @@ export default function App() {
   if (isLoginView) {
     return (
       <div className="mx-auto flex min-h-screen w-full max-w-7xl items-center justify-center px-4 py-8 sm:px-8">
-        <section className="soft-panel w-full max-w-md rounded-3xl p-7">
+        <section className="w-full max-w-md rounded-xl border bg-card p-7 shadow-sm">
           <p className="text-xs font-semibold uppercase tracking-[0.24em] text-primary/90">Z-Drive Gallery</p>
           <h2 className="mt-3 text-2xl font-semibold">管理员登录</h2>
           <p className="mt-1 text-sm text-muted-foreground">请输入管理凭据后进入工作台。</p>
           <form className="mt-5 space-y-3" onSubmit={handleLogin}>
             <input
-              className="w-full rounded-xl border border-white/80 bg-white/80 px-3 py-2.5 text-sm outline-none ring-offset-2 transition focus-visible:ring-2 focus-visible:ring-primary"
+              className="w-full rounded-xl border border-input/80 bg-card px-3 py-2.5 text-sm outline-none ring-offset-2 transition focus-visible:ring-2 focus-visible:ring-primary"
               placeholder="username"
               value={username}
               onChange={(e) => setUsername(e.target.value)}
             />
             <input
               type="password"
-              className="w-full rounded-xl border border-white/80 bg-white/80 px-3 py-2.5 text-sm outline-none ring-offset-2 transition focus-visible:ring-2 focus-visible:ring-primary"
+              className="w-full rounded-xl border border-input/80 bg-card px-3 py-2.5 text-sm outline-none ring-offset-2 transition focus-visible:ring-2 focus-visible:ring-primary"
               placeholder="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
@@ -751,136 +719,32 @@ export default function App() {
   }
 
   return (
-    <div className="mx-auto flex min-h-screen w-full max-w-7xl flex-col gap-6 px-4 py-8 sm:px-8">
-      <header className="glass-panel rounded-3xl p-7 sm:p-8">
-        <div className="flex flex-wrap items-center justify-between gap-4">
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.24em] text-primary/90">{activeBrand}</p>
-            <h1 className="mt-3 text-3xl font-semibold tracking-tight sm:text-4xl">管理控制台</h1>
-            <p className="mt-2 max-w-2xl text-sm text-muted-foreground">
-              专注个人使用的云工具平台
-            </p>
+    <SidebarProvider>
+      <AppSidebar />
+      <SidebarInset>
+        <header className="sticky top-0 z-50 flex h-14 shrink-0 items-center justify-between gap-2 border-b bg-background px-4">
+          <div className="flex items-center gap-2">
+            <SidebarTrigger className="-ml-1" />
+            <Separator orientation="vertical" className="mr-2 h-4" />
+            <Breadcrumb>
+              <BreadcrumbList>
+                <BreadcrumbItem>
+                  <BreadcrumbPage>{activeBrand}</BreadcrumbPage>
+                </BreadcrumbItem>
+              </BreadcrumbList>
+            </Breadcrumb>
           </div>
-          <div className="flex gap-2">
-            {isAuthed ? (
-              <>
-                <div className="relative">
-                  <Button
-                    variant="outline"
-                    onClick={() => setThemePickerOpen((value) => !value)}
-                    disabled={busy}
-                  >
-                    <Palette className="mr-2 h-4 w-4" />
-                    主题
-                  </Button>
-                  {themePickerOpen ? (
-                    <div className="absolute right-0 top-11 z-20 w-44 rounded-xl border border-border/70 bg-white/95 p-2 shadow-xl backdrop-blur">
-                      {THEME_OPTIONS.map((option) => (
-                        <button
-                          key={option.key}
-                          type="button"
-                          className={
-                            theme === option.key
-                              ? "mb-1 flex w-full items-center gap-2 rounded-lg bg-primary/10 px-2 py-1.5 text-left text-xs font-semibold"
-                              : "mb-1 flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left text-xs hover:bg-muted"
-                          }
-                          onClick={() => applyTheme(option.key)}
-                        >
-                          <span className="inline-block h-3 w-3 rounded-full border" style={{ background: option.preview }} />
-                          {option.label}
-                        </button>
-                      ))}
-                    </div>
-                  ) : null}
-                </div>
-                <Button variant="outline" onClick={() => void handleLogout()} disabled={busy}>
-                  <LogOut className="mr-2 h-4 w-4" />
-                  退出
-                </Button>
-              </>
-            ) : null}
-          </div>
-        </div>
-        {isAuthed ? (
-          <>
-            <nav className="mt-5 flex flex-wrap gap-2 rounded-2xl border border-white/60 bg-white/55 p-2">
-              <TabButton current={activeSection} target="gallery" onClick={() => {
-                setActiveSection("gallery");
-                setActiveGalleryPage("gallery");
-                navigate("/gallery/index");
-              }}>图库</TabButton>
-              <TabButton current={activeSection} target="cloud" onClick={() => {
-                setActiveSection("cloud");
-                setActiveCloudPage("files");
-                navigate("/cloud/index");
-              }}>云盘</TabButton>
-              <TabButton current={activeSection} target="snippet" onClick={() => {
-                setActiveSection("snippet");
-                setActiveSnippetPage("editor");
-                navigate("/snippets/editor");
-              }}>代码片</TabButton>
-            </nav>
-            {activeSection === "gallery" ? (
-              <nav className="mt-3 flex flex-wrap gap-2 rounded-2xl border border-white/60 bg-white/55 p-2">
-                <TabButton current={activeGalleryPage} target="upload" onClick={() => {
-                  setActiveGalleryPage("upload");
-                  navigate("/gallery/upload");
-                }}>上传</TabButton>
-                <TabButton current={activeGalleryPage} target="gallery" onClick={() => {
-                  setActiveGalleryPage("gallery");
-                  navigate("/gallery/index");
-                }}>图库</TabButton>
-                <TabButton current={activeGalleryPage} target="stats" onClick={() => {
-                  setActiveGalleryPage("stats");
-                  navigate("/gallery/stats");
-                }}>统计</TabButton>
-              </nav>
-            ) : activeSection === "cloud" ? (
-              <nav className="mt-3 flex flex-wrap gap-2 rounded-2xl border border-white/60 bg-white/55 p-2">
-                <TabButton current={activeCloudPage} target="upload" onClick={() => {
-                  setActiveCloudPage("upload");
-                  navigate("/cloud/upload");
-                }}>上传</TabButton>
-                <TabButton current={activeCloudPage} target="files" onClick={() => {
-                  setActiveCloudPage("files");
-                  navigate("/cloud/index");
-                }}>文件管理</TabButton>
-                <TabButton current={activeCloudPage} target="shares" onClick={() => {
-                  setActiveCloudPage("shares");
-                  navigate("/cloud/shares");
-                }}>分享管理</TabButton>
-                <TabButton current={activeCloudPage} target="stats" onClick={() => {
-                  setActiveCloudPage("stats");
-                  navigate("/cloud/stats");
-                }}>数据统计</TabButton>
-              </nav>
-            ) : (
-              <nav className="mt-3 flex flex-wrap gap-2 rounded-2xl border border-white/60 bg-white/55 p-2">
-                <TabButton current={activeSnippetPage} target="editor" onClick={() => {
-                  setActiveSnippetPage("editor");
-                  navigate(getSnippetRoute("editor"));
-                }}>编辑器</TabButton>
-                <TabButton current={activeSnippetPage} target="list" onClick={() => {
-                  setActiveSnippetPage("list");
-                  navigate(getSnippetRoute("list"));
-                }}>代码片列表</TabButton>
-                <TabButton current={activeSnippetPage} target="shares" onClick={() => {
-                  setActiveSnippetPage("shares");
-                  navigate(getSnippetRoute("shares"));
-                }}>分享管理</TabButton>
-                <TabButton current={activeSnippetPage} target="stats" onClick={() => {
-                  setActiveSnippetPage("stats");
-                  navigate(getSnippetRoute("stats"));
-                }}>数据统计</TabButton>
-              </nav>
-            )}
-          </>
-        ) : null}
-      </header>
+          {isAuthed ? (
+            <Button variant="ghost" size="icon" onClick={() => void handleLogout()} disabled={busy} title="退出">
+               <LogOut className="h-4 w-4 text-muted-foreground" />
+            </Button>
+          ) : null}
+        </header>
 
-      <>
+        <main className="flex flex-1 flex-col gap-4 p-4 pt-0">
+          <div className="flex-1 space-y-4">
           {activeSection === "gallery" && activeGalleryPage === "upload" ? (
-            <section className="soft-panel rounded-3xl p-5 sm:p-6">
+            <section className="rounded-xl border bg-card p-5 shadow-sm sm:p-6">
             <h2 className="mb-3 flex items-center text-lg font-semibold">
               <Upload className="mr-2 h-5 w-5" /> 上传页
             </h2>
@@ -898,7 +762,7 @@ export default function App() {
                 className={
                   galleryDropActive
                     ? "flex min-h-40 cursor-pointer flex-col items-center justify-center rounded-2xl border-2 border-primary bg-primary/5 px-4 py-8 text-center"
-                    : "flex min-h-40 cursor-pointer flex-col items-center justify-center rounded-2xl border-2 border-dashed border-border/80 bg-white/70 px-4 py-8 text-center transition hover:border-primary/70 hover:bg-white"
+                    : "flex min-h-40 cursor-pointer flex-col items-center justify-center rounded-2xl border-2 border-dashed border-border/80 bg-muted px-4 py-8 text-center transition hover:border-primary/70 hover:bg-card"
                 }
                 onDragOver={(event) => {
                   event.preventDefault();
@@ -911,7 +775,7 @@ export default function App() {
               >
                 <p className="text-base font-semibold">拖拽文件到这里上传</p>
                 <p className="mt-1 text-sm text-muted-foreground">或点击此区域选择文件，可一次上传多个文件</p>
-                <p className="mt-3 max-w-full truncate rounded-lg bg-white/80 px-3 py-1.5 text-xs text-muted-foreground" title={selectedFilesLabel}>
+                <p className="mt-3 max-w-full truncate rounded-lg bg-card px-3 py-1.5 text-xs text-muted-foreground" title={selectedFilesLabel}>
                   {selectedFilesLabel}
                 </p>
               </label>
@@ -934,7 +798,7 @@ export default function App() {
                   return (
                     <article
                       key={task.id}
-                      className="rounded-2xl border border-border/70 bg-white/82 p-4 shadow-[0_8px_18px_rgba(106,71,30,0.08)]"
+                      className="rounded-2xl border border-border/70 bg-card p-4 shadow-sm"
                     >
                       <div className="flex flex-wrap items-start gap-3">
                         {result?.success && result.view_url ? (
@@ -1046,7 +910,7 @@ export default function App() {
                 })}
               </div>
             ) : (
-              <div className="mt-4 rounded-xl border border-dashed border-border/80 bg-white/55 px-4 py-6 text-center text-sm text-muted-foreground">
+              <div className="mt-4 rounded-xl border border-dashed border-border/80 bg-muted/50 px-4 py-6 text-center text-sm text-muted-foreground">
                 暂无上传记录
               </div>
             )}
@@ -1054,9 +918,9 @@ export default function App() {
           ) : null}
 
           {activeSection === "gallery" && activeGalleryPage === "gallery" ? (
-            <section className="soft-panel rounded-3xl p-5 sm:p-6">
+            <section className="rounded-xl border bg-card p-5 shadow-sm sm:p-6">
             <h2 className="mb-3 text-lg font-semibold">图库页</h2>
-            <form className="mb-4 flex flex-wrap items-center gap-2 rounded-2xl border border-white/70 bg-white/70 p-3" onSubmit={applyFilters}>
+            <form className="mb-4 flex flex-wrap items-center gap-2 rounded-2xl border border-input/70 bg-muted p-3" onSubmit={applyFilters}>
               <div className="flex gap-2">
                 <Button
                   type="button"
@@ -1093,7 +957,7 @@ export default function App() {
             {items.length > 0 ? (
               <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4">
                 {items.map((item) => (
-                  <article key={item.id} className="overflow-hidden rounded-2xl border border-border/70 bg-white/85 shadow-[0_8px_18px_rgba(106,71,30,0.08)] transition hover:-translate-y-0.5">
+                  <article key={item.id} className="overflow-hidden rounded-2xl border border-border/70 bg-card shadow-sm transition">
                     <button
                       type="button"
                       className="block h-40 w-full overflow-hidden bg-muted"
@@ -1151,7 +1015,7 @@ export default function App() {
                 ))}
               </div>
             ) : (
-              <div className="rounded-2xl border border-dashed border-border/80 bg-white/55 px-4 py-10 text-center text-sm text-muted-foreground">
+              <div className="rounded-2xl border border-dashed border-border/80 bg-muted/50 px-4 py-10 text-center text-sm text-muted-foreground">
                 暂无符合条件的文件
               </div>
             )}
@@ -1187,7 +1051,7 @@ export default function App() {
                 onClick={() => setPreviewItem(null)}
               >
                 <div
-                  className="w-full max-w-4xl rounded-3xl border border-white/70 bg-white p-4 shadow-[0_18px_48px_rgba(0,0,0,0.22)]"
+                  className="w-full max-w-4xl rounded-xl border bg-card p-4 shadow-lg"
                   onClick={(event) => event.stopPropagation()}
                 >
                   <div className="mb-4 flex items-center justify-between">
@@ -1226,7 +1090,7 @@ export default function App() {
                         </div>
                       </div>
 
-                      <div className="rounded-2xl border border-border/70 bg-white/80 p-3">
+                      <div className="rounded-2xl border border-border/70 bg-card p-3">
                         <p className="mb-2 text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">基础信息</p>
                         <dl className="grid grid-cols-2 gap-2 text-xs">
                           <InfoCell label="短码" value={previewItem.short_code} />
@@ -1238,7 +1102,7 @@ export default function App() {
                         </dl>
                       </div>
 
-                      <div className="rounded-2xl border border-border/70 bg-white/80 p-3 text-xs text-muted-foreground">
+                      <div className="rounded-2xl border border-border/70 bg-card p-3 text-xs text-muted-foreground">
                         <p className="font-semibold text-foreground">创建时间</p>
                         <p className="mt-1">{previewItem.created_at}</p>
                       </div>
@@ -1254,7 +1118,7 @@ export default function App() {
                 onClick={() => setAccessModalItem(null)}
               >
                 <div
-                  className="w-full max-w-lg rounded-3xl border border-white/70 bg-white p-5 shadow-[0_18px_48px_rgba(0,0,0,0.22)]"
+                  className="w-full max-w-lg rounded-xl border bg-card p-5 shadow-lg"
                   onClick={(event) => event.stopPropagation()}
                 >
                   <h3 className="text-base font-semibold">设置访问模式</h3>
@@ -1266,7 +1130,7 @@ export default function App() {
                       className={
                         accessModalMode === "none"
                           ? "w-full rounded-xl border-2 border-primary bg-primary/5 p-3 text-left"
-                          : "w-full rounded-xl border border-border/70 bg-white p-3 text-left"
+                          : "w-full rounded-xl border border-border/70 border bg-card p-3 text-left"
                       }
                       onClick={() => {
                         setAccessModalMode("none");
@@ -1282,7 +1146,7 @@ export default function App() {
                       className={
                         accessModalMode === "individual"
                           ? "w-full rounded-xl border-2 border-primary bg-primary/5 p-3 text-left"
-                          : "w-full rounded-xl border border-border/70 bg-white p-3 text-left"
+                          : "w-full rounded-xl border border-border/70 border bg-card p-3 text-left"
                       }
                       onClick={() => setAccessModalMode("individual")}
                     >
@@ -1347,7 +1211,7 @@ export default function App() {
                 onClick={() => setDeleteTarget(null)}
               >
                 <div
-                  className="w-full max-w-md rounded-3xl border border-white/70 bg-white p-5 shadow-[0_18px_48px_rgba(0,0,0,0.22)]"
+                  className="w-full max-w-md rounded-xl border bg-card p-5 shadow-lg"
                   onClick={(event) => event.stopPropagation()}
                 >
                   <h3 className="text-base font-semibold">删除确认</h3>
@@ -1380,7 +1244,7 @@ export default function App() {
           ) : null}
 
           {activeSection === "gallery" && activeGalleryPage === "stats" ? (
-            <section className="space-y-4 rounded-3xl border border-border/70 bg-white/74 p-5 shadow-[0_10px_26px_rgba(106,71,30,0.08)] sm:p-6">
+            <section className="space-y-4 rounded-xl border border-border/70 bg-card p-5 shadow-sm sm:p-6">
               <h2 className="text-lg font-semibold">统计页</h2>
               <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-6">
                 <MetricCard icon={<BarChart3 className="h-4 w-4" />} title="总图片" value={String(stats?.total_images ?? 0)} />
@@ -1392,7 +1256,7 @@ export default function App() {
               </div>
 
               <div className="grid gap-4 lg:grid-cols-2">
-                <article className="rounded-2xl border border-border/70 bg-white/80 p-4">
+                <article className="rounded-2xl border border-border/70 bg-card p-4">
                   <h3 className="mb-3 font-semibold">访问趋势（近 14 天）</h3>
                   <div className="h-72 rounded-xl border border-border/60 bg-muted/25 p-2">
                     {(stats?.daily_stats ?? []).length > 0 ? (
@@ -1405,7 +1269,7 @@ export default function App() {
                   </div>
                 </article>
 
-                <article className="rounded-2xl border border-border/70 bg-white/80 p-4">
+                <article className="rounded-2xl border border-border/70 bg-card p-4">
                   <h3 className="mb-3 font-semibold">热门图片 Top 5</h3>
                   <div className="space-y-2">
                     {(stats?.top_images ?? []).length > 0 ? (
@@ -1431,7 +1295,7 @@ export default function App() {
               </div>
 
               <div className="grid gap-4 lg:grid-cols-2">
-                <article className="rounded-2xl border border-border/70 bg-white/80 p-4">
+                <article className="rounded-2xl border border-border/70 bg-card p-4">
                   <h3 className="mb-3 font-semibold">访问来源 Top 5</h3>
                   <div className="space-y-2">
                     {(stats?.top_refers ?? []).length > 0 ? (
@@ -1456,7 +1320,7 @@ export default function App() {
                   </div>
                 </article>
 
-                <article className="rounded-2xl border border-border/70 bg-white/80 p-4">
+                <article className="rounded-2xl border border-border/70 bg-card p-4">
                   <h3 className="mb-3 font-semibold">访问 IP Top 5</h3>
                   <div className="space-y-2">
                     {(stats?.top_origins ?? []).length > 0 ? (
@@ -1511,9 +1375,11 @@ export default function App() {
               onNotify={notifyAuto}
             />
           ) : null}
-      </>
+      </div>
+      </main>
+      </SidebarInset>
       <ToastPopup toast={toast} />
-    </div>
+    </SidebarProvider>
   );
 }
 
@@ -1565,9 +1431,9 @@ function MetricCard({
   icon?: ReactNode;
 }) {
   return (
-    <article className="rounded-2xl border border-border/70 bg-white/72 p-4 shadow-[0_8px_18px_rgba(106,71,30,0.08)]">
-      <p className="text-[11px] uppercase tracking-[0.16em] text-muted-foreground">{title}</p>
-      <p className="mt-2 flex items-center gap-2 text-2xl font-semibold">
+    <article className="rounded-xl border bg-card p-4 shadow-sm">
+      <p className="text-xs font-medium text-muted-foreground">{title}</p>
+      <p className="mt-2 flex items-center gap-2 text-2xl font-bold">
         {icon}
         {value}
       </p>
@@ -1619,7 +1485,7 @@ function MiniCopyRow({
   onCopy: () => void;
 }) {
   return (
-    <div className="rounded-xl border border-border/70 bg-white/80 p-2">
+    <div className="rounded-xl border border-border/70 bg-card p-2">
       <p className="mb-1 text-[11px] font-semibold text-muted-foreground">{label}</p>
       <div className="flex items-center gap-2">
         <span className="min-w-0 flex-1 truncate font-mono text-[11px] text-foreground/90" title={value}>
@@ -1661,3 +1527,4 @@ function formatFileSize(bytes: number) {
   const value = bytes / Math.pow(1024, index);
   return `${value.toFixed(2)} ${units[index]}`;
 }
+

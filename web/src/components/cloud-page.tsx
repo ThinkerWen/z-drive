@@ -928,7 +928,7 @@ export function CloudPage({ mode, onAuthExpired, onNotify }: CloudPageProps) {
   }
 
   return (
-    <section className="soft-panel rounded-3xl p-5 sm:p-6">
+    <section className="rounded-xl border bg-card p-5 shadow-sm sm:p-6">
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
         <div>
           <h2 className="text-lg font-semibold">
@@ -953,7 +953,7 @@ export function CloudPage({ mode, onAuthExpired, onNotify }: CloudPageProps) {
             <CloudMetricCard title="已用空间" value={`${formatFileSize(summary?.total_size ?? 0)} / ${formatFileSize(summary?.total_space ?? 0)}`} />
           </div>
 
-          <div className="mb-4 rounded-2xl border border-border/70 bg-white/80 p-3">
+          <div className="mb-4 rounded-2xl border border-border/70 bg-card p-3">
             <div className="mb-2 flex items-center justify-between text-xs text-muted-foreground">
               <span>空间使用率</span>
               <span>{usagePercent}%</span>
@@ -971,7 +971,7 @@ export function CloudPage({ mode, onAuthExpired, onNotify }: CloudPageProps) {
             className={
               uploadDropActive
                 ? "flex min-h-48 cursor-pointer flex-col items-center justify-center rounded-2xl border-2 border-primary bg-primary/5 p-6 text-center"
-                : "flex min-h-48 cursor-pointer flex-col items-center justify-center rounded-2xl border-2 border-dashed border-border/80 bg-white/70 p-6 text-center transition hover:border-primary/70 hover:bg-white"
+                : "flex min-h-48 cursor-pointer flex-col items-center justify-center rounded-2xl border-2 border-dashed border-border/80 bg-muted p-6 text-center transition hover:border-primary/70 hover:bg-card"
             }
             onDragOver={(event) => {
               event.preventDefault();
@@ -984,7 +984,7 @@ export function CloudPage({ mode, onAuthExpired, onNotify }: CloudPageProps) {
           >
             <p className="text-base font-semibold">拖拽文件到这里上传</p>
             <p className="mt-1 text-sm text-muted-foreground">或点击按钮选择多个文件上传到当前目录</p>
-            <p className="mt-3 max-w-full truncate rounded-lg bg-white/80 px-3 py-1.5 text-xs text-muted-foreground" title={cloudSelectedFilesLabel}>
+            <p className="mt-3 max-w-full truncate rounded-lg bg-card px-3 py-1.5 text-xs text-muted-foreground" title={cloudSelectedFilesLabel}>
               {cloudSelectedFilesLabel}
             </p>
             <div className="mt-4">
@@ -1004,7 +1004,7 @@ export function CloudPage({ mode, onAuthExpired, onNotify }: CloudPageProps) {
           {cloudUploadTasks.length > 0 ? (
             <div className="mt-4 grid gap-2">
               {cloudUploadTasks.map((task) => (
-                <article key={task.id} className="rounded-xl border border-border/70 bg-white/85 p-3">
+                <article key={task.id} className="rounded-xl border border-border/70 bg-card p-3">
                   <div className="flex items-center justify-between gap-3">
                     <div className="min-w-0 flex-1">
                       <p className="truncate text-xs font-semibold" title={task.file.name}>{task.file.name}</p>
@@ -1064,7 +1064,7 @@ export function CloudPage({ mode, onAuthExpired, onNotify }: CloudPageProps) {
                       className={
                         isCurrent
                           ? "rounded-md border border-primary/35 bg-primary/10 px-2.5 py-1 text-primary"
-                          : "rounded-md border border-border/70 bg-white px-2.5 py-1 hover:bg-muted/40"
+                          : "rounded-md border border-border/70 bg-card px-2.5 py-1 hover:bg-muted/40"
                       }
                       onClick={() => jumpToPath(index)}
                     >
@@ -1088,7 +1088,7 @@ export function CloudPage({ mode, onAuthExpired, onNotify }: CloudPageProps) {
 
           <form className="mb-4 grid gap-2 lg:grid-cols-[1fr_auto_auto]" onSubmit={handleSearchSubmit}>
             <input
-              className="rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-900 placeholder:text-slate-500 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/30"
+              className="rounded-xl border border-slate-300 bg-card px-3 py-2.5 text-sm text-slate-900 placeholder:text-slate-500 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/30"
               placeholder="搜索名称"
               value={queryInput}
               onChange={(event) => setQueryInput(event.target.value)}
@@ -1110,7 +1110,7 @@ export function CloudPage({ mode, onAuthExpired, onNotify }: CloudPageProps) {
             />
           </form>
 
-          <div className="mb-4 rounded-2xl border border-border/70 bg-white/80 p-3">
+          <div className="mb-4 rounded-2xl border border-border/70 bg-card p-3">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div className="text-xs text-muted-foreground">
                 已选 {selectedIds.length} / {items.length} 项
@@ -1130,7 +1130,7 @@ export function CloudPage({ mode, onAuthExpired, onNotify }: CloudPageProps) {
                     操作 <ChevronDown className="ml-1 h-3.5 w-3.5" />
                   </Button>
                   {batchActionMenuOpen ? (
-                    <div className="absolute right-0 top-9 z-20 min-w-32 rounded-lg border border-border/80 bg-white p-1.5 shadow-lg">
+                    <div className="absolute right-0 top-9 z-20 min-w-32 rounded-lg border border-border/80 bg-card p-1.5 shadow-lg">
                       <button
                         type="button"
                         className="flex w-full items-center rounded-md px-2.5 py-1.5 text-left text-xs transition hover:bg-muted"
@@ -1175,7 +1175,7 @@ export function CloudPage({ mode, onAuthExpired, onNotify }: CloudPageProps) {
                     <Plus className="mr-1 h-3.5 w-3.5" /> 新建
                   </Button>
                   {createMenuOpen ? (
-                    <div className="absolute right-0 top-9 z-20 min-w-32 rounded-lg border border-border/80 bg-white p-1.5 shadow-lg">
+                    <div className="absolute right-0 top-9 z-20 min-w-32 rounded-lg border border-border/80 bg-card p-1.5 shadow-lg">
                       <button
                         type="button"
                         className="flex w-full items-center rounded-md px-2.5 py-1.5 text-left text-xs transition hover:bg-muted"
@@ -1223,7 +1223,7 @@ export function CloudPage({ mode, onAuthExpired, onNotify }: CloudPageProps) {
                           className={
                             isSelected
                               ? "absolute right-1 top-1 z-10 inline-flex h-5 w-5 items-center justify-center rounded-md border border-primary/40 bg-primary text-primary-foreground shadow-sm"
-                              : "absolute right-1 top-1 z-10 inline-flex h-5 w-5 items-center justify-center rounded-md border border-border/80 bg-white/95 text-transparent opacity-0 shadow-sm transition hover:border-primary/40 group-hover:opacity-100"
+                              : "absolute right-1 top-1 z-10 inline-flex h-5 w-5 items-center justify-center rounded-md border border-border/80 bg-card text-transparent opacity-0 shadow-sm transition hover:border-primary/40 group-hover:opacity-100"
                           }
                           onClick={(event) => {
                             event.stopPropagation();
@@ -1239,7 +1239,7 @@ export function CloudPage({ mode, onAuthExpired, onNotify }: CloudPageProps) {
                           disabled={!item.is_folder}
                           title={item.name}
                         >
-                          <span className={`flex h-20 w-20 shrink-0 items-center justify-center rounded-2xl ${visual.bgClass} shadow-[0_8px_18px_rgba(106,71,30,0.12)]`}>
+                          <span className={`flex h-20 w-20 shrink-0 items-center justify-center rounded-2xl ${visual.bgClass} shadow-sm`}>
                             {visual.icon}
                           </span>
                           <p className="w-full truncate text-[11px] font-semibold leading-tight" title={item.name}>{item.name}</p>
@@ -1251,14 +1251,14 @@ export function CloudPage({ mode, onAuthExpired, onNotify }: CloudPageProps) {
               ))}
             </div>
           ) : (
-            <div className="rounded-2xl border border-dashed border-border/80 bg-white/55 px-4 py-10 text-center text-sm text-muted-foreground">
+            <div className="rounded-2xl border border-dashed border-border/80 bg-muted/50 px-4 py-10 text-center text-sm text-muted-foreground">
               当前目录暂无文件
             </div>
           )}
 
           {contextMenu ? (
             <div
-              className="fixed z-[70] min-w-44 rounded-xl border border-border/80 bg-white/95 p-1.5 shadow-[0_14px_36px_rgba(0,0,0,0.22)] backdrop-blur"
+              className="fixed z-[70] min-w-44 rounded-xl border border-border/80 bg-card p-1.5 shadow-sm"
               style={{ left: contextMenu.x, top: contextMenu.y }}
               onClick={(event) => event.stopPropagation()}
             >
@@ -1304,7 +1304,7 @@ export function CloudPage({ mode, onAuthExpired, onNotify }: CloudPageProps) {
               onClick={() => setPropertiesItem(null)}
             >
               <div
-                className="w-full max-w-md rounded-2xl border border-white/70 bg-white p-4 shadow-[0_18px_48px_rgba(0,0,0,0.22)]"
+                className="w-full max-w-md rounded-2xl border bg-card p-4 shadow-sm"
                 onClick={(event) => event.stopPropagation()}
               >
                 <h3 className="text-sm font-semibold">文件属性</h3>
@@ -1335,13 +1335,13 @@ export function CloudPage({ mode, onAuthExpired, onNotify }: CloudPageProps) {
               onClick={() => setRenameModalItem(null)}
             >
               <div
-                className="w-full max-w-md rounded-2xl border border-white/70 bg-white p-4 shadow-[0_18px_48px_rgba(0,0,0,0.22)]"
+                className="w-full max-w-md rounded-2xl border bg-card p-4 shadow-sm"
                 onClick={(event) => event.stopPropagation()}
               >
                 <h3 className="text-sm font-semibold">重命名</h3>
                 <p className="mt-1 truncate text-xs text-muted-foreground" title={renameModalItem.name}>{renameModalItem.name}</p>
                 <input
-                  className="mt-4 w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-900 placeholder:text-slate-500 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/30"
+                  className="mt-4 w-full rounded-xl border border-slate-300 bg-card px-3 py-2.5 text-sm text-slate-900 placeholder:text-slate-500 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/30"
                   value={renameValue}
                   onChange={(event) => setRenameValue(event.target.value)}
                   placeholder="输入新名称"
@@ -1360,7 +1360,7 @@ export function CloudPage({ mode, onAuthExpired, onNotify }: CloudPageProps) {
               onClick={() => setShareModalItem(null)}
             >
               <div
-                className="w-full max-w-md rounded-2xl border border-white/70 bg-white p-4 shadow-[0_18px_48px_rgba(0,0,0,0.22)]"
+                className="w-full max-w-md rounded-2xl border bg-card p-4 shadow-sm"
                 onClick={(event) => event.stopPropagation()}
               >
                 <h3 className="text-sm font-semibold">创建分享</h3>
@@ -1369,7 +1369,7 @@ export function CloudPage({ mode, onAuthExpired, onNotify }: CloudPageProps) {
                   <div>
                     <label className="mb-1 block text-xs text-muted-foreground">访问密码（可选）</label>
                     <input
-                      className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-900 placeholder:text-slate-500 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/30"
+                      className="w-full rounded-xl border border-slate-300 bg-card px-3 py-2.5 text-sm text-slate-900 placeholder:text-slate-500 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/30"
                       value={sharePassword}
                       onChange={(event) => setSharePassword(event.target.value)}
                       placeholder="留空表示无需密码"
@@ -1378,7 +1378,7 @@ export function CloudPage({ mode, onAuthExpired, onNotify }: CloudPageProps) {
                   <div>
                     <label className="mb-1 block text-xs text-muted-foreground">过期分钟数（可选）</label>
                     <input
-                      className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-900 placeholder:text-slate-500 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/30"
+                      className="w-full rounded-xl border border-slate-300 bg-card px-3 py-2.5 text-sm text-slate-900 placeholder:text-slate-500 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/30"
                       value={shareExpiresMinutes}
                       onChange={(event) => setShareExpiresMinutes(event.target.value)}
                       placeholder="留空表示永不过期"
@@ -1399,7 +1399,7 @@ export function CloudPage({ mode, onAuthExpired, onNotify }: CloudPageProps) {
               onClick={closeCreateFolderModal}
             >
               <div
-                className="w-full max-w-md rounded-2xl border border-white/70 bg-white p-4 shadow-[0_18px_48px_rgba(0,0,0,0.22)]"
+                className="w-full max-w-md rounded-2xl border bg-card p-4 shadow-sm"
                 onClick={(event) => event.stopPropagation()}
               >
                 <h3 className="text-sm font-semibold">新建文件夹</h3>
@@ -1413,7 +1413,7 @@ export function CloudPage({ mode, onAuthExpired, onNotify }: CloudPageProps) {
                 >
                   <input
                     autoFocus
-                    className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-900 placeholder:text-slate-500 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/30"
+                    className="w-full rounded-xl border border-slate-300 bg-card px-3 py-2.5 text-sm text-slate-900 placeholder:text-slate-500 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/30"
                     value={createFolderName}
                     onChange={(event) => setCreateFolderName(event.target.value)}
                     placeholder="请输入文件夹名称"
@@ -1433,7 +1433,7 @@ export function CloudPage({ mode, onAuthExpired, onNotify }: CloudPageProps) {
               onClick={() => setPreviewItem(null)}
             >
               <div
-                className="w-full max-w-5xl rounded-2xl border border-white/70 bg-white p-4 shadow-[0_18px_48px_rgba(0,0,0,0.22)]"
+                className="w-full max-w-5xl rounded-2xl border bg-card p-4 shadow-sm"
                 onClick={(event) => event.stopPropagation()}
               >
                 <div className="mb-3 flex items-center justify-between gap-3">
@@ -1449,9 +1449,9 @@ export function CloudPage({ mode, onAuthExpired, onNotify }: CloudPageProps) {
                   ) : getCloudPreviewKind(previewItem) === "video" ? (
                     <PlyrVideo src={buildCloudPreviewUrl(previewItem.id)} className="max-h-[68vh] w-full rounded" />
                   ) : getCloudPreviewKind(previewItem) === "pdf" ? (
-                    <iframe title={previewItem.name} src={buildCloudPreviewUrl(previewItem.id)} className="h-[68vh] w-full rounded border border-border/60 bg-white" />
+                    <iframe title={previewItem.name} src={buildCloudPreviewUrl(previewItem.id)} className="h-[68vh] w-full rounded border border-border/60 bg-card" />
                   ) : getCloudPreviewKind(previewItem) === "text" ? (
-                    <div className="theme-scrollbar h-[68vh] w-full overflow-auto rounded border border-border/60 bg-white p-4 text-left">
+                    <div className="theme-scrollbar h-[68vh] w-full overflow-auto rounded border border-border/60 bg-card p-4 text-left">
                       {previewLoading ? <p className="text-sm text-muted-foreground">文本加载中...</p> : null}
                       {previewError ? <p className="text-sm text-rose-600">{previewError}</p> : null}
                       {!previewLoading && !previewError ? (
@@ -1475,7 +1475,7 @@ export function CloudPage({ mode, onAuthExpired, onNotify }: CloudPageProps) {
               onClick={() => setDeleteTarget(null)}
             >
               <div
-                className="w-full max-w-md rounded-2xl border border-white/70 bg-white p-4 shadow-[0_18px_48px_rgba(0,0,0,0.22)]"
+                className="w-full max-w-md rounded-2xl border bg-card p-4 shadow-sm"
                 onClick={(event) => event.stopPropagation()}
               >
                 <h3 className="text-sm font-semibold text-rose-700">确认删除</h3>
@@ -1498,7 +1498,7 @@ export function CloudPage({ mode, onAuthExpired, onNotify }: CloudPageProps) {
               onClick={() => setBatchDeleteConfirmOpen(false)}
             >
               <div
-                className="w-full max-w-md rounded-2xl border border-white/70 bg-white p-4 shadow-[0_18px_48px_rgba(0,0,0,0.22)]"
+                className="w-full max-w-md rounded-2xl border bg-card p-4 shadow-sm"
                 onClick={(event) => event.stopPropagation()}
               >
                 <h3 className="text-sm font-semibold text-rose-700">确认批量删除</h3>
@@ -1518,7 +1518,7 @@ export function CloudPage({ mode, onAuthExpired, onNotify }: CloudPageProps) {
       ) : null}
 
       {mode === "shares" ? (
-        <div className="mt-0 rounded-2xl border border-border/70 bg-white/80 p-4">
+        <div className="mt-0 rounded-2xl border border-border/70 bg-card p-4">
         <div className="mb-3 flex items-center justify-between gap-2">
           <h3 className="text-sm font-semibold">分享列表</h3>
           <span className="text-xs text-muted-foreground">共 {shares.length} 条</span>
@@ -1526,7 +1526,7 @@ export function CloudPage({ mode, onAuthExpired, onNotify }: CloudPageProps) {
         {shares.length > 0 ? (
           <div className="space-y-2">
             {shares.map((share) => (
-              <div key={share.id} className="rounded-xl border border-border/70 bg-white/85 p-3 shadow-[0_8px_18px_rgba(106,71,30,0.08)]">
+              <div key={share.id} className="rounded-xl border border-border/70 bg-card p-3 shadow-sm">
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
                     <p className="truncate text-sm font-semibold" title={share.item_name || `项目 #${share.item_id}`}>
@@ -1571,13 +1571,13 @@ export function CloudPage({ mode, onAuthExpired, onNotify }: CloudPageProps) {
           onClick={() => setCopyPasswordShare(null)}
         >
           <div
-            className="w-full max-w-md rounded-2xl border border-white/70 bg-white p-4 shadow-[0_18px_48px_rgba(0,0,0,0.22)]"
+            className="w-full max-w-md rounded-2xl border bg-card p-4 shadow-sm"
             onClick={(event) => event.stopPropagation()}
           >
             <h3 className="text-sm font-semibold">输入分享密码</h3>
             <p className="mt-1 text-xs text-muted-foreground">复制链接时将自动附带密码参数。</p>
             <input
-              className="mt-4 w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-900 placeholder:text-slate-500 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/30"
+              className="mt-4 w-full rounded-xl border border-slate-300 bg-card px-3 py-2.5 text-sm text-slate-900 placeholder:text-slate-500 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/30"
               value={copyPasswordInput}
               onChange={(event) => setCopyPasswordInput(event.target.value)}
               placeholder="请输入该分享的密码"
@@ -1598,7 +1598,7 @@ export function CloudPage({ mode, onAuthExpired, onNotify }: CloudPageProps) {
           onClick={closeTargetPicker}
         >
           <div
-            className="w-full max-w-3xl rounded-2xl border border-white/70 bg-white p-4 shadow-[0_18px_48px_rgba(0,0,0,0.22)]"
+            className="w-full max-w-3xl rounded-2xl border bg-card p-4 shadow-sm"
             onClick={(event) => event.stopPropagation()}
           >
             <div className="flex flex-wrap items-center justify-between gap-2">
@@ -1621,7 +1621,7 @@ export function CloudPage({ mode, onAuthExpired, onNotify }: CloudPageProps) {
                         className={
                           isCurrent
                             ? "rounded-md border border-primary/35 bg-primary/10 px-2.5 py-1 text-primary"
-                            : "rounded-md border border-border/70 bg-white px-2.5 py-1 hover:bg-muted/40"
+                            : "rounded-md border border-border/70 bg-card px-2.5 py-1 hover:bg-muted/40"
                         }
                         onClick={() => {
                           void jumpTargetPickerPath(index);
@@ -1651,7 +1651,7 @@ export function CloudPage({ mode, onAuthExpired, onNotify }: CloudPageProps) {
               <div className="mt-3">
                 <label className="mb-1 block text-xs text-muted-foreground">复制后名称（可选）</label>
                 <input
-                  className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-900 placeholder:text-slate-500 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/30"
+                  className="w-full rounded-xl border border-slate-300 bg-card px-3 py-2.5 text-sm text-slate-900 placeholder:text-slate-500 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/30"
                   value={targetPickerCopyName}
                   onChange={(event) => setTargetPickerCopyName(event.target.value)}
                   placeholder="留空将使用原名称"
@@ -1669,7 +1669,7 @@ export function CloudPage({ mode, onAuthExpired, onNotify }: CloudPageProps) {
                     <button
                       key={folder.id}
                       type="button"
-                      className="flex items-center gap-2 rounded-lg border border-border/70 bg-white px-2.5 py-2 text-left text-xs transition hover:bg-muted/40"
+                      className="flex items-center gap-2 rounded-lg border border-border/70 bg-card px-2.5 py-2 text-left text-xs transition hover:bg-muted/40"
                       onClick={() => {
                         void enterTargetPickerFolder(folder);
                       }}
@@ -1701,7 +1701,7 @@ export function CloudPage({ mode, onAuthExpired, onNotify }: CloudPageProps) {
 
       {mode === "stats" ? (
         <div className="mt-0 grid gap-4 lg:grid-cols-2">
-          <article className="rounded-2xl border border-border/70 bg-white/80 p-4">
+          <article className="rounded-2xl border border-border/70 bg-card p-4">
             <h3 className="mb-3 text-sm font-semibold">容量概览</h3>
             <dl className="grid grid-cols-2 gap-2 text-xs">
               <InfoCell label="总条目" value={String(summary?.total_items ?? 0)} />
@@ -1713,7 +1713,7 @@ export function CloudPage({ mode, onAuthExpired, onNotify }: CloudPageProps) {
             </dl>
           </article>
 
-          <article className="rounded-2xl border border-border/70 bg-white/80 p-4">
+          <article className="rounded-2xl border border-border/70 bg-card p-4">
             <h3 className="mb-3 text-sm font-semibold">近期访问（Top 5）</h3>
             {(summary?.recent_top_visits ?? []).length > 0 ? (
               <div className="space-y-2">
@@ -1744,7 +1744,7 @@ export function CloudPage({ mode, onAuthExpired, onNotify }: CloudPageProps) {
 
 function CloudMetricCard({ title, value }: { title: string; value: string }) {
   return (
-    <article className="rounded-2xl border border-border/70 bg-white/72 p-4 shadow-[0_8px_18px_rgba(106,71,30,0.08)]">
+    <article className="rounded-2xl border border-border/70 bg-muted p-4 shadow-sm">
       <p className="text-[11px] uppercase tracking-[0.16em] text-muted-foreground">{title}</p>
       <p className="mt-2 text-lg font-semibold">{value}</p>
     </article>
@@ -1780,14 +1780,14 @@ function InlineSelect({
     <div className="relative" onClick={(event) => event.stopPropagation()}>
       <button
         type="button"
-        className="inline-flex h-10 min-w-28 items-center justify-between gap-2 rounded-xl border border-border/70 bg-white px-3 text-sm shadow-sm transition hover:bg-muted/40"
+        className="inline-flex h-10 min-w-28 items-center justify-between gap-2 rounded-xl border border-border/70 bg-card px-3 text-sm shadow-sm transition hover:bg-muted/40"
         onClick={() => setOpen((state) => !state)}
       >
         <span>{currentLabel}</span>
         <ChevronDown className="h-4 w-4 text-muted-foreground" />
       </button>
       {open ? (
-        <div className="absolute right-0 top-11 z-30 min-w-28 rounded-xl border border-border/80 bg-white p-1 shadow-lg">
+        <div className="absolute right-0 top-11 z-30 min-w-28 rounded-xl border border-border/80 bg-card p-1 shadow-lg">
           {options.map((option) => (
             <button
               key={option.value}

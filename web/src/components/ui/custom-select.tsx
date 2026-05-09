@@ -43,7 +43,7 @@ export function CustomSelect({ value, options, onChange, placeholder = "请选�
     <div ref={rootRef} className={`relative ${className}`}>
       <button
         type="button"
-        className="flex w-full items-center justify-between rounded-xl border border-border/80 bg-white/90 px-3 py-2 text-left text-sm shadow-sm transition hover:border-primary/55"
+        className="flex w-full items-center justify-between rounded-xl border border-border/80 bg-card px-3 py-2 text-left text-sm shadow-sm transition hover:border-primary/55"
         onClick={() => setOpen((prev) => !prev)}
       >
         <span className={current ? "text-foreground" : "text-muted-foreground"}>{current ? current.label : placeholder}</span>
@@ -51,7 +51,7 @@ export function CustomSelect({ value, options, onChange, placeholder = "请选�
       </button>
 
       {open ? (
-        <div className="theme-scrollbar absolute z-30 mt-2 max-h-64 w-full overflow-auto rounded-xl border border-border/80 bg-white/95 p-1.5 shadow-xl backdrop-blur">
+        <div className="theme-scrollbar absolute z-30 mt-2 max-h-64 w-full overflow-auto rounded-xl border border-border/80 bg-card p-1.5 shadow-sm">
           {options.map((option) => {
             const selected = option.value === value;
             return (

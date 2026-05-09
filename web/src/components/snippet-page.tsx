@@ -2,7 +2,6 @@ import { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import { BarChart3, Copy, Download, Link2, ListChecks, Save, Search, Share2, Tags, Trash2, Type } from "lucide-react";
 import CodeMirror from "@uiw/react-codemirror";
-import { oneDark } from "@codemirror/theme-one-dark";
 
 import { Button } from "@/components/ui/button";
 import { CustomSelect } from "@/components/ui/custom-select";
@@ -109,10 +108,6 @@ export function SnippetPage({ mode, onAuthExpired, onNotify }: SnippetPageProps)
   const [shareTarget, setShareTarget] = useState<SnippetItem | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<SnippetItem | null>(null);
 
-  const [themeName, setThemeName] = useState<string>(document.documentElement.getAttribute("data-theme") || "amber");
-
-  const isMidnightTheme = themeName === "midnight";
-
   const parsedTags = useMemo(
     () =>
       tagInput
@@ -181,15 +176,6 @@ export function SnippetPage({ mode, onAuthExpired, onNotify }: SnippetPageProps)
   function closeMenusAndDialogs() {
     setContextMenu(null);
   }
-
-  useEffect(() => {
-    const observer = new MutationObserver(() => {
-      setThemeName(document.documentElement.getAttribute("data-theme") || "amber");
-    });
-
-    observer.observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
-    return () => observer.disconnect();
-  }, []);
 
   useEffect(() => {
     function closeMenuOnWindowEvents() {
@@ -582,7 +568,7 @@ export function SnippetPage({ mode, onAuthExpired, onNotify }: SnippetPageProps)
 
   function renderEditorPage() {
     return (
-      <section className="glass-panel rounded-3xl border border-white/70 p-5 sm:p-6">
+      <section className="rounded-xl border bg-card shadow-sm p-5 sm:p-6">
         <div className="mb-4 flex items-center justify-between gap-3">
           <div>
             <p className="text-xs uppercase tracking-[0.22em] text-primary/90">Snippet Studio</p>
@@ -598,19 +584,19 @@ export function SnippetPage({ mode, onAuthExpired, onNotify }: SnippetPageProps)
         </div>
 
         <div className="grid gap-4 xl:grid-cols-[1.25fr_0.95fr]">
-          <div className="min-w-0 rounded-2xl border border-border/70 bg-white/90 p-3">
+          <div className="min-w-0 rounded-2xl border border-border/70 bg-card p-3">
             <div className="mb-2 grid gap-2 sm:grid-cols-2">
-              <input className="rounded-xl border border-border/80 bg-white px-3 py-2 text-sm" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="标题" />
+              <input className="rounded-xl border border-border/80 bg-card px-3 py-2 text-sm" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="标题" />
               <CustomSelect value={language} options={languageEditorOptions} onChange={setLanguage} />
             </div>
-            <textarea className="mb-2 min-h-[60px] w-full rounded-xl border border-border/80 bg-white px-3 py-2 text-sm" value={description} onChange={(e) => setDescription(e.target.value)} placeholder="描述（可选）" />
-            <input className="mb-2 w-full rounded-xl border border-border/80 bg-white px-3 py-2 text-sm" value={tagInput} onChange={(e) => setTagInput(e.target.value)} placeholder="标签：python,api" />
+            <textarea className="mb-2 min-h-[60px] w-full rounded-xl border border-border/80 bg-card px-3 py-2 text-sm" value={description} onChange={(e) => setDescription(e.target.value)} placeholder="描述（可选）" />
+            <input className="mb-2 w-full rounded-xl border border-border/80 bg-card px-3 py-2 text-sm" value={tagInput} onChange={(e) => setTagInput(e.target.value)} placeholder="标签：python,api" />
             <div className="theme-scrollbar overflow-auto rounded-xl border border-border/80">
               <CodeMirror
                 className="snippet-editor-cm"
                 value={codeContent}
                 height="420px"
-                theme={isMidnightTheme ? oneDark : undefined}
+                theme={undefined}
                 basicSetup={{
                   lineNumbers: true,
                   foldGutter: true,
@@ -626,20 +612,20 @@ export function SnippetPage({ mode, onAuthExpired, onNotify }: SnippetPageProps)
           </div>
 
           <div className="min-w-0 space-y-3">
-            <div className={isMidnightTheme ? "rounded-2xl border border-border/70 bg-[#0f172a] p-3" : "rounded-2xl border border-border/70 bg-white/90 p-3"}>
+            <div className="rounded-2xl border border-border/70 bg-card p-3">
               <p className="mb-2 text-xs uppercase tracking-[0.18em] text-muted-foreground">Live Preview</p>
-              <div className={isMidnightTheme ? "theme-scrollbar max-h-[420px] overflow-auto rounded-xl border border-slate-600/60 bg-[#0b1220] p-2 text-xs text-slate-100" : "theme-scrollbar max-h-[420px] overflow-auto rounded-xl border border-border/70 bg-white p-2 text-xs text-foreground"}>
+              <div className="theme-scrollbar max-h-[420px] overflow-auto rounded-xl border border-border/70 bg-card p-2 text-xs text-foreground">
                 <div dangerouslySetInnerHTML={{ __html: previewHtml }} />
               </div>
             </div>
 
-            <div className="rounded-2xl border border-border/70 bg-white/90 p-3">
+            <div className="rounded-2xl border border-border/70 bg-card p-3">
               <p className="mb-2 text-sm font-semibold">分享快捷设置</p>
               <div className="grid gap-2">
-                <input className="rounded-xl border border-border/80 bg-white px-3 py-2 text-sm" value={sharePassword} onChange={(e) => setSharePassword(e.target.value)} placeholder="访问密码（可选）" />
+                <input className="rounded-xl border border-border/80 bg-card px-3 py-2 text-sm" value={sharePassword} onChange={(e) => setSharePassword(e.target.value)} placeholder="访问密码（可选）" />
                 <div className="grid gap-2 sm:grid-cols-2">
-                  <input className="rounded-xl border border-border/80 bg-white px-3 py-2 text-sm" value={shareExpiresMinutes} onChange={(e) => setShareExpiresMinutes(e.target.value.replace(/[^0-9]/g, ""))} placeholder="过期分钟" />
-                  <input className="rounded-xl border border-border/80 bg-white px-3 py-2 text-sm" value={shareMaxAccessCount} onChange={(e) => setShareMaxAccessCount(e.target.value.replace(/[^0-9]/g, ""))} placeholder="最大访问次数" />
+                  <input className="rounded-xl border border-border/80 bg-card px-3 py-2 text-sm" value={shareExpiresMinutes} onChange={(e) => setShareExpiresMinutes(e.target.value.replace(/[^0-9]/g, ""))} placeholder="过期分钟" />
+                  <input className="rounded-xl border border-border/80 bg-card px-3 py-2 text-sm" value={shareMaxAccessCount} onChange={(e) => setShareMaxAccessCount(e.target.value.replace(/[^0-9]/g, ""))} placeholder="最大访问次数" />
                 </div>
                 <label className="inline-flex items-center gap-2 rounded-lg bg-muted/40 px-2 py-1 text-xs text-muted-foreground">
                   <input type="checkbox" checked={shareOneTime} onChange={(e) => setShareOneTime(e.target.checked)} />
@@ -658,7 +644,7 @@ export function SnippetPage({ mode, onAuthExpired, onNotify }: SnippetPageProps)
 
   function renderListPage() {
     return (
-      <section className="glass-panel rounded-3xl border border-white/70 p-5 sm:p-6">
+      <section className="rounded-xl border bg-card shadow-sm p-5 sm:p-6">
         <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
           <div>
             <p className="text-xs uppercase tracking-[0.22em] text-primary/90">Snippet Atlas</p>
@@ -677,7 +663,7 @@ export function SnippetPage({ mode, onAuthExpired, onNotify }: SnippetPageProps)
             applySearch();
           }}
         >
-          <div className="flex items-center rounded-xl border border-border/80 bg-white/90 px-3 py-2">
+          <div className="flex items-center rounded-xl border border-border/80 bg-card px-3 py-2">
             <Search className="mr-2 h-4 w-4 text-muted-foreground" />
             <input className="w-full bg-transparent text-sm outline-none" value={queryDraft} onChange={(e) => setQueryDraft(e.target.value)} placeholder="按标题或描述搜索" />
           </div>
@@ -691,7 +677,7 @@ export function SnippetPage({ mode, onAuthExpired, onNotify }: SnippetPageProps)
           {snippets.map((item) => (
             <article
               key={item.id}
-              className="rounded-2xl border border-border/70 bg-white/92 p-4 shadow-[0_8px_20px_rgba(17,24,39,0.06)]"
+              className="rounded-2xl border border-border/70 bg-card p-4 shadow-sm"
               onContextMenu={(event) => openContextMenu(event, item)}
             >
               <button type="button" className="w-full text-left" onClick={() => loadSnippetToEditor(item)}>
@@ -728,7 +714,7 @@ export function SnippetPage({ mode, onAuthExpired, onNotify }: SnippetPageProps)
 
         {contextMenu ? createPortal(
           <div
-            className="fixed z-[140] min-w-40 rounded-xl border border-border/80 bg-white/95 p-1.5 shadow-2xl backdrop-blur"
+            className="fixed z-[140] min-w-40 rounded-xl border border-border/80 bg-card p-1.5 shadow-sm"
             style={{ left: contextMenu.x, top: contextMenu.y }}
             onClick={(event) => event.stopPropagation()}
           >
@@ -782,12 +768,12 @@ export function SnippetPage({ mode, onAuthExpired, onNotify }: SnippetPageProps)
                 type="button"
                 className={previewCopied
                   ? "absolute right-2 top-2 z-10 rounded-md border border-emerald-300 bg-emerald-50 px-2 py-1 text-xs text-emerald-700 shadow-sm opacity-100 transition"
-                  : "absolute right-2 top-2 z-10 rounded-md border border-border/70 bg-white/90 px-2 py-1 text-xs text-foreground shadow-sm opacity-0 transition group-hover:opacity-100"}
+                  : "absolute right-2 top-2 z-10 rounded-md border border-border/70 bg-card px-2 py-1 text-xs text-foreground shadow-sm opacity-0 transition group-hover:opacity-100"}
                 onClick={() => void handlePreviewCopy(previewItem.code_content)}
               >
                 {previewCopied ? "已复制" : "复制"}
               </button>
-              <div className={isMidnightTheme ? "theme-scrollbar max-h-[68vh] overflow-auto rounded-xl border border-slate-600/60 bg-[#0b1220] p-2 text-xs text-slate-100" : "theme-scrollbar max-h-[68vh] overflow-auto rounded-xl border border-border/70 bg-white p-2 text-xs text-foreground"}>
+              <div className="theme-scrollbar max-h-[68vh] overflow-auto rounded-xl border border-border/70 bg-card p-2 text-xs text-foreground">
                 <div dangerouslySetInnerHTML={{ __html: renderSnippetWithLineNumbers(previewItem.code_content, previewItem.effective_language) }} />
               </div>
             </div>
@@ -799,7 +785,7 @@ export function SnippetPage({ mode, onAuthExpired, onNotify }: SnippetPageProps)
             <div className="space-y-3">
               <label className="block text-sm">
                 <span className="mb-1 block text-xs text-muted-foreground">新标题</span>
-                <input className="w-full rounded-xl border border-border/80 bg-white px-3 py-2 text-sm" value={renameValue} onChange={(e) => setRenameValue(e.target.value)} />
+                <input className="w-full rounded-xl border border-border/80 bg-card px-3 py-2 text-sm" value={renameValue} onChange={(e) => setRenameValue(e.target.value)} />
               </label>
               <div className="flex justify-end gap-2">
                 <Button variant="outline" type="button" onClick={() => setRenameTarget(null)}>取消</Button>
@@ -814,7 +800,7 @@ export function SnippetPage({ mode, onAuthExpired, onNotify }: SnippetPageProps)
             <div className="space-y-3">
               <label className="block text-sm">
                 <span className="mb-1 block text-xs text-muted-foreground">标签（英文逗号分隔）</span>
-                <input className="w-full rounded-xl border border-border/80 bg-white px-3 py-2 text-sm" value={retagValue} onChange={(e) => setRetagValue(e.target.value)} />
+                <input className="w-full rounded-xl border border-border/80 bg-card px-3 py-2 text-sm" value={retagValue} onChange={(e) => setRetagValue(e.target.value)} />
               </label>
               <div className="flex justify-end gap-2">
                 <Button variant="outline" type="button" onClick={() => setRetagTarget(null)}>取消</Button>
@@ -828,11 +814,11 @@ export function SnippetPage({ mode, onAuthExpired, onNotify }: SnippetPageProps)
           <Modal onClose={() => setEditTarget(null)} title={`编辑代码片 · ${editTarget.title}`} maxWidthClass="max-w-4xl">
             <div className="space-y-2 min-w-0">
                 <div className="grid gap-2 sm:grid-cols-2">
-                  <input className="rounded-xl border border-border/80 bg-white px-3 py-2 text-sm" value={editTitle} onChange={(e) => setEditTitle(e.target.value)} placeholder="标题" />
+                  <input className="rounded-xl border border-border/80 bg-card px-3 py-2 text-sm" value={editTitle} onChange={(e) => setEditTitle(e.target.value)} placeholder="标题" />
                   <CustomSelect value={editLanguage} options={languageEditorOptions} onChange={setEditLanguage} />
                 </div>
-                <textarea className="min-h-[76px] w-full rounded-xl border border-border/80 bg-white px-3 py-2 text-sm" value={editDescription} onChange={(e) => setEditDescription(e.target.value)} placeholder="描述（可选）" />
-                <input className="w-full rounded-xl border border-border/80 bg-white px-3 py-2 text-sm" value={editTagInput} onChange={(e) => setEditTagInput(e.target.value)} placeholder="标签：python,api" />
+                <textarea className="min-h-[76px] w-full rounded-xl border border-border/80 bg-card px-3 py-2 text-sm" value={editDescription} onChange={(e) => setEditDescription(e.target.value)} placeholder="描述（可选）" />
+                <input className="w-full rounded-xl border border-border/80 bg-card px-3 py-2 text-sm" value={editTagInput} onChange={(e) => setEditTagInput(e.target.value)} placeholder="标签：python,api" />
                 <label className="inline-flex items-center gap-2 rounded-lg bg-muted/40 px-2 py-1 text-xs text-muted-foreground">
                   <input type="checkbox" checked={editIsPublic} onChange={(e) => setEditIsPublic(e.target.checked)} />
                   公开代码片
@@ -842,7 +828,7 @@ export function SnippetPage({ mode, onAuthExpired, onNotify }: SnippetPageProps)
                     className="snippet-editor-cm"
                     value={editCodeContent}
                     height="58vh"
-                    theme={isMidnightTheme ? oneDark : undefined}
+                    theme={undefined}
                     basicSetup={{
                       lineNumbers: true,
                       foldGutter: true,
@@ -869,16 +855,16 @@ export function SnippetPage({ mode, onAuthExpired, onNotify }: SnippetPageProps)
             <div className="space-y-3">
               <label className="block text-sm">
                 <span className="mb-1 block text-xs text-muted-foreground">访问密码（可选）</span>
-                <input className="w-full rounded-xl border border-border/80 bg-white px-3 py-2 text-sm" value={sharePassword} onChange={(e) => setSharePassword(e.target.value)} />
+                <input className="w-full rounded-xl border border-border/80 bg-card px-3 py-2 text-sm" value={sharePassword} onChange={(e) => setSharePassword(e.target.value)} />
               </label>
               <div className="grid gap-2 sm:grid-cols-2">
                 <label className="block text-sm">
                   <span className="mb-1 block text-xs text-muted-foreground">过期分钟（可选）</span>
-                  <input className="w-full rounded-xl border border-border/80 bg-white px-3 py-2 text-sm" value={shareExpiresMinutes} onChange={(e) => setShareExpiresMinutes(e.target.value.replace(/[^0-9]/g, ""))} placeholder="例如 60" />
+                  <input className="w-full rounded-xl border border-border/80 bg-card px-3 py-2 text-sm" value={shareExpiresMinutes} onChange={(e) => setShareExpiresMinutes(e.target.value.replace(/[^0-9]/g, ""))} placeholder="例如 60" />
                 </label>
                 <label className="block text-sm">
                   <span className="mb-1 block text-xs text-muted-foreground">最大访问次数（可选）</span>
-                  <input className="w-full rounded-xl border border-border/80 bg-white px-3 py-2 text-sm" value={shareMaxAccessCount} onChange={(e) => setShareMaxAccessCount(e.target.value.replace(/[^0-9]/g, ""))} placeholder="例如 10" />
+                  <input className="w-full rounded-xl border border-border/80 bg-card px-3 py-2 text-sm" value={shareMaxAccessCount} onChange={(e) => setShareMaxAccessCount(e.target.value.replace(/[^0-9]/g, ""))} placeholder="例如 10" />
                 </label>
               </div>
               <label className="inline-flex items-center gap-2 rounded-lg bg-muted/40 px-2 py-1 text-xs text-muted-foreground">
@@ -923,18 +909,18 @@ export function SnippetPage({ mode, onAuthExpired, onNotify }: SnippetPageProps)
 
   function renderSharesPage() {
     return (
-      <section className="glass-panel rounded-3xl border border-white/70 p-5 sm:p-6">
+      <section className="rounded-xl border bg-card shadow-sm p-5 sm:p-6">
         <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
           <div>
             <p className="text-xs uppercase tracking-[0.22em] text-primary/90">Share Console</p>
             <h2 className="mt-1 text-xl font-semibold">分享管理</h2>
           </div>
-          <span className="rounded-full border border-border/70 bg-white/80 px-3 py-1 text-xs">总计 {shares.length} 条分享</span>
+          <span className="rounded-full border border-border/70 bg-card px-3 py-1 text-xs">总计 {shares.length} 条分享</span>
         </div>
 
         <div className="space-y-2">
           {shares.map((share) => (
-            <div key={share.id} className="rounded-2xl border border-border/70 bg-white/92 p-3">
+            <div key={share.id} className="rounded-2xl border border-border/70 bg-card p-3">
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div>
                   <p className="font-semibold">{share.snippet_title}</p>
@@ -977,7 +963,7 @@ export function SnippetPage({ mode, onAuthExpired, onNotify }: SnippetPageProps)
     const maxLang = Math.max(...statsData.languageTop.map((item) => item.count), 1);
 
     return (
-      <section className="glass-panel rounded-3xl border border-white/70 p-5 sm:p-6">
+      <section className="rounded-xl border bg-card shadow-sm p-5 sm:p-6">
         <div className="mb-4 flex items-center justify-between gap-3">
           <div>
             <p className="text-xs uppercase tracking-[0.22em] text-primary/90">Insight Board</p>
@@ -995,7 +981,7 @@ export function SnippetPage({ mode, onAuthExpired, onNotify }: SnippetPageProps)
         </div>
 
         <div className="mt-4 grid gap-4 xl:grid-cols-2">
-          <div className="rounded-2xl border border-border/70 bg-white/90 p-4">
+          <div className="rounded-2xl border border-border/70 bg-card p-4">
             <h3 className="mb-3 text-sm font-semibold">语言分布 TOP5</h3>
             <div className="space-y-2">
               {statsData.languageTop.map((item) => (
@@ -1013,11 +999,11 @@ export function SnippetPage({ mode, onAuthExpired, onNotify }: SnippetPageProps)
             </div>
           </div>
 
-          <div className="rounded-2xl border border-border/70 bg-white/90 p-4">
+          <div className="rounded-2xl border border-border/70 bg-card p-4">
             <h3 className="mb-3 text-sm font-semibold">最近访问</h3>
             <div className="space-y-2">
               {statsData.recentAccess.map((item) => (
-                <div key={item.id} className="flex w-full items-center justify-between rounded-xl border border-border/60 bg-white px-3 py-2 text-left">
+                <div key={item.id} className="flex w-full items-center justify-between rounded-xl border border-border/60 bg-card px-3 py-2 text-left">
                   <span className="truncate text-sm font-medium">{item.snippet_title}</span>
                   <span className="ml-3 text-xs text-muted-foreground">{item.last_accessed_at}</span>
                 </div>
@@ -1038,7 +1024,7 @@ export function SnippetPage({ mode, onAuthExpired, onNotify }: SnippetPageProps)
 
 function StatsCard({ icon, label, value }: { icon: React.ReactNode; label: string; value: string }) {
   return (
-    <div className="rounded-2xl border border-border/70 bg-white/90 p-3">
+    <div className="rounded-2xl border border-border/70 bg-card p-3">
       <div className="mb-2 inline-flex h-7 w-7 items-center justify-center rounded-full bg-primary/10 text-primary">{icon}</div>
       <p className="text-xs text-muted-foreground">{label}</p>
       <p className="mt-1 text-xl font-semibold">{value}</p>
@@ -1071,7 +1057,7 @@ function Modal({
 }) {
   return createPortal(
     <div className="fixed inset-0 z-[130] flex items-center justify-center bg-black/40 px-4" onClick={onClose}>
-      <div className={`w-full ${maxWidthClass} rounded-2xl border border-border/80 bg-white p-4 shadow-2xl`} onClick={(event) => event.stopPropagation()}>
+      <div className={`w-full ${maxWidthClass} rounded-2xl border border-border/80 bg-card p-4 shadow-2xl`} onClick={(event) => event.stopPropagation()}>
         <div className="mb-3 flex items-center justify-between">
           <h3 className="text-base font-semibold">{title}</h3>
           <Button variant="outline" size="sm" type="button" onClick={onClose}>关闭</Button>
