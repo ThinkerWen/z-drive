@@ -2,8 +2,8 @@ import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import {
   Archive,
   Check,
+  CheckCheck,
   ChevronLeft,
-  ChevronDown,
   ChevronRight,
   Download,
   Eye,
@@ -39,14 +39,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import {
-  Menubar,
-  MenubarContent,
-  MenubarItem,
-  MenubarMenu,
-  MenubarSeparator,
-  MenubarTrigger,
-} from "@/components/ui/menubar";
 import {
   Dialog,
   DialogContent,
@@ -155,6 +147,7 @@ export function CloudPage({ mode, onAuthExpired, onNotify }: CloudPageProps) {
     x: number;
     y: number;
   } | null>(null);
+  const [backgroundMenu, setBackgroundMenu] = useState<{ x: number; y: number } | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const activeCloudUploadsRef = useRef<Record<string, XMLHttpRequest>>({});
 
@@ -232,17 +225,19 @@ export function CloudPage({ mode, onAuthExpired, onNotify }: CloudPageProps) {
   }, []);
 
   useEffect(() => {
-    if (!contextMenu) {
+    if (!contextMenu && !backgroundMenu) {
       return;
     }
 
     const handleGlobalClose = () => {
       setContextMenu(null);
+      setBackgroundMenu(null);
     };
 
     const handleEsc = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
         setContextMenu(null);
+        setBackgroundMenu(null);
       }
     };
 
@@ -256,7 +251,7 @@ export function CloudPage({ mode, onAuthExpired, onNotify }: CloudPageProps) {
       window.removeEventListener("resize", handleGlobalClose);
       window.removeEventListener("keydown", handleEsc);
     };
-  }, [contextMenu]);
+  }, [contextMenu, backgroundMenu]);
 
   useEffect(() => {
     if (!previewItem) {
@@ -856,7 +851,14 @@ export function CloudPage({ mode, onAuthExpired, onNotify }: CloudPageProps) {
 
   function openContextMenu(event: React.MouseEvent<HTMLElement>, item: CloudItem) {
     event.preventDefault();
+    event.stopPropagation();
     setContextMenu({ item, x: event.clientX, y: event.clientY });
+  }
+
+  function openBackgroundMenu(event: React.MouseEvent<HTMLElement>) {
+    event.preventDefault();
+    event.stopPropagation();
+    setBackgroundMenu({ x: event.clientX, y: event.clientY });
   }
 
   function runContextAction(action: string, item: CloudItem) {
@@ -1132,45 +1134,11 @@ export function CloudPage({ mode, onAuthExpired, onNotify }: CloudPageProps) {
             </Select>
           </form>
 
-          <div className="mb-4 rounded-lg border bg-card p-3">
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <div className="text-xs text-muted-foreground">
-                已选 {selectedIds.length} / {items.length} 项
-              </div>
-              <div className="flex flex-wrap items-center gap-2">
-                <Button type="button" size="sm" variant="outline" onClick={toggleSelectAllCurrent} disabled={items.length === 0 || loading}>
-                  {selectedIds.length === items.length && items.length > 0 ? "取消全选" : "全选"}
-                </Button>
-                <Menubar className="inline-flex">
-                  <MenubarMenu>
-                    <MenubarTrigger disabled={selectedIds.length === 0 || loading} className="gap-1">
-                      操作 <ChevronDown className="h-3.5 w-3.5" />
-                    </MenubarTrigger>
-                    <MenubarContent>
-                      <MenubarItem onClick={() => void handleBatchMove()}>批量移动</MenubarItem>
-                      <MenubarItem onClick={() => void handleBatchCopy()}>批量复制</MenubarItem>
-                      <MenubarSeparator />
-                      <MenubarItem className="text-destructive focus:bg-destructive/10" onClick={() => void handleBatchDelete()}>批量删除</MenubarItem>
-                    </MenubarContent>
-                  </MenubarMenu>
-                </Menubar>
-                <Menubar className="inline-flex">
-                  <MenubarMenu>
-                    <MenubarTrigger disabled={loading} className="gap-1">
-                      <Plus className="mr-1 h-3.5 w-3.5" /> 新建
-                    </MenubarTrigger>
-                    <MenubarContent>
-                      <MenubarItem onClick={openCreateFolderModal}>新建文件夹</MenubarItem>
-                      <MenubarItem onClick={handleCreateFile}>新建文件</MenubarItem>
-                    </MenubarContent>
-                  </MenubarMenu>
-                </Menubar>
-              </div>
-            </div>
-          </div>
-
           {items.length > 0 ? (
-            <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-6">
+            <div
+              className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-6"
+              onContextMenu={openBackgroundMenu}
+            >
               {items.map((item) => (
                 <article
                   key={item.id}
@@ -1266,6 +1234,53 @@ export function CloudPage({ mode, onAuthExpired, onNotify }: CloudPageProps) {
               <ContextMenuButton danger onClick={() => runContextAction("delete", contextMenu.item)}>
                 <Trash2 className="h-3.5 w-3.5" /> 删除
               </ContextMenuButton>
+            </div>
+          ) : null}
+
+          {backgroundMenu ? (
+            <div
+              className="fixed z-[70] min-w-44 rounded-lg border bg-card p-1.5"
+              style={{ left: backgroundMenu.x, top: backgroundMenu.y }}
+              onClick={(event) => event.stopPropagation()}
+            >
+              {(() => {
+                const allSelected = items.length > 0 && selectedIds.length === items.length;
+                const hasSelection = selectedIds.length > 0;
+
+                return (
+                  <>
+                    {hasSelection ? (
+                      <>
+                        <ContextMenuButton onClick={() => { toggleSelectAllCurrent(); setBackgroundMenu(null); }}>
+                          {allSelected ? <><Check className="h-3.5 w-3.5" /> 取消全选</> : <><CheckCheck className="h-3.5 w-3.5" /> 全选</>}
+                        </ContextMenuButton>
+                        <ContextMenuButton onClick={() => { setBackgroundMenu(null); void handleBatchCopy(); }}>
+                          <CopyIcon /> 复制 ({selectedIds.length})
+                        </ContextMenuButton>
+                        <ContextMenuButton onClick={() => { setBackgroundMenu(null); void handleBatchMove(); }}>
+                          <FolderOpen className="h-3.5 w-3.5" /> 移动 ({selectedIds.length})
+                        </ContextMenuButton>
+                        <div className="my-1 h-px bg-border/80" />
+                        <ContextMenuButton danger onClick={() => { setBackgroundMenu(null); void handleBatchDelete(); }}>
+                          <Trash2 className="h-3.5 w-3.5" /> 删除 ({selectedIds.length})
+                        </ContextMenuButton>
+                      </>
+                    ) : (
+                      <>
+                        <ContextMenuButton onClick={() => { toggleSelectAllCurrent(); setBackgroundMenu(null); }}>
+                          <CheckCheck className="h-3.5 w-3.5" /> 全选
+                        </ContextMenuButton>
+                        <ContextMenuButton onClick={() => { setBackgroundMenu(null); openCreateFolderModal(); }}>
+                          <Plus className="h-3.5 w-3.5" /> 新建文件夹
+                        </ContextMenuButton>
+                        <ContextMenuButton onClick={() => { setBackgroundMenu(null); goToParentLevel(); }}>
+                          <ChevronLeft className="h-3.5 w-3.5" /> 上一层
+                        </ContextMenuButton>
+                      </>
+                    )}
+                  </>
+                );
+              })()}
             </div>
           ) : null}
 
