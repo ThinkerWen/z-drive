@@ -5,7 +5,9 @@ import CodeMirror from "@uiw/react-codemirror";
 
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Field, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
+import { Spinner } from "@/components/ui/spinner";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -606,7 +608,10 @@ export function SnippetPage({ mode, onAuthExpired, onNotify }: SnippetPageProps)
         <div className="grid gap-4 xl:grid-cols-[1.25fr_0.95fr]">
           <div className="min-w-0 rounded-lg border bg-card p-3">
             <div className="mb-2 grid gap-2 sm:grid-cols-2">
-              <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="标题" />
+              <Field className="gap-0">
+                <FieldLabel htmlFor="snippet-title" className="sr-only">标题</FieldLabel>
+                <Input id="snippet-title" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="标题" />
+              </Field>
               <Select value={language} onValueChange={setLanguage}>
                 <SelectTrigger className="w-full min-w-[120px]">
                   <SelectValue placeholder="选择语言" />
@@ -622,7 +627,10 @@ export function SnippetPage({ mode, onAuthExpired, onNotify }: SnippetPageProps)
               </Select>
             </div>
             <Textarea className="mb-2 min-h-[60px]" value={description} onChange={(e) => setDescription(e.target.value)} placeholder="描述（可选）" />
-            <Input className="mb-2" value={tagInput} onChange={(e) => setTagInput(e.target.value)} placeholder="标签：python,api" />
+            <Field className="gap-0">
+              <FieldLabel htmlFor="snippet-tags" className="sr-only">标签</FieldLabel>
+              <Input id="snippet-tags" className="mb-2" value={tagInput} onChange={(e) => setTagInput(e.target.value)} placeholder="标签：python,api" />
+            </Field>
             <div className="theme-scrollbar overflow-auto rounded-lg border">
               <CodeMirror
                 className="snippet-editor-cm"
@@ -654,10 +662,19 @@ export function SnippetPage({ mode, onAuthExpired, onNotify }: SnippetPageProps)
             <div className="rounded-lg border bg-card p-3">
               <p className="mb-2 text-sm font-semibold">分享快捷设置</p>
               <div className="grid gap-2">
-                <Input value={sharePassword} onChange={(e) => setSharePassword(e.target.value)} placeholder="访问密码（可选）" />
+                <Field className="gap-0">
+                  <FieldLabel htmlFor="snippet-share-password" className="sr-only">访问密码（可选）</FieldLabel>
+                  <Input id="snippet-share-password" value={sharePassword} onChange={(e) => setSharePassword(e.target.value)} placeholder="访问密码（可选）" />
+                </Field>
                 <div className="grid gap-2 sm:grid-cols-2">
-                  <Input value={shareExpiresMinutes} onChange={(e) => setShareExpiresMinutes(e.target.value.replace(/[^0-9]/g, ""))} placeholder="过期分钟" />
-                  <Input value={shareMaxAccessCount} onChange={(e) => setShareMaxAccessCount(e.target.value.replace(/[^0-9]/g, ""))} placeholder="最大访问次数" />
+                  <Field className="gap-0">
+                    <FieldLabel htmlFor="snippet-share-expires" className="sr-only">过期分钟</FieldLabel>
+                    <Input id="snippet-share-expires" value={shareExpiresMinutes} onChange={(e) => setShareExpiresMinutes(e.target.value.replace(/[^0-9]/g, ""))} placeholder="过期分钟" />
+                  </Field>
+                  <Field className="gap-0">
+                    <FieldLabel htmlFor="snippet-share-max" className="sr-only">最大访问次数</FieldLabel>
+                    <Input id="snippet-share-max" value={shareMaxAccessCount} onChange={(e) => setShareMaxAccessCount(e.target.value.replace(/[^0-9]/g, ""))} placeholder="最大访问次数" />
+                  </Field>
                 </div>
                 <div className="inline-flex items-center gap-2 rounded-lg bg-muted/40 px-2 py-1 text-xs text-muted-foreground">
                   <Checkbox checked={shareOneTime} onCheckedChange={(checked) => setShareOneTime(Boolean(checked))} />
@@ -695,15 +712,19 @@ export function SnippetPage({ mode, onAuthExpired, onNotify }: SnippetPageProps)
             applySearch();
           }}
         >
-          <div className="flex items-center rounded-md border bg-background px-3">
-            <Search className="mr-2 h-4 w-4 text-muted-foreground" />
-            <Input
-              className="h-8 border-0 bg-transparent px-0 py-0 text-sm focus-visible:ring-0 focus-visible:ring-offset-0"
-              value={queryDraft}
-              onChange={(e) => setQueryDraft(e.target.value)}
-              placeholder="按标题或描述搜索"
-            />
-          </div>
+          <Field className="gap-0">
+            <FieldLabel htmlFor="snippet-search" className="sr-only">按标题或描述搜索</FieldLabel>
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                id="snippet-search"
+                className="pl-9"
+                value={queryDraft}
+                onChange={(e) => setQueryDraft(e.target.value)}
+                placeholder="按标题或描述搜索"
+              />
+            </div>
+          </Field>
           <Select value={languageDraft} onValueChange={setLanguageDraft}>
             <SelectTrigger className="w-full min-w-[120px]">
               <SelectValue placeholder="全部语言" />
@@ -733,8 +754,12 @@ export function SnippetPage({ mode, onAuthExpired, onNotify }: SnippetPageProps)
           <Button type="submit">搜索</Button>
         </form>
 
-        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-          {loading ? <p className="text-sm text-muted-foreground">加载中...</p> : null}
+        {loading ? (
+          <div className="flex items-center justify-center py-12 text-sm text-muted-foreground">
+            <Spinner /> 加载中...
+          </div>
+        ) : (
+          <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
           {snippets.map((item) => (
             <article
               key={item.id}
@@ -788,9 +813,9 @@ export function SnippetPage({ mode, onAuthExpired, onNotify }: SnippetPageProps)
               </div>
             </article>
           ))}
+          {snippets.length === 0 ? <p className="mt-4 text-sm text-muted-foreground">没有匹配的代码片</p> : null}
         </div>
-
-        {!loading && snippets.length === 0 ? <p className="mt-4 text-sm text-muted-foreground">没有匹配的代码片</p> : null}
+        )}
 
         {contextMenu ? createPortal(
           <div
@@ -865,10 +890,10 @@ export function SnippetPage({ mode, onAuthExpired, onNotify }: SnippetPageProps)
         {renameTarget ? (
           <Modal onClose={() => setRenameTarget(null)} title="重命名代码片">
             <div className="space-y-3">
-              <label className="block text-sm">
-                <span className="mb-1 block text-xs text-muted-foreground">新标题</span>
-                <Input value={renameValue} onChange={(e) => setRenameValue(e.target.value)} />
-              </label>
+              <Field className="gap-1">
+                <FieldLabel htmlFor="snippet-rename" className="text-xs text-muted-foreground">新标题</FieldLabel>
+                <Input id="snippet-rename" value={renameValue} onChange={(e) => setRenameValue(e.target.value)} />
+              </Field>
               <div className="flex justify-end gap-2">
                 <Button variant="outline" type="button" onClick={() => setRenameTarget(null)}>取消</Button>
                 <Button type="button" onClick={() => void submitRename()}>保存</Button>
@@ -880,10 +905,10 @@ export function SnippetPage({ mode, onAuthExpired, onNotify }: SnippetPageProps)
         {retagTarget ? (
           <Modal onClose={() => setRetagTarget(null)} title="修改标签">
             <div className="space-y-3">
-              <label className="block text-sm">
-                <span className="mb-1 block text-xs text-muted-foreground">标签（英文逗号分隔）</span>
-                <Input value={retagValue} onChange={(e) => setRetagValue(e.target.value)} />
-              </label>
+              <Field className="gap-1">
+                <FieldLabel htmlFor="snippet-retag" className="text-xs text-muted-foreground">标签（英文逗号分隔）</FieldLabel>
+                <Input id="snippet-retag" value={retagValue} onChange={(e) => setRetagValue(e.target.value)} />
+              </Field>
               <div className="flex justify-end gap-2">
                 <Button variant="outline" type="button" onClick={() => setRetagTarget(null)}>取消</Button>
                 <Button type="button" onClick={() => void submitRetag()}>保存</Button>
@@ -896,7 +921,10 @@ export function SnippetPage({ mode, onAuthExpired, onNotify }: SnippetPageProps)
           <Modal onClose={() => setEditTarget(null)} title={`编辑代码片 · ${editTarget.title}`} maxWidthClass="max-w-4xl">
             <div className="space-y-2 min-w-0">
                 <div className="grid gap-2 sm:grid-cols-2">
-                  <Input value={editTitle} onChange={(e) => setEditTitle(e.target.value)} placeholder="标题" />
+                  <Field className="gap-0">
+                    <FieldLabel htmlFor="snippet-edit-title" className="sr-only">标题</FieldLabel>
+                    <Input id="snippet-edit-title" value={editTitle} onChange={(e) => setEditTitle(e.target.value)} placeholder="标题" />
+                  </Field>
                   <Select value={editLanguage} onValueChange={setEditLanguage}>
                     <SelectTrigger className="w-full min-w-[120px]">
                       <SelectValue placeholder="选择语言" />
@@ -912,7 +940,10 @@ export function SnippetPage({ mode, onAuthExpired, onNotify }: SnippetPageProps)
                   </Select>
                 </div>
                 <Textarea className="min-h-[76px]" value={editDescription} onChange={(e) => setEditDescription(e.target.value)} placeholder="描述（可选）" />
-                <Input value={editTagInput} onChange={(e) => setEditTagInput(e.target.value)} placeholder="标签：python,api" />
+                <Field className="gap-0">
+                  <FieldLabel htmlFor="snippet-edit-tags" className="sr-only">标签</FieldLabel>
+                  <Input id="snippet-edit-tags" value={editTagInput} onChange={(e) => setEditTagInput(e.target.value)} placeholder="标签：python,api" />
+                </Field>
                 <div className="inline-flex items-center gap-2 rounded-lg bg-muted/40 px-2 py-1 text-xs text-muted-foreground">
                   <Checkbox checked={editIsPublic} onCheckedChange={(checked) => setEditIsPublic(Boolean(checked))} />
                   <span>公开代码片</span>
@@ -947,19 +978,19 @@ export function SnippetPage({ mode, onAuthExpired, onNotify }: SnippetPageProps)
         {shareTarget ? (
           <Modal onClose={() => setShareTarget(null)} title={`创建分享 · ${shareTarget.title}`}>
             <div className="space-y-3">
-              <label className="block text-sm">
-                <span className="mb-1 block text-xs text-muted-foreground">访问密码（可选）</span>
-                <Input value={sharePassword} onChange={(e) => setSharePassword(e.target.value)} />
-              </label>
+              <Field className="gap-1">
+                <FieldLabel htmlFor="snippet-modal-share-password" className="text-xs text-muted-foreground">访问密码（可选）</FieldLabel>
+                <Input id="snippet-modal-share-password" value={sharePassword} onChange={(e) => setSharePassword(e.target.value)} />
+              </Field>
               <div className="grid gap-2 sm:grid-cols-2">
-                <label className="block text-sm">
-                  <span className="mb-1 block text-xs text-muted-foreground">过期分钟（可选）</span>
-                  <Input value={shareExpiresMinutes} onChange={(e) => setShareExpiresMinutes(e.target.value.replace(/[^0-9]/g, ""))} placeholder="例如 60" />
-                </label>
-                <label className="block text-sm">
-                  <span className="mb-1 block text-xs text-muted-foreground">最大访问次数（可选）</span>
-                  <Input value={shareMaxAccessCount} onChange={(e) => setShareMaxAccessCount(e.target.value.replace(/[^0-9]/g, ""))} placeholder="例如 10" />
-                </label>
+                <Field className="gap-1">
+                  <FieldLabel htmlFor="snippet-modal-share-expires" className="text-xs text-muted-foreground">过期分钟（可选）</FieldLabel>
+                  <Input id="snippet-modal-share-expires" value={shareExpiresMinutes} onChange={(e) => setShareExpiresMinutes(e.target.value.replace(/[^0-9]/g, ""))} placeholder="例如 60" />
+                </Field>
+                <Field className="gap-1">
+                  <FieldLabel htmlFor="snippet-modal-share-max" className="text-xs text-muted-foreground">最大访问次数（可选）</FieldLabel>
+                  <Input id="snippet-modal-share-max" value={shareMaxAccessCount} onChange={(e) => setShareMaxAccessCount(e.target.value.replace(/[^0-9]/g, ""))} placeholder="例如 10" />
+                </Field>
               </div>
               <div className="inline-flex items-center gap-2 rounded-lg bg-muted/40 px-2 py-1 text-xs text-muted-foreground">
                 <Checkbox checked={shareOneTime} onCheckedChange={(checked) => setShareOneTime(Boolean(checked))} />

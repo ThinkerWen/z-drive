@@ -2,8 +2,10 @@ import { useEffect, useMemo, useState } from "react";
 import { XCircle } from "lucide-react";
 
 import { PlyrVideo } from "@/components/plyr-video";
+import { Field, FieldLabel } from "@/components/ui/field";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Spinner } from "@/components/ui/spinner";
 import { ApiError, accessCloudShare, accessSnippetShare, getImageInfo } from "@/lib/api";
 import { renderSnippetWithLineNumbers } from "@/lib/snippet-code";
 import type { CloudShareAccessResponse, ImageInfoResponse, SnippetPublicAccessResponse } from "@/lib/types";
@@ -102,7 +104,7 @@ export function PublicPreviewPage({ shortCode, ext }: { shortCode: string; ext: 
   }
 
   if (loading) {
-    return <div className="flex min-h-screen items-center justify-center text-sm text-muted-foreground">加载中...</div>;
+    return <div className="flex min-h-screen items-center justify-center gap-2 text-sm text-muted-foreground"><Spinner /> 加载中...</div>;
   }
 
   if (fatalError || !info) {
@@ -220,7 +222,7 @@ export function PublicSharePage({ shareCode }: { shareCode: string }) {
   }, [initialPassword, shareCode]);
 
   if (loading) {
-    return <div className="flex min-h-screen items-center justify-center text-sm text-muted-foreground">加载中...</div>;
+    return <div className="flex min-h-screen items-center justify-center gap-2 text-sm text-muted-foreground"><Spinner /> 加载中...</div>;
   }
 
   if (fatalError) {
@@ -248,12 +250,15 @@ export function PublicSharePage({ shareCode }: { shareCode: string }) {
               void accessShare(password);
             }}
           >
-            <Input
-              className="h-11 rounded-xl px-3 text-sm"
-              placeholder="请输入分享密码"
-              value={password}
-              onChange={(event) => setPassword(event.target.value)}
-            />
+            <Field className="gap-0">
+              <FieldLabel htmlFor="public-share-password" className="sr-only">请输入分享密码</FieldLabel>
+              <Input
+                id="public-share-password"
+                placeholder="请输入分享密码"
+                value={password}
+                onChange={(event) => setPassword(event.target.value)}
+              />
+            </Field>
             <Button type="submit" className="w-full" disabled={submitting || !password.trim()}>
               {submitting ? "验证中..." : "进入查看"}
             </Button>
@@ -358,7 +363,7 @@ export function PublicSnippetPage({ shareCode }: { shareCode: string }) {
   }, [initialPassword, shareCode]);
 
   if (loading) {
-    return <div className="flex min-h-screen items-center justify-center text-sm text-muted-foreground">加载中...</div>;
+    return <div className="flex min-h-screen items-center justify-center gap-2 text-sm text-muted-foreground"><Spinner /> 加载中...</div>;
   }
 
   if (fatalError) {
@@ -386,12 +391,15 @@ export function PublicSnippetPage({ shareCode }: { shareCode: string }) {
               void accessShare(password);
             }}
           >
-            <Input
-              className="h-11 rounded-xl px-3 text-sm"
-              placeholder="请输入分享密码"
-              value={password}
-              onChange={(event) => setPassword(event.target.value)}
-            />
+            <Field className="gap-0">
+              <FieldLabel htmlFor="public-snippet-password" className="sr-only">请输入分享密码</FieldLabel>
+              <Input
+                id="public-snippet-password"
+                placeholder="请输入分享密码"
+                value={password}
+                onChange={(event) => setPassword(event.target.value)}
+              />
+            </Field>
             <Button type="submit" className="w-full" disabled={submitting || !password.trim()}>
               {submitting ? "验证中..." : "进入查看"}
             </Button>

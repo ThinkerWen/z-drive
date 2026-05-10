@@ -25,8 +25,10 @@ import {
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { Field, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { Progress } from "@/components/ui/progress";
+import { Spinner } from "@/components/ui/spinner";
 import { Badge } from "@/components/ui/badge";
 import {
   Select,
@@ -567,7 +569,7 @@ export function CloudPage({ mode, onAuthExpired, onNotify }: CloudPageProps) {
     event.target.value = "";
   }
 
-  async function handleUploadDrop(event: React.DragEvent<HTMLDivElement>) {
+  async function handleUploadDrop(event: React.DragEvent<HTMLLabelElement>) {
     event.preventDefault();
     setUploadDropActive(false);
     const files = Array.from(event.dataTransfer.files ?? []);
@@ -967,7 +969,7 @@ export function CloudPage({ mode, onAuthExpired, onNotify }: CloudPageProps) {
           </h2>
         </div>
         {mode === "upload" ? (
-          <Input ref={fileInputRef} type="file" multiple className="hidden" onChange={handleUpload} />
+          <Input id="cloud-upload-files" ref={fileInputRef} type="file" multiple className="sr-only" onChange={handleUpload} />
         ) : null}
       </div>
 
@@ -992,7 +994,8 @@ export function CloudPage({ mode, onAuthExpired, onNotify }: CloudPageProps) {
 
       {mode === "upload" ? (
         <>
-          <div
+          <label
+            htmlFor="cloud-upload-files"
             className={
               uploadDropActive
                 ? "flex min-h-48 cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-primary bg-primary/5 p-6 text-center"
@@ -1008,17 +1011,11 @@ export function CloudPage({ mode, onAuthExpired, onNotify }: CloudPageProps) {
             }}
           >
             <p className="text-base font-semibold">拖拽文件到这里上传</p>
-            <p className="mt-1 text-sm text-muted-foreground">或点击按钮选择多个文件上传到当前目录</p>
+            <p className="mt-1 text-sm text-muted-foreground">或点击此区域选择文件，可一次上传多个文件</p>
             <p className="mt-3 max-w-full truncate rounded-lg bg-card px-3 py-1.5 text-xs text-muted-foreground" title={cloudSelectedFilesLabel}>
               {cloudSelectedFilesLabel}
             </p>
-            <div className="mt-4">
-              <Button type="button" onClick={() => fileInputRef.current?.click()} disabled={uploading || loading}>
-                <Upload className="mr-2 h-4 w-4" />
-                选择本地文件
-              </Button>
-            </div>
-          </div>
+          </label>
 
           <div className="mt-3 flex justify-end">
             <Button type="button" onClick={() => void confirmCloudUpload()} disabled={uploading || loading || cloudSelectedFiles.length === 0}>
@@ -1113,11 +1110,15 @@ export function CloudPage({ mode, onAuthExpired, onNotify }: CloudPageProps) {
           </div>
 
           <form className="mb-4 grid gap-2 lg:grid-cols-[1fr_auto_auto]" onSubmit={handleSearchSubmit}>
-            <Input
-              placeholder="搜索名称"
-              value={queryInput}
-              onChange={(event) => setQueryInput(event.target.value)}
-            />
+            <Field className="gap-0">
+              <FieldLabel htmlFor="cloud-search" className="sr-only">搜索名称</FieldLabel>
+              <Input
+                id="cloud-search"
+                placeholder="搜索名称"
+                value={queryInput}
+                onChange={(event) => setQueryInput(event.target.value)}
+              />
+            </Field>
             <Button type="submit" variant="outline">搜索</Button>
             <Select value={sortOption} onValueChange={(value) => { void handleSortChange(value); }}>
               <SelectTrigger className="w-full max-w-48">
@@ -1301,11 +1302,15 @@ export function CloudPage({ mode, onAuthExpired, onNotify }: CloudPageProps) {
                 <DialogTitle>重命名</DialogTitle>
                 <DialogDescription className="truncate" title={renameModalItem?.name}>{renameModalItem?.name}</DialogDescription>
               </DialogHeader>
-              <Input
-                value={renameValue}
-                onChange={(event) => setRenameValue(event.target.value)}
-                placeholder="输入新名称"
-              />
+              <Field className="gap-0">
+                <FieldLabel htmlFor="cloud-rename" className="sr-only">输入新名称</FieldLabel>
+                <Input
+                  id="cloud-rename"
+                  value={renameValue}
+                  onChange={(event) => setRenameValue(event.target.value)}
+                  placeholder="输入新名称"
+                />
+              </Field>
               <DialogFooter>
                 <Button type="button" variant="outline" onClick={() => setRenameModalItem(null)} disabled={loading}>取消</Button>
                 <Button type="button" onClick={() => void submitRename()} disabled={loading || !renameValue.trim()}>保存</Button>
@@ -1320,22 +1325,22 @@ export function CloudPage({ mode, onAuthExpired, onNotify }: CloudPageProps) {
                 <DialogDescription className="truncate" title={shareModalItem?.name}>{shareModalItem?.name}</DialogDescription>
               </DialogHeader>
               <div className="space-y-3">
-                <div className="space-y-1">
-                  <label className="text-xs text-muted-foreground">访问密码（可选）</label>
+                <Field className="gap-1">
+                  <FieldLabel className="text-xs text-muted-foreground">访问密码（可选）</FieldLabel>
                   <Input
                     value={sharePassword}
                     onChange={(event) => setSharePassword(event.target.value)}
                     placeholder="留空表示无需密码"
                   />
-                </div>
-                <div className="space-y-1">
-                  <label className="text-xs text-muted-foreground">过期分钟数（可选）</label>
+                </Field>
+                <Field className="gap-1">
+                  <FieldLabel className="text-xs text-muted-foreground">过期分钟数（可选）</FieldLabel>
                   <Input
                     value={shareExpiresMinutes}
                     onChange={(event) => setShareExpiresMinutes(event.target.value)}
                     placeholder="留空表示永不过期"
                   />
-                </div>
+                </Field>
               </div>
               <DialogFooter>
                 <Button type="button" variant="outline" onClick={() => setShareModalItem(null)} disabled={loading}>取消</Button>
@@ -1357,12 +1362,16 @@ export function CloudPage({ mode, onAuthExpired, onNotify }: CloudPageProps) {
                   void submitCreateFolder();
                 }}
               >
-                <Input
-                  autoFocus
-                  value={createFolderName}
-                  onChange={(event) => setCreateFolderName(event.target.value)}
-                  placeholder="请输入文件夹名称"
-                />
+                <Field className="gap-0">
+                  <FieldLabel htmlFor="cloud-create-folder" className="sr-only">请输入文件夹名称</FieldLabel>
+                  <Input
+                    id="cloud-create-folder"
+                    autoFocus
+                    value={createFolderName}
+                    onChange={(event) => setCreateFolderName(event.target.value)}
+                    placeholder="请输入文件夹名称"
+                  />
+                </Field>
                 <DialogFooter>
                   <Button type="button" variant="outline" onClick={closeCreateFolderModal} disabled={loading}>取消</Button>
                   <Button type="submit" disabled={loading || !createFolderName.trim()}>创建</Button>
@@ -1396,7 +1405,7 @@ export function CloudPage({ mode, onAuthExpired, onNotify }: CloudPageProps) {
                     <iframe title={previewItem.name} src={buildCloudPreviewUrl(previewItem.id)} className="h-[68vh] w-full rounded border border-border/60 bg-card" />
                   ) : getCloudPreviewKind(previewItem) === "text" ? (
                     <div className="theme-scrollbar h-[68vh] w-full overflow-auto rounded border border-border/60 bg-card p-4 text-left">
-                      {previewLoading ? <p className="text-sm text-muted-foreground">文本加载中...</p> : null}
+                      {previewLoading ? <p className="flex items-center gap-1.5 text-sm text-muted-foreground"><Spinner /> 文本加载中...</p> : null}
                       {previewError ? <p className="text-sm text-rose-600">{previewError}</p> : null}
                       {!previewLoading && !previewError ? (
                         <pre className="whitespace-pre-wrap break-words font-mono text-xs leading-6 text-foreground">{previewTextContent}</pre>
@@ -1499,11 +1508,15 @@ export function CloudPage({ mode, onAuthExpired, onNotify }: CloudPageProps) {
             <DialogTitle>输入分享密码</DialogTitle>
             <DialogDescription>复制链接时将自动附带密码参数。</DialogDescription>
           </DialogHeader>
-          <Input
-            value={copyPasswordInput}
-            onChange={(event) => setCopyPasswordInput(event.target.value)}
-            placeholder="请输入该分享的密码"
-          />
+          <Field className="gap-0">
+            <FieldLabel htmlFor="cloud-copy-password" className="sr-only">请输入该分享的密码</FieldLabel>
+            <Input
+              id="cloud-copy-password"
+              value={copyPasswordInput}
+              onChange={(event) => setCopyPasswordInput(event.target.value)}
+              placeholder="请输入该分享的密码"
+            />
+          </Field>
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => setCopyPasswordShare(null)}>取消</Button>
             <Button type="button" onClick={() => void confirmCopyWithPassword()} disabled={!copyPasswordInput.trim()}>
@@ -1574,20 +1587,21 @@ export function CloudPage({ mode, onAuthExpired, onNotify }: CloudPageProps) {
 
             {targetPickerAction.mode === "copy" && targetPickerAction.scope === "single" ? (
               <div className="mt-3">
-                <label className="mb-1 block text-xs text-muted-foreground">复制后名称（可选）</label>
-                <Input
-                  className="rounded-xl"
-                  value={targetPickerCopyName}
-                  onChange={(event) => setTargetPickerCopyName(event.target.value)}
-                  placeholder="留空将使用原名称"
-                  disabled={targetPickerSubmitting}
-                />
+                <Field className="gap-1">
+                  <FieldLabel className="text-xs text-muted-foreground">复制后名称（可选）</FieldLabel>
+                  <Input
+                    value={targetPickerCopyName}
+                    onChange={(event) => setTargetPickerCopyName(event.target.value)}
+                    placeholder="留空将使用原名称"
+                    disabled={targetPickerSubmitting}
+                  />
+                </Field>
               </div>
             ) : null}
 
             <div className="mt-3 h-[300px] overflow-auto rounded-xl border border-border/70 bg-muted/20 p-3">
               {targetPickerLoading ? (
-                <p className="text-xs text-muted-foreground">目录加载中...</p>
+                <p className="flex items-center gap-1.5 text-xs text-muted-foreground"><Spinner className="size-3" /> 目录加载中...</p>
               ) : targetPickerFolders.length > 0 ? (
                 <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">
                   {targetPickerFolders.map((folder) => (

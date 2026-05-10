@@ -1,5 +1,5 @@
 import { Suspense, lazy, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { BarChart3, CheckCircle2, Copy, ExternalLink, Github, Loader2, LogOut, Moon, Shield, Sun, Trash2, Upload, XCircle } from "lucide-react";
+import { BarChart3, Copy, ExternalLink, Github, LogOut, Moon, Shield, Sun, Trash2, Upload } from "lucide-react";
 import { useLocation, useNavigate } from "react-router-dom";
 
 import { SidebarProvider, SidebarInset, SidebarTrigger } from "@/components/ui/sidebar";
@@ -8,8 +8,11 @@ import { Breadcrumb, BreadcrumbItem, BreadcrumbList, BreadcrumbPage } from "@/co
 import { Separator } from "@/components/ui/separator";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { Field, FieldLabel } from "@/components/ui/field";
 import { Badge } from "@/components/ui/badge";
+import { Toaster } from "@/components/ui/sonner";
+import { Spinner } from "@/components/ui/spinner";
+import { toast } from "sonner";
 import { Progress } from "@/components/ui/progress";
 import { Pagination, PaginationContent, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from "@/components/ui/pagination";
 import {
@@ -51,7 +54,6 @@ type CloudSubPage = "upload" | "files" | "shares" | "stats";
 type SnippetSubPage = "editor" | "list" | "shares" | "stats";
 type ManageSection = "gallery" | "cloud" | "snippet";
 type UploadTaskStatus = "uploading" | "processing" | "success" | "error" | "cancelled";
-type ToastKind = "success" | "error";
 
 interface UploadTask {
   id: string;
@@ -162,7 +164,6 @@ export default function App() {
   const [activeCloudPage, setActiveCloudPage] = useState<CloudSubPage>("upload");
   const [activeSnippetPage, setActiveSnippetPage] = useState<SnippetSubPage>("editor");
   const [busy, setBusy] = useState(false);
-  const [toast, setToast] = useState<{ id: number; text: string; kind: ToastKind } | null>(null);
   const [isDark, setIsDark] = useState(false);
   const [githubStars, setGithubStars] = useState<number | null>(null);
 
@@ -285,26 +286,24 @@ export default function App() {
     setIsDark(nextIsDark);
   }
 
-  function notify(text: string, kind: ToastKind = "success") {
-    setToast({ id: Date.now(), text, kind });
-  }
-
-  function notifyAuto(text: string) {
+  function notify(text: string) {
     const normalized = text.trim().toLowerCase();
     const errorPattern = /失败|错误|异常|无效|失效|拒绝|不存在|未找到|超时|error|failed|exception|invalid|forbidden|unauthorized|not\s*found|timeout|500|404|403|401/i;
-    const successPattern = /成功|完成|已复制|已取消|已更新|上传完成|创建完成|删除完成|copied|success|done|completed/i;
     const isError = errorPattern.test(normalized);
-    const isSuccess = successPattern.test(normalized);
-    notify(text, isError ? "error" : isSuccess ? "success" : "error");
+    if (isError) {
+      toast.error(text);
+    } else {
+      toast.success(text);
+    }
   }
 
-  useEffect(() => {
-    if (!toast) {
-      return;
-    }
-    const timer = window.setTimeout(() => setToast(null), 2200);
-    return () => window.clearTimeout(timer);
-  }, [toast]);
+  function notifySuccess(text: string) {
+    toast.success(text);
+  }
+
+  function notifyError(text: string) {
+    toast.error(text);
+  }
 
   async function refreshList(targetPage = page, nextQuery = query, nextFileType = fileType): Promise<void> {
     try {
@@ -321,10 +320,10 @@ export default function App() {
     } catch (error) {
       if (error instanceof ApiError && error.status === 401) {
         setIsAuthed(false);
-        notify("请先登录管理账号", "error");
+        notifyError("请先登录管理账号");
         return;
       }
-      notify(error instanceof Error ? error.message : "加载失败", "error");
+      notifyError(error instanceof Error ? error.message : "加载失败");
     }
   }
 
@@ -339,10 +338,10 @@ export default function App() {
         setActiveSection("gallery");
         setActiveGalleryPage("gallery");
         navigate("/login", { replace: true });
-        notify("请先登录管理账号", "error");
+        notifyError("请先登录管理账号");
         return;
       }
-      notify(error instanceof Error ? error.message : "统计加载失败", "error");
+      notifyError(error instanceof Error ? error.message : "统计加载失败");
     }
   }
 
@@ -365,9 +364,9 @@ export default function App() {
           if (error instanceof ApiError && error.status === 401) {
             setIsAuthed(false);
             navigate("/login", { replace: true });
-            notify("请先登录管理账号", "error");
+            notifyError("请先登录管理账号");
           } else {
-            notify(error instanceof Error ? error.message : "认证检查失败", "error");
+            notifyError(error instanceof Error ? error.message : "认证检查失败");
           }
         }
       } else {
@@ -404,9 +403,9 @@ export default function App() {
       setActiveSection("gallery");
       setActiveGalleryPage("gallery");
       navigate("/gallery/index", { replace: true });
-      notify("登录成功", "success");
+      notifySuccess("登录成功");
     } catch (error) {
-      notify(error instanceof Error ? error.message : "登录失败", "error");
+      notifyError(error instanceof Error ? error.message : "登录失败");
     } finally {
       setBusy(false);
     }
@@ -414,7 +413,7 @@ export default function App() {
 
   async function runGalleryUpload(files: File[]) {
     if (files.length === 0) {
-      notify("请选择至少一个文件", "error");
+      notifyError("请选择至少一个文件");
       return;
     }
 
@@ -431,13 +430,17 @@ export default function App() {
 
       const settled = await Promise.allSettled(tasks.map((task) => uploadFileTask(task.id, task.file)));
       const successCount = settled.filter((item) => item.status === "fulfilled").length;
-      notify(`上传完成：成功 ${successCount} / ${tasks.length}`, successCount > 0 ? "success" : "error");
+      if (successCount > 0) {
+        notifySuccess(`上传完成：成功 ${successCount} / ${tasks.length}`);
+      } else {
+        notifyError(`上传完成：成功 ${successCount} / ${tasks.length}`);
+      }
 
       setGallerySelectedFiles([]);
       setSelectedFilesLabel("未选择文件");
       await Promise.all([refreshStats(), refreshList(1)]);
     } catch (error) {
-      notify(error instanceof Error ? error.message : "上传失败", "error");
+      notifyError(error instanceof Error ? error.message : "上传失败");
     } finally {
       setBusy(false);
     }
@@ -629,7 +632,7 @@ export default function App() {
         return;
       }
       window.prompt("当前环境不支持自动复制，请手动复制以下内容：", value);
-      notify("自动复制失败，已提供手动复制", "error");
+      notifyError("自动复制失败，已提供手动复制");
     }
   }
 
@@ -638,10 +641,10 @@ export default function App() {
     try {
       await deleteImage(shortCode);
       await Promise.all([refreshStats(), refreshList(page)]);
-      notify("删除成功", "success");
+      notifySuccess("删除成功");
       setDeleteTarget(null);
     } catch (error) {
-      notify(error instanceof Error ? error.message : "删除失败", "error");
+      notifyError(error instanceof Error ? error.message : "删除失败");
     } finally {
       setBusy(false);
     }
@@ -652,9 +655,9 @@ export default function App() {
     try {
       await updateAccessMode(item.short_code, nextMode);
       await refreshList(page);
-      notify("访问模式已更新", "success");
+      notifySuccess("访问模式已更新");
     } catch (error) {
-      notify(error instanceof Error ? error.message : "更新失败", "error");
+      notifyError(error instanceof Error ? error.message : "更新失败");
     } finally {
       setBusy(false);
     }
@@ -695,10 +698,10 @@ export default function App() {
 
       await updateAccessMode(accessModalItem.short_code, accessModalMode, sign);
       await refreshList(page);
-      notify("访问模式已更新", "success");
+      notifySuccess("访问模式已更新");
       setAccessModalItem(null);
     } catch (error) {
-      notify(error instanceof Error ? error.message : "更新失败", "error");
+      notifyError(error instanceof Error ? error.message : "更新失败");
     } finally {
       setBusy(false);
     }
@@ -733,13 +736,13 @@ export default function App() {
     setItems([]);
     setTotal(0);
     navigate("/login", { replace: true });
-    notify("已退出登录", "success");
+    notifySuccess("已退出登录");
   }
 
   if (authLoading) {
     return (
       <div className="flex min-h-screen items-center justify-center">
-        <Loader2 className="h-6 w-6 animate-spin text-primary" />
+        <Spinner className="size-6 text-primary" />
       </div>
     );
   }
@@ -754,17 +757,17 @@ export default function App() {
           <h2 className="mt-3 text-2xl font-semibold">管理员登录</h2>
           <p className="mt-1 text-sm text-muted-foreground">请输入管理凭据后进入工作台。</p>
           <form className="mt-5 space-y-3" onSubmit={handleLogin}>
-            <div className="space-y-1">
-              <Label htmlFor="login-username">用户名</Label>
+            <Field className="gap-1">
+              <FieldLabel htmlFor="login-username">用户名</FieldLabel>
               <Input
                 id="login-username"
                 placeholder="username"
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
               />
-            </div>
-            <div className="space-y-1">
-              <Label htmlFor="login-password">密码</Label>
+            </Field>
+            <Field className="gap-1">
+              <FieldLabel htmlFor="login-password">密码</FieldLabel>
               <Input
                 id="login-password"
                 type="password"
@@ -772,13 +775,13 @@ export default function App() {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
               />
-            </div>
+            </Field>
             <Button className="w-full" disabled={busy}>
               {busy ? "登录中..." : "登录"}
             </Button>
           </form>
         </section>
-        <ToastPopup toast={toast} />
+        <Toaster />
       </div>
     );
   }
@@ -1043,12 +1046,15 @@ export default function App() {
                   </SelectGroup>
                 </SelectContent>
               </Select>
-              <Input
-                className="min-w-64 flex-1"
-                placeholder="搜索文件名或短码"
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
-              />
+              <Field className="min-w-64 flex-1 gap-0">
+                <FieldLabel htmlFor="gallery-search" className="sr-only">搜索文件名或短码</FieldLabel>
+                <Input
+                  id="gallery-search"
+                  placeholder="搜索文件名或短码"
+                  value={query}
+                  onChange={(e) => setQuery(e.target.value)}
+                />
+              </Field>
               <Button disabled={busy}>查询</Button>
             </form>
 
@@ -1318,7 +1324,7 @@ export default function App() {
                   <h3 className="mb-3 font-semibold">访问趋势（近 14 天）</h3>
                   <div className="h-72 rounded-lg border bg-muted/25 p-2">
                     {(stats?.daily_stats ?? []).length > 0 ? (
-                      <Suspense fallback={<p className="flex h-full items-center justify-center text-sm text-muted-foreground">图表加载中...</p>}>
+                      <Suspense fallback={<div className="flex h-full items-center justify-center gap-2 text-sm text-muted-foreground"><Spinner /> 图表加载中...</div>}>
                         <TrendLineChart data={stats?.daily_stats ?? []} />
                       </Suspense>
                     ) : (
@@ -1414,9 +1420,9 @@ export default function App() {
                 setActiveSection("gallery");
                 setActiveGalleryPage("gallery");
                 navigate("/login", { replace: true });
-                notify("登录已过期，请重新登录", "error");
+                notifyError("登录已过期，请重新登录");
               }}
-              onNotify={notifyAuto}
+              onNotify={notify}
             />
           ) : null}
 
@@ -1428,31 +1434,16 @@ export default function App() {
                 setActiveSection("gallery");
                 setActiveGalleryPage("gallery");
                 navigate("/login", { replace: true });
-                notify("登录已过期，请重新登录", "error");
+                notifyError("登录已过期，请重新登录");
               }}
-              onNotify={notifyAuto}
+              onNotify={notify}
             />
           ) : null}
       </div>
       </main>
       </SidebarInset>
-      <ToastPopup toast={toast} />
+      <Toaster />
     </SidebarProvider>
-  );
-}
-
-function ToastPopup({ toast }: { toast: { id: number; text: string; kind: ToastKind } | null }) {
-  if (!toast) {
-    return null;
-  }
-  const isSuccess = toast.kind === "success";
-  return (
-    <div className="pointer-events-none fixed right-6 top-6 z-[120]">
-      <div className={isSuccess ? "flex items-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50/95 px-4 py-2.5 text-sm text-emerald-700 shadow-lg" : "flex items-center gap-2 rounded-xl border border-rose-200 bg-rose-50/95 px-4 py-2.5 text-sm text-rose-700 shadow-lg"}>
-        {isSuccess ? <CheckCircle2 className="h-4 w-4" /> : <XCircle className="h-4 w-4" />}
-        <span>{toast.text}</span>
-      </div>
-    </div>
   );
 }
 
