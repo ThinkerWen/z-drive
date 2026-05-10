@@ -1081,19 +1081,13 @@ export function CloudPage({ mode, onAuthExpired, onNotify }: CloudPageProps) {
                     <Button
                       type="button"
                       size="sm"
-                      variant="outline"
-                      className={
-                        `h-7 px-2 text-xs ${
-                          isCurrent
-                            ? "border-primary/35 bg-primary/10 text-primary"
-                            : "border-border/70"
-                        }`
-                      }
+                      variant={isCurrent ? "secondary" : "ghost"}
+                      className="rounded-lg"
                       onClick={() => jumpToPath(index)}
                     >
                       {node.name}
                     </Button>
-                    {index < pathNodes.length - 1 ? <ChevronRight className="mx-1 h-3.5 w-3.5 text-muted-foreground" /> : null}
+                    {index < pathNodes.length - 1 ? <ChevronRight className="mx-0.5 h-3.5 w-3.5 text-muted-foreground" /> : null}
                   </div>
                 );
               })}
@@ -1181,13 +1175,15 @@ export function CloudPage({ mode, onAuthExpired, onNotify }: CloudPageProps) {
                 <article
                   key={item.id}
                   className="group"
-                  onContextMenu={(event) => openContextMenu(event, item)}
                 >
                   {(() => {
                     const visual = getCloudItemVisual(item);
                     const isSelected = selectedIds.includes(item.id);
                     return (
-                      <div className="relative mx-auto w-full max-w-[116px]">
+                      <div
+                        className="relative mx-auto w-full max-w-[116px]"
+                        onContextMenu={(event) => openContextMenu(event, item)}
+                      >
                         <Button
                           type="button"
                           size="icon"
@@ -1553,21 +1549,15 @@ export function CloudPage({ mode, onAuthExpired, onNotify }: CloudPageProps) {
                       <Button
                         type="button"
                         size="sm"
-                        variant="outline"
-                        className={
-                          `h-7 px-2 text-xs ${
-                            isCurrent
-                              ? "border-primary/35 bg-primary/10 text-primary"
-                              : "border-border/70"
-                          }`
-                        }
+                        variant={isCurrent ? "secondary" : "ghost"}
+                        className="rounded-lg"
                         onClick={() => {
                           void jumpTargetPickerPath(index);
                         }}
                       >
                         {node.name}
                       </Button>
-                      {index < targetPickerPathNodes.length - 1 ? <ChevronRight className="mx-1 h-3.5 w-3.5 text-muted-foreground" /> : null}
+                      {index < targetPickerPathNodes.length - 1 ? <ChevronRight className="mx-0.5 h-3.5 w-3.5 text-muted-foreground" /> : null}
                     </div>
                   );
                 })}
