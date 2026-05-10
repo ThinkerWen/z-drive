@@ -2,6 +2,8 @@ import { useEffect, useMemo, useState } from "react";
 import { XCircle } from "lucide-react";
 
 import { PlyrVideo } from "@/components/plyr-video";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { ApiError, accessCloudShare, accessSnippetShare, getImageInfo } from "@/lib/api";
 import { renderSnippetWithLineNumbers } from "@/lib/snippet-code";
 import type { CloudShareAccessResponse, ImageInfoResponse, SnippetPublicAccessResponse } from "@/lib/types";
@@ -130,8 +132,12 @@ export function PublicPreviewPage({ shortCode, ext }: { shortCode: string; ext: 
         </div>
 
         <div className="mt-4 flex flex-wrap gap-2">
-          <a className="rounded-xl bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground" href={viewUrl} target="_blank" rel="noreferrer">直接访问</a>
-          <a className="rounded-xl border border-border/80 bg-card px-4 py-2 text-sm" href={downloadUrl}>下载文件</a>
+          <Button asChild className="rounded-xl">
+            <a href={viewUrl} target="_blank" rel="noreferrer">直接访问</a>
+          </Button>
+          <Button asChild variant="outline" className="rounded-xl">
+            <a href={downloadUrl}>下载文件</a>
+          </Button>
         </div>
 
         <div className="mt-5 space-y-2">
@@ -242,13 +248,15 @@ export function PublicSharePage({ shareCode }: { shareCode: string }) {
               void accessShare(password);
             }}
           >
-            <input
-              className="w-full rounded-xl border bg-card px-3 py-2.5 text-sm outline-none ring-offset-2 transition focus-visible:ring-2 focus-visible:ring-primary"
+            <Input
+              className="h-11 rounded-xl px-3 text-sm"
               placeholder="请输入分享密码"
               value={password}
               onChange={(event) => setPassword(event.target.value)}
             />
-            <ButtonLike disabled={submitting || !password.trim()}>{submitting ? "验证中..." : "进入查看"}</ButtonLike>
+            <Button type="submit" className="w-full" disabled={submitting || !password.trim()}>
+              {submitting ? "验证中..." : "进入查看"}
+            </Button>
           </form>
         </div>
       </div>
@@ -275,7 +283,11 @@ export function PublicSharePage({ shareCode }: { shareCode: string }) {
         </div>
 
         <div className="mt-4 flex flex-wrap gap-2">
-          {!item.is_folder ? <a className="rounded-xl bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground" href={downloadUrl}>下载文件</a> : null}
+          {!item.is_folder ? (
+            <Button asChild className="rounded-xl">
+              <a href={downloadUrl}>下载文件</a>
+            </Button>
+          ) : null}
         </div>
       </div>
       <p className="mt-auto pt-3 text-center text-xs text-muted-foreground">
@@ -374,13 +386,15 @@ export function PublicSnippetPage({ shareCode }: { shareCode: string }) {
               void accessShare(password);
             }}
           >
-            <input
-              className="w-full rounded-xl border bg-card px-3 py-2.5 text-sm outline-none ring-offset-2 transition focus-visible:ring-2 focus-visible:ring-primary"
+            <Input
+              className="h-11 rounded-xl px-3 text-sm"
               placeholder="请输入分享密码"
               value={password}
               onChange={(event) => setPassword(event.target.value)}
             />
-            <ButtonLike disabled={submitting || !password.trim()}>{submitting ? "验证中..." : "进入查看"}</ButtonLike>
+            <Button type="submit" className="w-full" disabled={submitting || !password.trim()}>
+              {submitting ? "验证中..." : "进入查看"}
+            </Button>
           </form>
         </div>
       </div>
@@ -418,14 +432,12 @@ export function PublicSnippetPage({ shareCode }: { shareCode: string }) {
         </div>
 
         <div className="mt-4 flex flex-wrap gap-2">
-          <a className="rounded-xl bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground" href={data.download_url}>下载代码文件</a>
-          <button
-            type="button"
-            className="rounded-xl border border-border bg-card px-4 py-2 text-sm font-semibold text-foreground hover:bg-muted/40"
-            onClick={() => void copySnippetCode()}
-          >
+          <Button asChild className="rounded-xl">
+            <a href={data.download_url}>下载代码文件</a>
+          </Button>
+          <Button variant="outline" className="rounded-xl" onClick={() => void copySnippetCode()}>
             {copiedCode ? "已复制" : "复制"}
-          </button>
+          </Button>
         </div>
       </div>
       <p className="mt-auto pt-3 text-center text-xs text-muted-foreground">
@@ -435,34 +447,23 @@ export function PublicSnippetPage({ shareCode }: { shareCode: string }) {
   );
 }
 
-function ButtonLike({ children, disabled }: { children: React.ReactNode; disabled?: boolean }) {
-  return (
-    <button
-      type="submit"
-      disabled={disabled}
-      className="w-full rounded-xl bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground disabled:cursor-not-allowed disabled:opacity-60"
-    >
-      {children}
-    </button>
-  );
-}
-
 function CopyItem({ label, value, copied, onCopy }: { label: string; value: string; copied: boolean; onCopy: () => void }) {
   return (
     <div className="grid grid-cols-[84px_1fr_auto] items-center gap-2 rounded-xl border border-border/70 bg-muted/35 px-3 py-2 text-xs">
       <span className="font-semibold text-muted-foreground">{label}</span>
       <span className="truncate font-mono" title={value}>{value}</span>
-      <button
+      <Button
         type="button"
+        size="sm"
         className={
           copied
-            ? "rounded-md bg-emerald-600 px-2.5 py-1 font-semibold text-white"
-            : "rounded-md bg-primary px-2.5 py-1 font-semibold text-white"
+            ? "h-7 bg-emerald-600 px-2.5 text-xs font-semibold text-white hover:bg-emerald-600"
+            : "h-7 px-2.5 text-xs font-semibold"
         }
         onClick={onCopy}
       >
         {copied ? "已复制" : "复制"}
-      </button>
+      </Button>
     </div>
   );
 }
