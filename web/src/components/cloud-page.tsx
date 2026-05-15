@@ -1175,8 +1175,11 @@ export function CloudPage({ mode, onAuthExpired, onNotify }: CloudPageProps) {
                           type="button"
                           variant="ghost"
                           className="h-auto w-full flex-col items-center gap-2 rounded-xl p-2 text-center hover:bg-muted/25"
-                          onClick={() => enterFolder(item)}
-                          disabled={!item.is_folder}
+                          onClick={() => {
+                            if (item.is_folder) {
+                              enterFolder(item);
+                            }
+                          }}
                           title={item.name}
                         >
                           <span className={`flex h-20 w-20 shrink-0 items-center justify-center rounded-2xl ${visual.bgClass} shadow-sm`}>
@@ -1710,11 +1713,11 @@ function getCloudItemVisual(item: CloudItem): {
   icon: ReactNode;
   bgClass: string;
 } {
-  const shared = "h-8 w-8 text-secondary-foreground";
+  const iconClass = "h-8 w-8 text-foreground [&_*]:!fill-transparent";
 
   if (item.is_folder) {
     return {
-      icon: <Folder className={`${shared} [&_*]:!fill-transparent`} />,
+      icon: <Folder className={iconClass} />,
       bgClass: "bg-secondary",
     };
   }
@@ -1735,68 +1738,43 @@ function getCloudItemVisual(item: CloudItem): {
   const subtitleExts = new Set(["srt", "ass", "ssa", "vtt", "sub"]);
 
   if (imageExts.has(ext) || mime.startsWith("image/")) {
-    return { icon: <Image className={shared} />, bgClass: "bg-secondary" };
+    return { icon: <Image className={iconClass} />, bgClass: "bg-secondary" };
   }
   if (videoExts.has(ext) || mime.startsWith("video/")) {
-    return { icon: <Video className={shared} />, bgClass: "bg-secondary" };
+    return { icon: <Video className={iconClass} />, bgClass: "bg-secondary" };
   }
   if (audioExts.has(ext) || mime.startsWith("audio/")) {
-    return { icon: <Music className={shared} />, bgClass: "bg-secondary" };
+    return { icon: <Music className={iconClass} />, bgClass: "bg-secondary" };
   }
   if (archiveExts.has(ext)) {
-    return { icon: <Archive className={shared} />, bgClass: "bg-secondary" };
+    return { icon: <Archive className={iconClass} />, bgClass: "bg-secondary" };
   }
   if (ext === "pdf") {
-    return { icon: <ExtBadge ext="PDF" />, bgClass: "bg-secondary" };
+    return { icon: <FileText className={iconClass} />, bgClass: "bg-secondary" };
   }
   if (docExts.has(ext) || mime.includes("word") || mime.includes("powerpoint") || mime.startsWith("text/")) {
-    if (ext === "doc" || ext === "docx") {
-      return { icon: <ExtBadge ext="DOC" />, bgClass: "bg-secondary" };
-    }
-    if (ext === "ppt" || ext === "pptx") {
-      return { icon: <ExtBadge ext="PPT" />, bgClass: "bg-secondary" };
-    }
-    if (ext === "txt") {
-      return { icon: <ExtBadge ext="TXT" />, bgClass: "bg-secondary" };
-    }
-    return { icon: <FileText className={shared} />, bgClass: "bg-secondary" };
+    return { icon: <FileText className={iconClass} />, bgClass: "bg-secondary" };
   }
   if (sheetExts.has(ext) || mime.includes("spreadsheet") || mime.includes("excel") || mime.includes("csv")) {
-    if (ext === "csv") {
-      return { icon: <ExtBadge ext="CSV" />, bgClass: "bg-secondary" };
-    }
-    return { icon: <FileSpreadsheet className={shared} />, bgClass: "bg-secondary" };
+    return { icon: <FileSpreadsheet className={iconClass} />, bgClass: "bg-secondary" };
   }
   if (appExts.has(ext) || mime.includes("android") || mime.includes("x-msdownload")) {
-    if (ext === "apk") {
-      return { icon: <ExtBadge ext="APK" />, bgClass: "bg-secondary" };
-    }
-    if (ext === "exe") {
-      return { icon: <ExtBadge ext="EXE" />, bgClass: "bg-secondary" };
-    }
-    if (ext === "dmg") {
-      return { icon: <ExtBadge ext="DMG" />, bgClass: "bg-secondary" };
-    }
-    return { icon: <Package className={shared} />, bgClass: "bg-secondary" };
+    return { icon: <Package className={iconClass} />, bgClass: "bg-secondary" };
   }
   if (fontExts.has(ext)) {
-    return { icon: <ExtBadge ext="FONT" />, bgClass: "bg-secondary" };
+    return { icon: <File className={iconClass} />, bgClass: "bg-secondary" };
   }
   if (subtitleExts.has(ext)) {
-    return { icon: <ExtBadge ext="SUB" />, bgClass: "bg-secondary" };
+    return { icon: <File className={iconClass} />, bgClass: "bg-secondary" };
   }
   if (codeExts.has(ext) || mime.includes("json") || mime.includes("xml") || mime.includes("javascript")) {
-    return { icon: <FileCode2 className={shared} />, bgClass: "bg-secondary" };
+    return { icon: <FileCode2 className={iconClass} />, bgClass: "bg-secondary" };
   }
 
   return {
-    icon: ext ? <ExtBadge ext={ext.toUpperCase().slice(0, 4)} /> : <File className={shared} />,
+    icon: <File className={iconClass} />,
     bgClass: "bg-secondary",
   };
-}
-
-function ExtBadge({ ext }: { ext: string }) {
-  return <span className="text-[10px] font-bold tracking-widest text-secondary-foreground">{ext}</span>;
 }
 
 function ContextMenuButton({
