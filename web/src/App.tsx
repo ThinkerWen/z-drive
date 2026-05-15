@@ -48,7 +48,7 @@ import {
 } from "@/lib/api";
 import type { AccessMode, ImageListItem, StatsResponse, UploadResultItem } from "@/lib/types";
 
-const PAGE_SIZE = 8;
+const PAGE_SIZE = 24;
 type GallerySubPage = "upload" | "gallery" | "stats";
 type CloudSubPage = "upload" | "files" | "shares" | "stats";
 type SnippetSubPage = "editor" | "list" | "shares" | "stats";
@@ -1064,13 +1064,11 @@ export default function App() {
             </form>
 
             {items.length > 0 ? (
-              <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4">
+              <div className="grid grid-cols-4 gap-2 md:grid-cols-6 xl:grid-cols-8">
                 {items.map((item) => (
-                  <article key={item.id} className="overflow-hidden rounded-lg border bg-card transition">
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      className="h-40 w-full overflow-hidden rounded-none bg-muted p-0 hover:bg-muted/80"
+                  <article key={item.id} className="group overflow-hidden rounded-lg bg-card p-1.5 transition">
+                    <div
+                      className="aspect-square cursor-pointer overflow-hidden rounded-md bg-muted"
                       onClick={() => setPreviewItem(item)}
                     >
                       {item.file_type === "video" ? (
@@ -1078,47 +1076,41 @@ export default function App() {
                       ) : (
                         <img src={item.view_url} alt={item.file_name} className="h-full w-full object-cover" />
                       )}
-                    </Button>
-                    <div className="space-y-3 p-3">
+                    </div>
+                    <div className="space-y-1 p-1">
                       <p className="truncate text-xs font-semibold" title={item.file_name}>{item.file_name}</p>
                       <p className="text-[11px] text-muted-foreground">
                         {formatFileSize(item.file_size)} · {item.width}x{item.height} · 浏览 {item.view_count}
                       </p>
-                      <div className="grid gap-1.5">
-                        <div className="flex gap-2">
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            className="h-8 flex-1 px-2 text-[11px]"
-                            onClick={() => void copyText(buildSignedShortLink(item), `short-${item.short_code}`)}
-                          >
-                            <Copy className="mr-1 h-3.5 w-3.5" />
-                            {copiedKey === `short-${item.short_code}` ? "已复制" : "复制短链"}
-                          </Button>
-                          <Button size="sm" variant="outline" className="h-8 flex-1 px-2 text-[11px]" onClick={() => openPreviewPage(item)}>
-                            <ExternalLink className="mr-1 h-3.5 w-3.5" /> 预览页
-                          </Button>
-                        </div>
-                        <div className="flex gap-2">
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            className="h-8 flex-1 px-2 text-[11px]"
-                            onClick={() => openAccessModeModal(item)}
-                          >
-                            <Shield className="mr-1 h-3.5 w-3.5" /> 修改访问
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            className="h-8 flex-1 px-2 text-[11px]"
-                            onClick={() => {
-                              setDeleteTarget(item);
-                            }}
-                          >
-                            <Trash2 className="mr-1 h-3.5 w-3.5" /> 删除
-                          </Button>
-                        </div>
+                      <div className="flex gap-1.5 opacity-0 transition-opacity group-hover:opacity-100">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="h-7 flex-1 px-1.5 text-[10px]"
+                          onClick={() => void copyText(buildSignedShortLink(item), `short-${item.short_code}`)}
+                        >
+                          <Copy className="mr-0.5 h-3 w-3" />
+                          {copiedKey === `short-${item.short_code}` ? "已复制" : "短链"}
+                        </Button>
+                        <Button size="sm" variant="outline" className="h-7 flex-1 px-1.5 text-[10px]" onClick={() => openPreviewPage(item)}>
+                          <ExternalLink className="mr-0.5 h-3 w-3" /> 预览
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="h-7 flex-1 px-1.5 text-[10px]"
+                          onClick={() => openAccessModeModal(item)}
+                        >
+                          <Shield className="mr-0.5 h-3 w-3" /> 访问
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="h-7 flex-1 px-1.5 text-[10px]"
+                          onClick={() => setDeleteTarget(item)}
+                        >
+                          <Trash2 className="mr-0.5 h-3 w-3" /> 删除
+                        </Button>
                       </div>
                     </div>
                   </article>
