@@ -22,6 +22,7 @@ import {
   Trash2,
   Upload,
   Video,
+  X,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -1149,7 +1150,7 @@ export function CloudPage({ mode, onAuthExpired, onNotify }: CloudPageProps) {
                     const isSelected = selectedIds.includes(item.id);
                     return (
                       <div
-                        className="relative mx-auto w-full max-w-[116px]"
+                        className={`relative mx-auto w-full max-w-[116px]`}
                         onContextMenu={(event) => openContextMenu(event, item)}
                       >
                         <Button
@@ -1301,9 +1302,6 @@ export function CloudPage({ mode, onAuthExpired, onNotify }: CloudPageProps) {
                 <InfoCell label="创建时间" value={propertiesItem?.created_at ?? ""} />
                 <InfoCell label="更新时间" value={propertiesItem?.updated_at ?? ""} />
               </dl>
-              <DialogFooter>
-                <Button type="button" variant="outline" onClick={() => setPropertiesItem(null)}>关闭</Button>
-              </DialogFooter>
             </DialogContent>
           </Dialog>
 
@@ -1400,12 +1398,18 @@ export function CloudPage({ mode, onAuthExpired, onNotify }: CloudPageProps) {
                 className="w-full max-w-5xl rounded-2xl border bg-card p-4 shadow-sm"
                 onClick={(event) => event.stopPropagation()}
               >
-                <div className="mb-3 flex items-center justify-between gap-3">
+                <div className="mb-3 flex items-start justify-between gap-3">
                   <div className="min-w-0">
                     <p className="truncate text-sm font-semibold" title={previewItem.name}>{previewItem.name}</p>
-                    <p className="text-xs text-muted-foreground">点击遮罩关闭预览</p>
                   </div>
-                  <Button type="button" variant="outline" size="sm" onClick={() => setPreviewItem(null)}>关闭</Button>
+                  <button
+                    type="button"
+                    className="shrink-0 inline-flex items-center justify-center rounded-sm border-none bg-transparent p-0.5 text-muted-foreground/70 outline-none transition-colors hover:bg-muted hover:text-foreground"
+                    onClick={() => setPreviewItem(null)}
+                  >
+                    <X className="h-4 w-4" />
+                    <span className="sr-only">关闭</span>
+                  </button>
                 </div>
                 <div className="flex max-h-[72vh] items-center justify-center overflow-hidden rounded-xl border border-border/70 bg-muted/30 p-2">
                   {getCloudPreviewKind(previewItem) === "image" ? (
@@ -1550,9 +1554,15 @@ export function CloudPage({ mode, onAuthExpired, onNotify }: CloudPageProps) {
               <h3 className="text-sm font-semibold">
                 {targetPickerAction.mode === "move" ? "选择移动到的目录" : "选择复制到的目录"}
               </h3>
-              <Button type="button" variant="outline" size="sm" onClick={closeTargetPicker} disabled={targetPickerSubmitting}>
-                关闭
-              </Button>
+              <button
+                type="button"
+                className="shrink-0 inline-flex items-center justify-center rounded-sm border-none bg-transparent p-0.5 text-muted-foreground/70 outline-none transition-colors hover:bg-muted hover:text-foreground disabled:pointer-events-none"
+                onClick={closeTargetPicker}
+                disabled={targetPickerSubmitting}
+              >
+                <X className="h-4 w-4" />
+                <span className="sr-only">关闭</span>
+              </button>
             </div>
 
             <div className="mt-3 flex flex-wrap items-center justify-between gap-2 text-xs">
@@ -1700,10 +1710,12 @@ function getCloudItemVisual(item: CloudItem): {
   icon: ReactNode;
   bgClass: string;
 } {
+  const shared = "h-8 w-8 text-secondary-foreground";
+
   if (item.is_folder) {
     return {
-      icon: <Folder className="h-9 w-9 text-amber-700" />,
-      bgClass: "bg-amber-100",
+      icon: <Folder className={`${shared} [&_*]:!fill-transparent`} />,
+      bgClass: "bg-secondary",
     };
   }
 
@@ -1723,122 +1735,68 @@ function getCloudItemVisual(item: CloudItem): {
   const subtitleExts = new Set(["srt", "ass", "ssa", "vtt", "sub"]);
 
   if (imageExts.has(ext) || mime.startsWith("image/")) {
-    return {
-      icon: <Image className="h-9 w-9 text-emerald-700" />,
-      bgClass: "bg-emerald-100",
-    };
+    return { icon: <Image className={shared} />, bgClass: "bg-secondary" };
   }
   if (videoExts.has(ext) || mime.startsWith("video/")) {
-    return {
-      icon: <Video className="h-9 w-9 text-cyan-700" />,
-      bgClass: "bg-cyan-100",
-    };
+    return { icon: <Video className={shared} />, bgClass: "bg-secondary" };
   }
   if (audioExts.has(ext) || mime.startsWith("audio/")) {
-    return {
-      icon: <Music className="h-9 w-9 text-violet-700" />,
-      bgClass: "bg-violet-100",
-    };
+    return { icon: <Music className={shared} />, bgClass: "bg-secondary" };
   }
   if (archiveExts.has(ext)) {
-    return {
-      icon: <Archive className="h-9 w-9 text-orange-700" />,
-      bgClass: "bg-orange-100",
-    };
+    return { icon: <Archive className={shared} />, bgClass: "bg-secondary" };
   }
   if (ext === "pdf") {
-    return {
-      icon: <ExtBadge ext="PDF" textClass="text-rose-700" />,
-      bgClass: "bg-rose-100",
-    };
+    return { icon: <ExtBadge ext="PDF" />, bgClass: "bg-secondary" };
   }
   if (docExts.has(ext) || mime.includes("word") || mime.includes("powerpoint") || mime.startsWith("text/")) {
     if (ext === "doc" || ext === "docx") {
-      return {
-        icon: <ExtBadge ext="DOC" textClass="text-blue-700" />,
-        bgClass: "bg-blue-100",
-      };
+      return { icon: <ExtBadge ext="DOC" />, bgClass: "bg-secondary" };
     }
     if (ext === "ppt" || ext === "pptx") {
-      return {
-        icon: <ExtBadge ext="PPT" textClass="text-orange-700" />,
-        bgClass: "bg-orange-100",
-      };
+      return { icon: <ExtBadge ext="PPT" />, bgClass: "bg-secondary" };
     }
     if (ext === "txt") {
-      return {
-        icon: <ExtBadge ext="TXT" textClass="text-slate-700" />,
-        bgClass: "bg-slate-100",
-      };
+      return { icon: <ExtBadge ext="TXT" />, bgClass: "bg-secondary" };
     }
-    return {
-      icon: <FileText className="h-9 w-9 text-blue-700" />,
-      bgClass: "bg-blue-100",
-    };
+    return { icon: <FileText className={shared} />, bgClass: "bg-secondary" };
   }
   if (sheetExts.has(ext) || mime.includes("spreadsheet") || mime.includes("excel") || mime.includes("csv")) {
     if (ext === "csv") {
-      return {
-        icon: <ExtBadge ext="CSV" textClass="text-emerald-700" />,
-        bgClass: "bg-emerald-100",
-      };
+      return { icon: <ExtBadge ext="CSV" />, bgClass: "bg-secondary" };
     }
-    return {
-      icon: <FileSpreadsheet className="h-9 w-9 text-lime-700" />,
-      bgClass: "bg-lime-100",
-    };
+    return { icon: <FileSpreadsheet className={shared} />, bgClass: "bg-secondary" };
   }
   if (appExts.has(ext) || mime.includes("android") || mime.includes("x-msdownload")) {
     if (ext === "apk") {
-      return {
-        icon: <ExtBadge ext="APK" textClass="text-fuchsia-700" />,
-        bgClass: "bg-fuchsia-100",
-      };
+      return { icon: <ExtBadge ext="APK" />, bgClass: "bg-secondary" };
     }
     if (ext === "exe") {
-      return {
-        icon: <ExtBadge ext="EXE" textClass="text-red-700" />,
-        bgClass: "bg-red-100",
-      };
+      return { icon: <ExtBadge ext="EXE" />, bgClass: "bg-secondary" };
     }
     if (ext === "dmg") {
-      return {
-        icon: <ExtBadge ext="DMG" textClass="text-indigo-700" />,
-        bgClass: "bg-indigo-100",
-      };
+      return { icon: <ExtBadge ext="DMG" />, bgClass: "bg-secondary" };
     }
-    return {
-      icon: <Package className="h-9 w-9 text-fuchsia-700" />,
-      bgClass: "bg-fuchsia-100",
-    };
+    return { icon: <Package className={shared} />, bgClass: "bg-secondary" };
   }
   if (fontExts.has(ext)) {
-    return {
-      icon: <ExtBadge ext="FONT" textClass="text-purple-700" />,
-      bgClass: "bg-purple-100",
-    };
+    return { icon: <ExtBadge ext="FONT" />, bgClass: "bg-secondary" };
   }
   if (subtitleExts.has(ext)) {
-    return {
-      icon: <ExtBadge ext="SUB" textClass="text-teal-700" />,
-      bgClass: "bg-teal-100",
-    };
+    return { icon: <ExtBadge ext="SUB" />, bgClass: "bg-secondary" };
   }
   if (codeExts.has(ext) || mime.includes("json") || mime.includes("xml") || mime.includes("javascript")) {
-    return {
-      icon: <FileCode2 className="h-9 w-9 text-sky-700" />,
-      bgClass: "bg-sky-100",
-    };
+    return { icon: <FileCode2 className={shared} />, bgClass: "bg-secondary" };
   }
 
   return {
-    icon: ext ? <ExtBadge ext={ext.toUpperCase().slice(0, 4)} textClass="text-slate-700" /> : <File className="h-9 w-9 text-slate-700" />,
-    bgClass: "bg-slate-100",
+    icon: ext ? <ExtBadge ext={ext.toUpperCase().slice(0, 4)} /> : <File className={shared} />,
+    bgClass: "bg-secondary",
   };
 }
 
-function ExtBadge({ ext, textClass }: { ext: string; textClass: string }) {
-  return <span className={`text-xs font-extrabold tracking-wide ${textClass}`}>{ext}</span>;
+function ExtBadge({ ext }: { ext: string }) {
+  return <span className="text-[10px] font-bold tracking-widest text-secondary-foreground">{ext}</span>;
 }
 
 function ContextMenuButton({
