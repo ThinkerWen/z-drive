@@ -252,12 +252,17 @@ export default function App() {
   }, [pathname]);
 
   useEffect(() => {
+    if (isPublicPreviewRoute || isPublicShareRoute || isPublicSnippetRoute || isPublicErrorRoute) {
+      document.documentElement.classList.remove("dark");
+      setIsDark(false);
+      return;
+    }
     const stored = window.localStorage.getItem("theme");
     const prefersDark = window.matchMedia?.("(prefers-color-scheme: dark)").matches ?? false;
     const shouldDark = stored ? stored === "dark" : prefersDark;
     document.documentElement.classList.toggle("dark", shouldDark);
     setIsDark(shouldDark);
-  }, []);
+  }, [isPublicErrorRoute, isPublicPreviewRoute, isPublicShareRoute, isPublicSnippetRoute]);
 
   useEffect(() => {
     const controller = new AbortController();

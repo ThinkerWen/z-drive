@@ -7,9 +7,31 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Spinner } from "@/components/ui/spinner";
 import { ApiError, accessCloudShare, accessSnippetShare, getImageInfo } from "@/lib/api";
-import { renderSnippetWithLineNumbers } from "@/lib/snippet-code";
+import { useSnippetHighlight } from "@/lib/snippet-code";
 import type { CloudShareAccessResponse, ImageInfoResponse, SnippetPublicAccessResponse } from "@/lib/types";
 import { copyText as copyToClipboard } from "@/lib/utils";
+
+function useForceLightTheme() {
+  useEffect(() => {
+    const el = document.documentElement;
+    const wasDark = el.classList.contains("dark");
+    el.classList.remove("dark");
+
+    const observer = new MutationObserver(() => {
+      if (el.classList.contains("dark")) {
+        el.classList.remove("dark");
+      }
+    });
+    observer.observe(el, { attributes: true, attributeFilter: ["class"] });
+
+    return () => {
+      observer.disconnect();
+      if (wasDark) {
+        el.classList.add("dark");
+      }
+    };
+  }, []);
+}
 
 export function parsePublicPreviewPath(pathname: string): { shortCode: string; ext: string } | null {
   const matched = pathname.match(/^\/gallery\/preview\/([^/.]+)\.([A-Za-z0-9]+)$/);
@@ -36,6 +58,7 @@ export function parsePublicSnippetPath(pathname: string): { shareCode: string } 
 }
 
 export function PublicErrorPage({ message }: { message?: string }) {
+  useForceLightTheme();
   const queryMessage = useMemo(() => {
     const search = new URLSearchParams(window.location.search);
     return search.get("message") || "";
@@ -58,6 +81,7 @@ export function PublicErrorPage({ message }: { message?: string }) {
 }
 
 export function PublicPreviewPage({ shortCode, ext }: { shortCode: string; ext: string }) {
+  useForceLightTheme();
   const [loading, setLoading] = useState(true);
   const [fatalError, setFatalError] = useState("");
   const [copyError, setCopyError] = useState("");
@@ -163,6 +187,7 @@ export function PublicPreviewPage({ shortCode, ext }: { shortCode: string; ext: 
 }
 
 export function PublicSharePage({ shareCode }: { shareCode: string }) {
+  useForceLightTheme();
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [fatalError, setFatalError] = useState("");
@@ -303,6 +328,7 @@ export function PublicSharePage({ shareCode }: { shareCode: string }) {
 }
 
 export function PublicSnippetPage({ shareCode }: { shareCode: string }) {
+  useForceLightTheme();
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [fatalError, setFatalError] = useState("");
@@ -311,6 +337,8 @@ export function PublicSnippetPage({ shareCode }: { shareCode: string }) {
   const [password, setPassword] = useState("");
   const [data, setData] = useState<SnippetPublicAccessResponse | null>(null);
   const [copiedCode, setCopiedCode] = useState(false);
+
+  const renderedCode = useSnippetHighlight(data?.snippet?.code_content ?? "", data?.snippet?.effective_language ?? "text");
 
   const initialPassword = useMemo(() => {
     const search = new URLSearchParams(window.location.search);
@@ -410,7 +438,6 @@ export function PublicSnippetPage({ shareCode }: { shareCode: string }) {
   }
 
   const snippet = data.snippet;
-  const renderedCode = renderSnippetWithLineNumbers(snippet.code_content, snippet.effective_language);
 
   async function copySnippetCode() {
     try {

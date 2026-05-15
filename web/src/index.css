@@ -113,6 +113,21 @@
   line-height: 1.6;
   width: max-content;
   min-width: 100%;
+  color: var(--shiki-light, inherit);
+  background: var(--shiki-light-bg, transparent);
+}
+
+.dark .snippet-highlight-wrap {
+  color: var(--shiki-dark, inherit);
+  background: var(--shiki-dark-bg, transparent);
+}
+
+.snippet-highlight-wrap span[style] {
+  color: var(--shiki-light, inherit);
+}
+
+.dark .snippet-highlight-wrap span[style] {
+  color: var(--shiki-dark, inherit);
 }
 
 .snippet-row {
@@ -129,6 +144,11 @@
   padding: 0 10px 0 0;
   color: #94a3b8;
   border-right: 1px solid rgba(148, 163, 184, 0.25);
+}
+
+.dark .snippet-line-number {
+  color: #64748b;
+  border-right-color: rgba(100, 116, 139, 0.25);
 }
 
 .snippet-line-content {

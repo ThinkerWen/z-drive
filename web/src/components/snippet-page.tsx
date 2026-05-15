@@ -38,7 +38,7 @@ import {
   listSnippets,
   updateSnippet,
 } from "@/lib/api";
-import { renderSnippetWithLineNumbers, snippetEditorExtensions } from "@/lib/snippet-code";
+import { useSnippetHighlight, snippetEditorExtensions } from "@/lib/snippet-code";
 import type { SnippetItem, SnippetShare } from "@/lib/types";
 import { copyText } from "@/lib/utils";
 
@@ -141,7 +141,12 @@ export function SnippetPage({ mode, onAuthExpired, onNotify }: SnippetPageProps)
 
   const editorExtensions = useMemo(() => snippetEditorExtensions(language), [language]);
 
-  const previewHtml = useMemo(() => renderSnippetWithLineNumbers(codeContent, language), [codeContent, language]);
+  const previewHtml = useSnippetHighlight(codeContent, language);
+
+  const previewItemHtml = useSnippetHighlight(
+    previewItem?.code_content ?? "",
+    previewItem?.effective_language ?? "text",
+  );
 
   const languageFilterOptions = useMemo(
     () => [
@@ -881,7 +886,7 @@ export function SnippetPage({ mode, onAuthExpired, onNotify }: SnippetPageProps)
                 {previewCopied ? "已复制" : "复制"}
               </Button>
               <div className="theme-scrollbar max-h-[68vh] overflow-auto rounded-xl border border-border/70 bg-card p-2 text-xs text-foreground">
-                <div dangerouslySetInnerHTML={{ __html: renderSnippetWithLineNumbers(previewItem.code_content, previewItem.effective_language) }} />
+                <div dangerouslySetInnerHTML={{ __html: previewItemHtml }} />
               </div>
             </div>
           </Modal>

@@ -1,3 +1,5 @@
+import { useEffect, useState } from "react";
+import { createHighlighter, isPlainLang, type Highlighter } from "shiki";
 import type { Extension } from "@codemirror/state";
 import { cpp } from "@codemirror/lang-cpp";
 import { css } from "@codemirror/lang-css";
@@ -12,70 +14,66 @@ import { python } from "@codemirror/lang-python";
 import { rust } from "@codemirror/lang-rust";
 import { sql } from "@codemirror/lang-sql";
 import { yaml } from "@codemirror/lang-yaml";
-import hljs from "highlight.js/lib/core";
-import bash from "highlight.js/lib/languages/bash";
-import c from "highlight.js/lib/languages/c";
-import cppLang from "highlight.js/lib/languages/cpp";
-import csharp from "highlight.js/lib/languages/csharp";
-import cssLang from "highlight.js/lib/languages/css";
-import goLang from "highlight.js/lib/languages/go";
-import javaLang from "highlight.js/lib/languages/java";
-import javascriptLang from "highlight.js/lib/languages/javascript";
-import jsonLang from "highlight.js/lib/languages/json";
-import kotlin from "highlight.js/lib/languages/kotlin";
-import markdownLang from "highlight.js/lib/languages/markdown";
-import phpLang from "highlight.js/lib/languages/php";
-import pythonLang from "highlight.js/lib/languages/python";
-import ruby from "highlight.js/lib/languages/ruby";
-import rustLang from "highlight.js/lib/languages/rust";
-import sqlLang from "highlight.js/lib/languages/sql";
-import swift from "highlight.js/lib/languages/swift";
-import typescriptLang from "highlight.js/lib/languages/typescript";
-import xml from "highlight.js/lib/languages/xml";
-import yamlLang from "highlight.js/lib/languages/yaml";
-import "highlight.js/styles/github.css";
 
-hljs.registerLanguage("bash", bash);
-hljs.registerLanguage("shell", bash);
-hljs.registerLanguage("c", c);
-hljs.registerLanguage("cpp", cppLang);
-hljs.registerLanguage("csharp", csharp);
-hljs.registerLanguage("css", cssLang);
-hljs.registerLanguage("go", goLang);
-hljs.registerLanguage("java", javaLang);
-hljs.registerLanguage("javascript", javascriptLang);
-hljs.registerLanguage("json", jsonLang);
-hljs.registerLanguage("kotlin", kotlin);
-hljs.registerLanguage("markdown", markdownLang);
-hljs.registerLanguage("php", phpLang);
-hljs.registerLanguage("python", pythonLang);
-hljs.registerLanguage("ruby", ruby);
-hljs.registerLanguage("rust", rustLang);
-hljs.registerLanguage("sql", sqlLang);
-hljs.registerLanguage("swift", swift);
-hljs.registerLanguage("typescript", typescriptLang);
-hljs.registerLanguage("xml", xml);
-hljs.registerLanguage("html", xml);
-hljs.registerLanguage("yaml", yamlLang);
+const SHIKI_LANGUAGES = [
+  "bash",
+  "c",
+  "cpp",
+  "csharp",
+  "css",
+  "go",
+  "html",
+  "java",
+  "javascript",
+  "json",
+  "kotlin",
+  "markdown",
+  "php",
+  "python",
+  "ruby",
+  "rust",
+  "sql",
+  "swift",
+  "typescript",
+  "xml",
+  "yaml",
+];
+
+const LIGHT_THEME = "github-light-default";
+const DARK_THEME = "github-dark-default";
+
+let highlighter: Highlighter | null = null;
+let highlighterLoaded = false;
+
+const highlighterPromise = createHighlighter({
+  themes: [LIGHT_THEME, DARK_THEME],
+  langs: SHIKI_LANGUAGES,
+}).then((h) => {
+  highlighter = h;
+  highlighterLoaded = true;
+});
+
+const LANGUAGE_ALIASES: Record<string, string> = {
+  js: "javascript",
+  ts: "typescript",
+  sh: "bash",
+  shell: "bash",
+  "c++": "cpp",
+  "c#": "csharp",
+  cs: "csharp",
+  py: "python",
+  rb: "ruby",
+  rs: "rust",
+  md: "markdown",
+  yml: "yaml",
+};
 
 function normalizeLanguage(language: string): string {
   const value = (language || "").trim().toLowerCase();
-  if (!value) {
-    return "text";
+  if (!value || value === "auto" || value === "text") {
+    return "plaintext";
   }
-  if (value === "auto") {
-    return "text";
-  }
-  if (value === "js") {
-    return "javascript";
-  }
-  if (value === "ts") {
-    return "typescript";
-  }
-  if (value === "sh") {
-    return "bash";
-  }
-  return value;
+  return LANGUAGE_ALIASES[value] || value;
 }
 
 function escapeHtml(text: string): string {
@@ -83,38 +81,96 @@ function escapeHtml(text: string): string {
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;")
-    .replace(/\"/g, "&quot;")
+    .replace(/"/g, "&quot;")
     .replace(/'/g, "&#39;");
 }
 
-export function renderSnippetWithLineNumbers(codeContent: string, languageHint: string): string {
-  const code = codeContent || "";
-  const normalized = normalizeLanguage(languageHint);
+function renderFallback(code: string): string {
+  const lines = (code || "").split(/\r?\n/);
+  if (lines.length === 0) lines.push("");
+  const rows = lines
+    .map(
+      (line, i) =>
+        `<div class="snippet-row"><span class="snippet-line-number">${i + 1}</span><span class="snippet-line-content">${escapeHtml(line) || "&nbsp;"}</span></div>`
+    )
+    .join("");
+  return `<div class="snippet-highlight-wrap">${rows}</div>`;
+}
 
-  const canHighlight = normalized !== "text" && Boolean(hljs.getLanguage(normalized));
-  const lines = code.split(/\r?\n/);
-  if (lines.length === 0) {
-    lines.push("");
+function renderWithShiki(code: string, language: string): string {
+  const normalized = normalizeLanguage(language);
+
+  if (normalized === "plaintext" || isPlainLang(normalized)) {
+    return renderFallback(code);
   }
 
-  const rows = lines
-    .map((line, index) => {
-      let content = "";
-      if (line.length > 0) {
-        if (canHighlight) {
-          content = hljs.highlight(line, { language: normalized, ignoreIllegals: true }).value;
-        } else {
-          content = escapeHtml(line);
-        }
-      }
-      if (!content) {
-        content = "&nbsp;";
-      }
-      return `<div class="snippet-row"><span class="snippet-line-number">${index + 1}</span><span class="snippet-line-content">${content}</span></div>`;
-    })
-    .join("");
+  if (!highlighter) {
+    return renderFallback(code);
+  }
 
-  return `<div class="snippet-highlight-wrap hljs">${rows}</div>`;
+  const loadedLangs = highlighter.getLoadedLanguages();
+  if (!loadedLangs.includes(normalized)) {
+    return renderFallback(code);
+  }
+
+  let html: string;
+  try {
+    html = highlighter.codeToHtml(code || "\n", {
+      lang: normalized,
+      themes: { light: LIGHT_THEME, dark: DARK_THEME },
+      defaultColor: false,
+    });
+  } catch {
+    return renderFallback(code);
+  }
+
+  const parser = new DOMParser();
+  const doc = parser.parseFromString(html, "text/html");
+  const lines = doc.querySelectorAll(".line");
+
+  if (lines.length === 0) {
+    return renderFallback(code);
+  }
+
+  const preEl = doc.querySelector("pre");
+  const preStyle = preEl?.getAttribute("style") || "";
+
+  const rows = Array.from(lines).map((line, i) => {
+    const content = line.innerHTML || "&nbsp;";
+    return `<div class="snippet-row"><span class="snippet-line-number">${i + 1}</span><span class="snippet-line-content">${content}</span></div>`;
+  });
+
+  return `<div class="snippet-highlight-wrap"${preStyle ? ` style="${preStyle}"` : ""}>${rows.join("")}</div>`;
+}
+
+export function renderSnippetWithLineNumbers(codeContent: string, languageHint: string): string {
+  if (!highlighter) {
+    return renderFallback(codeContent);
+  }
+  return renderWithShiki(codeContent, languageHint);
+}
+
+export function useSnippetHighlight(codeContent: string, languageHint: string): string {
+  const [html, setHtml] = useState(() => renderSnippetWithLineNumbers(codeContent, languageHint));
+
+  useEffect(() => {
+    let cancelled = false;
+    const update = () => {
+      if (!cancelled) {
+        setHtml(renderSnippetWithLineNumbers(codeContent, languageHint));
+      }
+    };
+    if (highlighterLoaded) {
+      update();
+    } else {
+      highlighterPromise.then(update);
+    }
+    return () => {
+      cancelled = true;
+    };
+  }, [codeContent, languageHint]);
+
+  return html;
 }
 
 export function snippetEditorExtensions(languageHint: string): Extension[] {
