@@ -1543,8 +1543,8 @@ function MiniCopyRow({
           size="sm"
           className={
             copied
-              ? "h-6 bg-emerald-600 px-2 text-[11px] font-semibold text-white hover:bg-emerald-600"
-              : "h-6 px-2 text-[11px] font-semibold"
+              ? "h-6 w-14 shrink-0 bg-emerald-600 px-2 text-[11px] font-semibold text-white hover:bg-emerald-600"
+              : "h-6 w-14 shrink-0 px-2 text-[11px] font-semibold"
           }
           onClick={onCopy}
         >
