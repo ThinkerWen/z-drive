@@ -3,17 +3,32 @@ import {
   Legend,
   Line,
   LineChart,
-  ResponsiveContainer,
-  Tooltip,
   XAxis,
   YAxis,
 } from "recharts";
+import {
+  ChartContainer,
+  ChartTooltip,
+  ChartTooltipContent,
+  type ChartConfig,
+} from "@/components/ui/chart";
 
 interface TrendPoint {
   date: string;
   views: number;
   downloads: number;
 }
+
+const chartConfig = {
+  views: {
+    label: "浏览",
+    color: "hsl(var(--chart-1))",
+  },
+  downloads: {
+    label: "下载",
+    color: "hsl(var(--chart-2))",
+  },
+} satisfies ChartConfig;
 
 function toDateOnly(dateText: string): string {
   return dateText.slice(0, 10);
@@ -57,42 +72,35 @@ export function TrendLineChart({ data }: { data: TrendPoint[] }) {
   const chartData = buildLast14DaysSeries(data);
 
   return (
-    <ResponsiveContainer width="100%" height="100%">
+    <ChartContainer config={chartConfig} className="aspect-auto h-full">
       <LineChart
         data={chartData}
         margin={{ top: 12, right: 10, bottom: 4, left: 0 }}
       >
-        <CartesianGrid strokeDasharray="3 3" stroke="rgba(120,120,120,0.18)" />
+        <CartesianGrid strokeDasharray="3 3" />
         <XAxis dataKey="shortDate" tick={{ fontSize: 11 }} axisLine={false} tickLine={false} />
         <YAxis tick={{ fontSize: 11 }} axisLine={false} tickLine={false} allowDecimals={false} width={36} />
-        <Tooltip
-          contentStyle={{
-            borderRadius: 12,
-            border: "1px solid rgba(203,185,160,0.75)",
-            background: "rgba(255,255,255,0.96)",
-            fontSize: 12,
-          }}
-        />
+        <ChartTooltip content={<ChartTooltipContent />} />
         <Legend wrapperStyle={{ fontSize: 12 }} />
         <Line
           type="monotone"
           dataKey="views"
           name="浏览"
-          stroke="#ea580c"
-          strokeWidth={2.5}
-          dot={{ r: 3 }}
-          activeDot={{ r: 5 }}
+          stroke="var(--color-views)"
+          strokeWidth={2}
+          dot={false}
+          activeDot={{ r: 4 }}
         />
         <Line
           type="monotone"
           dataKey="downloads"
           name="下载"
-          stroke="#0891b2"
-          strokeWidth={2.2}
-          dot={{ r: 2.5 }}
-          activeDot={{ r: 4.5 }}
+          stroke="var(--color-downloads)"
+          strokeWidth={2}
+          dot={false}
+          activeDot={{ r: 4 }}
         />
       </LineChart>
-    </ResponsiveContainer>
+    </ChartContainer>
   );
 }

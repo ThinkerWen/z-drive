@@ -35,23 +35,9 @@
 
 ## UI Preview
 
-### Gallery
-
-| Upload | List | Stats |
-| --- | --- | --- |
-| <img src="https://raw.githubusercontent.com/ThinkerWen/z-drive/refs/heads/main/images/gallery-upload.png" width="500" alt="gallery-upload" /> | <img src="https://raw.githubusercontent.com/ThinkerWen/z-drive/refs/heads/main/images/gallery-list.png" width="500" alt="gallery-list" /> | <img src="https://raw.githubusercontent.com/ThinkerWen/z-drive/refs/heads/main/images/gallery-stats.png" width="500" alt="gallery-stats" /> |
-
-### Cloud
-
-| List | Preview | Share |
-| --- | --- | --- |
-| <img src="https://raw.githubusercontent.com/ThinkerWen/z-drive/refs/heads/main/images/cloud-list.png" width="500" alt="cloud-list" /> | <img src="https://raw.githubusercontent.com/ThinkerWen/z-drive/refs/heads/main/images/cloud-preview.png" width="500" alt="cloud-preview" /> | <img src="https://raw.githubusercontent.com/ThinkerWen/z-drive/refs/heads/main/images/cloud-share.png" width="500" alt="cloud-share" /> |
-
-### Snippets
-
-| Editor | List | Share |
-| --- | --- | --- |
-| <img src="https://raw.githubusercontent.com/ThinkerWen/z-drive/refs/heads/main/images/snippet-editor.png" width="500" alt="snippet-editor" /> | <img src="https://raw.githubusercontent.com/ThinkerWen/z-drive/refs/heads/main/images/snippet-list.png" width="500" alt="snippet-list" /> | <img src="https://raw.githubusercontent.com/ThinkerWen/z-drive/refs/heads/main/images/snippet-preview.png" width="500" alt="snippet-preview" /> |
+| Gallery                                                                                                                          | Cloud                                                                                                                       | Snippets                                                                                                                          |
+|---------------------------------------------------------------------------------------------------------------------------------|-----------------------------------------------------------------------------------------------------------------------------|-----------------------------------------------------------------------------------------------------------------------------------|
+| <img src="https://raw.githubusercontent.com/ThinkerWen/z-drive/refs/heads/main/images/gallery.png" width="500" alt="gallery" /> | <img src="https://raw.githubusercontent.com/ThinkerWen/z-drive/refs/heads/main/images/cloud.png" width="500" alt="cloud" /> | <img src="https://raw.githubusercontent.com/ThinkerWen/z-drive/refs/heads/main/images/snippets.png" width="500" alt="snippets" /> |
 
 ## Quick Start
 

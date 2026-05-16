@@ -2,8 +2,8 @@ import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import {
   Archive,
   Check,
+  CheckCheck,
   ChevronLeft,
-  ChevronDown,
   ChevronRight,
   Download,
   Eye,
@@ -22,9 +22,32 @@ import {
   Trash2,
   Upload,
   Video,
+  X,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { Field, FieldLabel } from "@/components/ui/field";
+import { Input } from "@/components/ui/input";
+import { Progress } from "@/components/ui/progress";
+import { Spinner } from "@/components/ui/spinner";
+import { Badge } from "@/components/ui/badge";
+import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectLabel,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { PlyrVideo } from "@/components/plyr-video";
 import {
   batchCopyCloudItems,
@@ -100,9 +123,8 @@ export function CloudPage({ mode, onAuthExpired, onNotify }: CloudPageProps) {
   const [copyPasswordShare, setCopyPasswordShare] = useState<CloudShareResponse | null>(null);
   const [copyPasswordInput, setCopyPasswordInput] = useState("");
   const [selectedIds, setSelectedIds] = useState<number[]>([]);
-  const [batchActionMenuOpen, setBatchActionMenuOpen] = useState(false);
-  const [createMenuOpen, setCreateMenuOpen] = useState(false);
   const [createFolderModalOpen, setCreateFolderModalOpen] = useState(false);
+  const [propertiesItem, setPropertiesItem] = useState<CloudItem | null>(null);
   const [createFolderName, setCreateFolderName] = useState("新建文件夹");
   const [targetPickerAction, setTargetPickerAction] = useState<TargetPickerAction | null>(null);
   const [targetPickerPathNodes, setTargetPickerPathNodes] = useState<Array<{ id: number | null; name: string }>>([ROOT_NODE]);
@@ -110,7 +132,6 @@ export function CloudPage({ mode, onAuthExpired, onNotify }: CloudPageProps) {
   const [targetPickerLoading, setTargetPickerLoading] = useState(false);
   const [targetPickerSubmitting, setTargetPickerSubmitting] = useState(false);
   const [targetPickerCopyName, setTargetPickerCopyName] = useState("");
-  const [propertiesItem, setPropertiesItem] = useState<CloudItem | null>(null);
   const [previewItem, setPreviewItem] = useState<CloudItem | null>(null);
   const [previewTextContent, setPreviewTextContent] = useState("");
   const [previewLoading, setPreviewLoading] = useState(false);
@@ -127,6 +148,7 @@ export function CloudPage({ mode, onAuthExpired, onNotify }: CloudPageProps) {
     x: number;
     y: number;
   } | null>(null);
+  const [backgroundMenu, setBackgroundMenu] = useState<{ x: number; y: number } | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const activeCloudUploadsRef = useRef<Record<string, XMLHttpRequest>>({});
 
@@ -204,17 +226,19 @@ export function CloudPage({ mode, onAuthExpired, onNotify }: CloudPageProps) {
   }, []);
 
   useEffect(() => {
-    if (!contextMenu) {
+    if (!contextMenu && !backgroundMenu) {
       return;
     }
 
     const handleGlobalClose = () => {
       setContextMenu(null);
+      setBackgroundMenu(null);
     };
 
     const handleEsc = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
         setContextMenu(null);
+        setBackgroundMenu(null);
       }
     };
 
@@ -228,7 +252,7 @@ export function CloudPage({ mode, onAuthExpired, onNotify }: CloudPageProps) {
       window.removeEventListener("resize", handleGlobalClose);
       window.removeEventListener("keydown", handleEsc);
     };
-  }, [contextMenu]);
+  }, [contextMenu, backgroundMenu]);
 
   useEffect(() => {
     if (!previewItem) {
@@ -369,7 +393,6 @@ export function CloudPage({ mode, onAuthExpired, onNotify }: CloudPageProps) {
   }
 
   function openCreateFolderModal() {
-    setCreateMenuOpen(false);
     setCreateFolderName("新建文件夹");
     setCreateFolderModalOpen(true);
   }
@@ -542,7 +565,7 @@ export function CloudPage({ mode, onAuthExpired, onNotify }: CloudPageProps) {
     event.target.value = "";
   }
 
-  async function handleUploadDrop(event: React.DragEvent<HTMLDivElement>) {
+  async function handleUploadDrop(event: React.DragEvent<HTMLLabelElement>) {
     event.preventDefault();
     setUploadDropActive(false);
     const files = Array.from(event.dataTransfer.files ?? []);
@@ -829,7 +852,14 @@ export function CloudPage({ mode, onAuthExpired, onNotify }: CloudPageProps) {
 
   function openContextMenu(event: React.MouseEvent<HTMLElement>, item: CloudItem) {
     event.preventDefault();
+    event.stopPropagation();
     setContextMenu({ item, x: event.clientX, y: event.clientY });
+  }
+
+  function openBackgroundMenu(event: React.MouseEvent<HTMLElement>) {
+    event.preventDefault();
+    event.stopPropagation();
+    setBackgroundMenu({ x: event.clientX, y: event.clientY });
   }
 
   function runContextAction(action: string, item: CloudItem) {
@@ -928,7 +958,7 @@ export function CloudPage({ mode, onAuthExpired, onNotify }: CloudPageProps) {
   }
 
   return (
-    <section className="soft-panel rounded-3xl p-5 sm:p-6">
+    <section className="rounded-lg border bg-card p-5 sm:p-6">
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
         <div>
           <h2 className="text-lg font-semibold">
@@ -941,7 +971,9 @@ export function CloudPage({ mode, onAuthExpired, onNotify }: CloudPageProps) {
                   : "云盘 · 数据统计"}
           </h2>
         </div>
-        {mode === "upload" ? <input ref={fileInputRef} type="file" multiple className="hidden" onChange={handleUpload} /> : null}
+        {mode === "upload" ? (
+          <Input id="cloud-upload-files" ref={fileInputRef} type="file" multiple className="sr-only" onChange={handleUpload} />
+        ) : null}
       </div>
 
       {mode === "stats" ? (
@@ -953,25 +985,24 @@ export function CloudPage({ mode, onAuthExpired, onNotify }: CloudPageProps) {
             <CloudMetricCard title="已用空间" value={`${formatFileSize(summary?.total_size ?? 0)} / ${formatFileSize(summary?.total_space ?? 0)}`} />
           </div>
 
-          <div className="mb-4 rounded-2xl border border-border/70 bg-white/80 p-3">
+          <div className="mb-4 rounded-lg border bg-card p-3">
             <div className="mb-2 flex items-center justify-between text-xs text-muted-foreground">
               <span>空间使用率</span>
               <span>{usagePercent}%</span>
             </div>
-            <div className="h-2 overflow-hidden rounded-full bg-muted">
-              <div className="h-full rounded-full bg-primary transition-all" style={{ width: `${usagePercent}%` }} />
-            </div>
+            <Progress value={usagePercent} className="h-2" />
           </div>
         </>
       ) : null}
 
       {mode === "upload" ? (
         <>
-          <div
+          <label
+            htmlFor="cloud-upload-files"
             className={
               uploadDropActive
-                ? "flex min-h-48 cursor-pointer flex-col items-center justify-center rounded-2xl border-2 border-primary bg-primary/5 p-6 text-center"
-                : "flex min-h-48 cursor-pointer flex-col items-center justify-center rounded-2xl border-2 border-dashed border-border/80 bg-white/70 p-6 text-center transition hover:border-primary/70 hover:bg-white"
+                ? "flex min-h-48 cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-primary bg-primary/5 p-6 text-center"
+                : "flex min-h-48 cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed border-border bg-muted p-6 text-center transition hover:border-primary/70 hover:bg-card"
             }
             onDragOver={(event) => {
               event.preventDefault();
@@ -983,17 +1014,11 @@ export function CloudPage({ mode, onAuthExpired, onNotify }: CloudPageProps) {
             }}
           >
             <p className="text-base font-semibold">拖拽文件到这里上传</p>
-            <p className="mt-1 text-sm text-muted-foreground">或点击按钮选择多个文件上传到当前目录</p>
-            <p className="mt-3 max-w-full truncate rounded-lg bg-white/80 px-3 py-1.5 text-xs text-muted-foreground" title={cloudSelectedFilesLabel}>
+            <p className="mt-1 text-sm text-muted-foreground">或点击此区域选择文件，可一次上传多个文件</p>
+            <p className="mt-3 max-w-full truncate rounded-lg bg-card px-3 py-1.5 text-xs text-muted-foreground" title={cloudSelectedFilesLabel}>
               {cloudSelectedFilesLabel}
             </p>
-            <div className="mt-4">
-              <Button type="button" onClick={() => fileInputRef.current?.click()} disabled={uploading || loading}>
-                <Upload className="mr-2 h-4 w-4" />
-                选择本地文件
-              </Button>
-            </div>
-          </div>
+          </label>
 
           <div className="mt-3 flex justify-end">
             <Button type="button" onClick={() => void confirmCloudUpload()} disabled={uploading || loading || cloudSelectedFiles.length === 0}>
@@ -1004,22 +1029,21 @@ export function CloudPage({ mode, onAuthExpired, onNotify }: CloudPageProps) {
           {cloudUploadTasks.length > 0 ? (
             <div className="mt-4 grid gap-2">
               {cloudUploadTasks.map((task) => (
-                <article key={task.id} className="rounded-xl border border-border/70 bg-white/85 p-3">
+                <article key={task.id} className="rounded-lg border bg-card p-3">
                   <div className="flex items-center justify-between gap-3">
                     <div className="min-w-0 flex-1">
                       <p className="truncate text-xs font-semibold" title={task.file.name}>{task.file.name}</p>
                       <p className="text-[11px] text-muted-foreground">{formatFileSize(task.file.size)}</p>
                     </div>
-                    <span
-                      className={
+                    <Badge
+                      variant={
                         task.status === "success"
-                          ? "rounded-md bg-emerald-100 px-2 py-1 text-[11px] font-semibold text-emerald-700"
+                          ? "default"
                           : task.status === "error"
-                            ? "rounded-md bg-rose-100 px-2 py-1 text-[11px] font-semibold text-rose-700"
-                            : task.status === "cancelled"
-                              ? "rounded-md bg-slate-200 px-2 py-1 text-[11px] font-semibold text-slate-700"
-                              : "rounded-md bg-amber-100 px-2 py-1 text-[11px] font-semibold text-amber-700"
+                            ? "destructive"
+                            : "secondary"
                       }
+                      className="text-[11px]"
                     >
                       {task.status === "success"
                         ? "完成"
@@ -1028,7 +1052,7 @@ export function CloudPage({ mode, onAuthExpired, onNotify }: CloudPageProps) {
                           : task.status === "cancelled"
                             ? "已取消"
                             : `${task.progress}%`}
-                    </span>
+                    </Badge>
                     {(task.status === "waiting" || task.status === "uploading") ? (
                       <Button
                         type="button"
@@ -1041,9 +1065,7 @@ export function CloudPage({ mode, onAuthExpired, onNotify }: CloudPageProps) {
                       </Button>
                     ) : null}
                   </div>
-                  <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-muted">
-                    <div className="h-full rounded-full bg-primary transition-all" style={{ width: `${task.progress}%` }} />
-                  </div>
+                  <Progress value={task.progress} className="mt-2 h-1.5" />
                 </article>
               ))}
             </div>
@@ -1059,18 +1081,16 @@ export function CloudPage({ mode, onAuthExpired, onNotify }: CloudPageProps) {
                 const isCurrent = index === pathNodes.length - 1;
                 return (
                   <div key={`${node.id ?? "root"}-${index}`} className="flex items-center">
-                    <button
+                    <Button
                       type="button"
-                      className={
-                        isCurrent
-                          ? "rounded-md border border-primary/35 bg-primary/10 px-2.5 py-1 text-primary"
-                          : "rounded-md border border-border/70 bg-white px-2.5 py-1 hover:bg-muted/40"
-                      }
+                      size="sm"
+                      variant={isCurrent ? "secondary" : "ghost"}
+                      className="rounded-lg"
                       onClick={() => jumpToPath(index)}
                     >
                       {node.name}
-                    </button>
-                    {index < pathNodes.length - 1 ? <ChevronRight className="mx-1 h-3.5 w-3.5 text-muted-foreground" /> : null}
+                    </Button>
+                    {index < pathNodes.length - 1 ? <ChevronRight className="mx-0.5 h-3.5 w-3.5 text-muted-foreground" /> : null}
                   </div>
                 );
               })}
@@ -1087,143 +1107,62 @@ export function CloudPage({ mode, onAuthExpired, onNotify }: CloudPageProps) {
           </div>
 
           <form className="mb-4 grid gap-2 lg:grid-cols-[1fr_auto_auto]" onSubmit={handleSearchSubmit}>
-            <input
-              className="rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-900 placeholder:text-slate-500 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/30"
-              placeholder="搜索名称"
-              value={queryInput}
-              onChange={(event) => setQueryInput(event.target.value)}
-            />
+            <Field className="gap-0">
+              <FieldLabel htmlFor="cloud-search" className="sr-only">搜索名称</FieldLabel>
+              <Input
+                id="cloud-search"
+                placeholder="搜索名称"
+                value={queryInput}
+                onChange={(event) => setQueryInput(event.target.value)}
+              />
+            </Field>
             <Button type="submit" variant="outline">搜索</Button>
-            <InlineSelect
-              value={sortOption}
-              onChange={(value) => {
-                void handleSortChange(value);
-              }}
-              options={[
-                { value: "name-asc", label: "名称升序" },
-                { value: "name-desc", label: "名称降序" },
-                { value: "time-asc", label: "创建时间升序" },
-                { value: "time-desc", label: "创建时间降序" },
-                { value: "size-asc", label: "大小升序" },
-                { value: "size-desc", label: "大小降序" },
-              ]}
-            />
+            <Select value={sortOption} onValueChange={(value) => { void handleSortChange(value); }}>
+              <SelectTrigger className="w-full max-w-48">
+                <SelectValue placeholder="排序方式" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectGroup>
+                  <SelectLabel>排序</SelectLabel>
+                  <SelectItem value="name-asc">名称升序</SelectItem>
+                  <SelectItem value="name-desc">名称降序</SelectItem>
+                  <SelectItem value="time-asc">创建时间升序</SelectItem>
+                  <SelectItem value="time-desc">创建时间降序</SelectItem>
+                  <SelectItem value="size-asc">大小升序</SelectItem>
+                  <SelectItem value="size-desc">大小降序</SelectItem>
+                </SelectGroup>
+              </SelectContent>
+            </Select>
           </form>
 
-          <div className="mb-4 rounded-2xl border border-border/70 bg-white/80 p-3">
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <div className="text-xs text-muted-foreground">
-                已选 {selectedIds.length} / {items.length} 项
-              </div>
-              <div className="flex flex-wrap items-center gap-2">
-                <Button type="button" size="sm" variant="outline" onClick={toggleSelectAllCurrent} disabled={items.length === 0 || loading}>
-                  {selectedIds.length === items.length && items.length > 0 ? "取消全选" : "全选"}
-                </Button>
-                <div className="relative">
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant="outline"
-                    onClick={() => setBatchActionMenuOpen((value) => !value)}
-                    disabled={selectedIds.length === 0 || loading}
-                  >
-                    操作 <ChevronDown className="ml-1 h-3.5 w-3.5" />
-                  </Button>
-                  {batchActionMenuOpen ? (
-                    <div className="absolute right-0 top-9 z-20 min-w-32 rounded-lg border border-border/80 bg-white p-1.5 shadow-lg">
-                      <button
-                        type="button"
-                        className="flex w-full items-center rounded-md px-2.5 py-1.5 text-left text-xs transition hover:bg-muted"
-                        onClick={() => {
-                          setBatchActionMenuOpen(false);
-                          void handleBatchMove();
-                        }}
-                      >
-                        批量移动
-                      </button>
-                      <button
-                        type="button"
-                        className="mt-1 flex w-full items-center rounded-md px-2.5 py-1.5 text-left text-xs transition hover:bg-muted"
-                        onClick={() => {
-                          setBatchActionMenuOpen(false);
-                          void handleBatchCopy();
-                        }}
-                      >
-                        批量复制
-                      </button>
-                      <button
-                        type="button"
-                        className="mt-1 flex w-full items-center rounded-md px-2.5 py-1.5 text-left text-xs text-rose-600 transition hover:bg-rose-50"
-                        onClick={() => {
-                          setBatchActionMenuOpen(false);
-                          void handleBatchDelete();
-                        }}
-                      >
-                        批量删除
-                      </button>
-                    </div>
-                  ) : null}
-                </div>
-                <div className="relative">
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant="outline"
-                    onClick={() => setCreateMenuOpen((value) => !value)}
-                    disabled={loading}
-                  >
-                    <Plus className="mr-1 h-3.5 w-3.5" /> 新建
-                  </Button>
-                  {createMenuOpen ? (
-                    <div className="absolute right-0 top-9 z-20 min-w-32 rounded-lg border border-border/80 bg-white p-1.5 shadow-lg">
-                      <button
-                        type="button"
-                        className="flex w-full items-center rounded-md px-2.5 py-1.5 text-left text-xs transition hover:bg-muted"
-                        onClick={() => {
-                          setCreateMenuOpen(false);
-                          openCreateFolderModal();
-                        }}
-                      >
-                        新建文件夹
-                      </button>
-                      <button
-                        type="button"
-                        className="mt-1 flex w-full items-center rounded-md px-2.5 py-1.5 text-left text-xs transition hover:bg-muted"
-                        onClick={() => {
-                          setCreateMenuOpen(false);
-                          handleCreateFile();
-                        }}
-                      >
-                        新建文件
-                      </button>
-                    </div>
-                  ) : null}
-                </div>
-              </div>
-            </div>
-          </div>
-
           {items.length > 0 ? (
-            <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-6">
+            <div
+              className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-6"
+              onContextMenu={openBackgroundMenu}
+            >
               {items.map((item) => (
                 <article
                   key={item.id}
                   className="group"
-                  onContextMenu={(event) => openContextMenu(event, item)}
                 >
                   {(() => {
                     const visual = getCloudItemVisual(item);
                     const isSelected = selectedIds.includes(item.id);
                     return (
-                      <div className="relative mx-auto w-full max-w-[116px]">
-                        <button
+                      <div
+                        className={`relative mx-auto w-full max-w-[116px]`}
+                        onContextMenu={(event) => openContextMenu(event, item)}
+                      >
+                        <Button
                           type="button"
+                          size="icon"
+                          variant="outline"
                           aria-label={isSelected ? "取消选择" : "选择"}
                           aria-pressed={isSelected}
                           className={
                             isSelected
-                              ? "absolute right-1 top-1 z-10 inline-flex h-5 w-5 items-center justify-center rounded-md border border-primary/40 bg-primary text-primary-foreground shadow-sm"
-                              : "absolute right-1 top-1 z-10 inline-flex h-5 w-5 items-center justify-center rounded-md border border-border/80 bg-white/95 text-transparent opacity-0 shadow-sm transition hover:border-primary/40 group-hover:opacity-100"
+                              ? "absolute right-1 top-1 z-10 h-5 w-5 border-primary/40 bg-primary text-primary-foreground shadow-sm"
+                              : "absolute right-1 top-1 z-10 h-5 w-5 border-border/80 bg-card text-transparent opacity-0 shadow-sm transition hover:border-primary/40 group-hover:opacity-100"
                           }
                           onClick={(event) => {
                             event.stopPropagation();
@@ -1231,19 +1170,23 @@ export function CloudPage({ mode, onAuthExpired, onNotify }: CloudPageProps) {
                           }}
                         >
                           <Check className="h-3.5 w-3.5" />
-                        </button>
-                        <button
+                        </Button>
+                        <Button
                           type="button"
-                          className="flex w-full flex-col items-center gap-2 rounded-xl p-2 text-center transition hover:bg-muted/25"
-                          onClick={() => enterFolder(item)}
-                          disabled={!item.is_folder}
+                          variant="ghost"
+                          className="h-auto w-full flex-col items-center gap-2 rounded-xl p-2 text-center hover:bg-muted/25"
+                          onClick={() => {
+                            if (item.is_folder) {
+                              enterFolder(item);
+                            }
+                          }}
                           title={item.name}
                         >
-                          <span className={`flex h-20 w-20 shrink-0 items-center justify-center rounded-2xl ${visual.bgClass} shadow-[0_8px_18px_rgba(106,71,30,0.12)]`}>
+                          <span className={`flex h-20 w-20 shrink-0 items-center justify-center rounded-2xl ${visual.bgClass} shadow-sm`}>
                             {visual.icon}
                           </span>
                           <p className="w-full truncate text-[11px] font-semibold leading-tight" title={item.name}>{item.name}</p>
-                        </button>
+                        </Button>
                       </div>
                     );
                   })()}
@@ -1251,14 +1194,14 @@ export function CloudPage({ mode, onAuthExpired, onNotify }: CloudPageProps) {
               ))}
             </div>
           ) : (
-            <div className="rounded-2xl border border-dashed border-border/80 bg-white/55 px-4 py-10 text-center text-sm text-muted-foreground">
+            <div className="rounded-lg border border-dashed bg-muted/50 px-4 py-10 text-center text-sm text-muted-foreground">
               当前目录暂无文件
             </div>
           )}
 
           {contextMenu ? (
             <div
-              className="fixed z-[70] min-w-44 rounded-xl border border-border/80 bg-white/95 p-1.5 shadow-[0_14px_36px_rgba(0,0,0,0.22)] backdrop-blur"
+              className="fixed z-[70] min-w-44 rounded-lg border bg-card p-1.5"
               style={{ left: contextMenu.x, top: contextMenu.y }}
               onClick={(event) => event.stopPropagation()}
             >
@@ -1298,134 +1241,156 @@ export function CloudPage({ mode, onAuthExpired, onNotify }: CloudPageProps) {
             </div>
           ) : null}
 
-          {propertiesItem ? (
+          {backgroundMenu ? (
             <div
-              className="fixed inset-0 z-[75] flex items-center justify-center bg-black/45 p-4"
-              onClick={() => setPropertiesItem(null)}
+              className="fixed z-[70] min-w-44 rounded-lg border bg-card p-1.5"
+              style={{ left: backgroundMenu.x, top: backgroundMenu.y }}
+              onClick={(event) => event.stopPropagation()}
             >
-              <div
-                className="w-full max-w-md rounded-2xl border border-white/70 bg-white p-4 shadow-[0_18px_48px_rgba(0,0,0,0.22)]"
-                onClick={(event) => event.stopPropagation()}
-              >
-                <h3 className="text-sm font-semibold">文件属性</h3>
-                <p className="mt-1 truncate text-xs text-muted-foreground" title={propertiesItem.name}>{propertiesItem.name}</p>
+              {(() => {
+                const allSelected = items.length > 0 && selectedIds.length === items.length;
+                const hasSelection = selectedIds.length > 0;
 
-                <dl className="mt-4 grid grid-cols-2 gap-2 text-xs">
-                  <InfoCell label="ID" value={String(propertiesItem.id)} />
-                  <InfoCell label="父目录ID" value={propertiesItem.parent_id === null ? "根目录" : String(propertiesItem.parent_id)} />
-                  <InfoCell label="类型" value={propertiesItem.is_folder ? "文件夹" : "文件"} />
-                  <InfoCell label="扩展名" value={propertiesItem.file_ext || "-"} />
-                  <InfoCell label="MIME" value={propertiesItem.mime_type || "-"} />
-                  <InfoCell label="大小" value={propertiesItem.is_folder ? "-" : formatFileSize(propertiesItem.file_size)} />
-                  <InfoCell label="访问性" value={propertiesItem.is_public ? "公开" : "私有"} />
-                  <InfoCell label="创建时间" value={propertiesItem.created_at} />
-                  <InfoCell label="更新时间" value={propertiesItem.updated_at} />
-                </dl>
-
-                <div className="mt-4 flex justify-end">
-                  <Button type="button" variant="outline" onClick={() => setPropertiesItem(null)}>关闭</Button>
-                </div>
-              </div>
+                return (
+                  <>
+                    {hasSelection ? (
+                      <>
+                        <ContextMenuButton onClick={() => { toggleSelectAllCurrent(); setBackgroundMenu(null); }}>
+                          {allSelected ? <><Check className="h-3.5 w-3.5" /> 取消全选</> : <><CheckCheck className="h-3.5 w-3.5" /> 全选</>}
+                        </ContextMenuButton>
+                        <ContextMenuButton onClick={() => { setBackgroundMenu(null); void handleBatchCopy(); }}>
+                          <CopyIcon /> 复制 ({selectedIds.length})
+                        </ContextMenuButton>
+                        <ContextMenuButton onClick={() => { setBackgroundMenu(null); void handleBatchMove(); }}>
+                          <FolderOpen className="h-3.5 w-3.5" /> 移动 ({selectedIds.length})
+                        </ContextMenuButton>
+                        <div className="my-1 h-px bg-border/80" />
+                        <ContextMenuButton danger onClick={() => { setBackgroundMenu(null); void handleBatchDelete(); }}>
+                          <Trash2 className="h-3.5 w-3.5" /> 删除 ({selectedIds.length})
+                        </ContextMenuButton>
+                      </>
+                    ) : (
+                      <>
+                        <ContextMenuButton onClick={() => { toggleSelectAllCurrent(); setBackgroundMenu(null); }}>
+                          <CheckCheck className="h-3.5 w-3.5" /> 全选
+                        </ContextMenuButton>
+                        <ContextMenuButton onClick={() => { setBackgroundMenu(null); openCreateFolderModal(); }}>
+                          <Plus className="h-3.5 w-3.5" /> 新建文件夹
+                        </ContextMenuButton>
+                        <ContextMenuButton onClick={() => { setBackgroundMenu(null); goToParentLevel(); }}>
+                          <ChevronLeft className="h-3.5 w-3.5" /> 上一层
+                        </ContextMenuButton>
+                      </>
+                    )}
+                  </>
+                );
+              })()}
             </div>
           ) : null}
 
-          {renameModalItem ? (
-            <div
-              className="fixed inset-0 z-[75] flex items-center justify-center bg-black/45 p-4"
-              onClick={() => setRenameModalItem(null)}
-            >
-              <div
-                className="w-full max-w-md rounded-2xl border border-white/70 bg-white p-4 shadow-[0_18px_48px_rgba(0,0,0,0.22)]"
-                onClick={(event) => event.stopPropagation()}
-              >
-                <h3 className="text-sm font-semibold">重命名</h3>
-                <p className="mt-1 truncate text-xs text-muted-foreground" title={renameModalItem.name}>{renameModalItem.name}</p>
-                <input
-                  className="mt-4 w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-900 placeholder:text-slate-500 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/30"
+          <Dialog open={Boolean(propertiesItem)} onOpenChange={() => setPropertiesItem(null)}>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>文件属性</DialogTitle>
+                <DialogDescription className="truncate" title={propertiesItem?.name}>{propertiesItem?.name}</DialogDescription>
+              </DialogHeader>
+              <dl className="grid grid-cols-2 gap-2 text-xs">
+                <InfoCell label="ID" value={String(propertiesItem?.id ?? "")} />
+                <InfoCell label="父目录ID" value={propertiesItem?.parent_id === null ? "根目录" : String(propertiesItem?.parent_id)} />
+                <InfoCell label="类型" value={propertiesItem?.is_folder ? "文件夹" : "文件"} />
+                <InfoCell label="扩展名" value={propertiesItem?.file_ext || "-"} />
+                <InfoCell label="MIME" value={propertiesItem?.mime_type || "-"} />
+                <InfoCell label="大小" value={propertiesItem?.is_folder ? "-" : formatFileSize(propertiesItem?.file_size ?? 0)} />
+                <InfoCell label="访问性" value={propertiesItem?.is_public ? "公开" : "私有"} />
+                <InfoCell label="创建时间" value={propertiesItem?.created_at ?? ""} />
+                <InfoCell label="更新时间" value={propertiesItem?.updated_at ?? ""} />
+              </dl>
+            </DialogContent>
+          </Dialog>
+
+          <Dialog open={Boolean(renameModalItem)} onOpenChange={() => setRenameModalItem(null)}>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>重命名</DialogTitle>
+                <DialogDescription className="truncate" title={renameModalItem?.name}>{renameModalItem?.name}</DialogDescription>
+              </DialogHeader>
+              <Field className="gap-0">
+                <FieldLabel htmlFor="cloud-rename" className="sr-only">输入新名称</FieldLabel>
+                <Input
+                  id="cloud-rename"
                   value={renameValue}
                   onChange={(event) => setRenameValue(event.target.value)}
                   placeholder="输入新名称"
                 />
-                <div className="mt-4 flex justify-end gap-2">
-                  <Button type="button" variant="outline" onClick={() => setRenameModalItem(null)} disabled={loading}>取消</Button>
-                  <Button type="button" onClick={() => void submitRename()} disabled={loading || !renameValue.trim()}>保存</Button>
-                </div>
-              </div>
-            </div>
-          ) : null}
+              </Field>
+              <DialogFooter>
+                <Button type="button" variant="outline" onClick={() => setRenameModalItem(null)} disabled={loading}>取消</Button>
+                <Button type="button" onClick={() => void submitRename()} disabled={loading || !renameValue.trim()}>保存</Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
 
-          {shareModalItem ? (
-            <div
-              className="fixed inset-0 z-[75] flex items-center justify-center bg-black/45 p-4"
-              onClick={() => setShareModalItem(null)}
-            >
-              <div
-                className="w-full max-w-md rounded-2xl border border-white/70 bg-white p-4 shadow-[0_18px_48px_rgba(0,0,0,0.22)]"
-                onClick={(event) => event.stopPropagation()}
-              >
-                <h3 className="text-sm font-semibold">创建分享</h3>
-                <p className="mt-1 truncate text-xs text-muted-foreground" title={shareModalItem.name}>{shareModalItem.name}</p>
-                <div className="mt-4 space-y-3">
-                  <div>
-                    <label className="mb-1 block text-xs text-muted-foreground">访问密码（可选）</label>
-                    <input
-                      className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-900 placeholder:text-slate-500 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/30"
-                      value={sharePassword}
-                      onChange={(event) => setSharePassword(event.target.value)}
-                      placeholder="留空表示无需密码"
-                    />
-                  </div>
-                  <div>
-                    <label className="mb-1 block text-xs text-muted-foreground">过期分钟数（可选）</label>
-                    <input
-                      className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-900 placeholder:text-slate-500 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/30"
-                      value={shareExpiresMinutes}
-                      onChange={(event) => setShareExpiresMinutes(event.target.value)}
-                      placeholder="留空表示永不过期"
-                    />
-                  </div>
-                </div>
-                <div className="mt-4 flex justify-end gap-2">
-                  <Button type="button" variant="outline" onClick={() => setShareModalItem(null)} disabled={loading}>取消</Button>
-                  <Button type="button" onClick={() => void submitCreateShare()} disabled={loading}>创建</Button>
-                </div>
+          <Dialog open={Boolean(shareModalItem)} onOpenChange={() => setShareModalItem(null)}>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>创建分享</DialogTitle>
+                <DialogDescription className="truncate" title={shareModalItem?.name}>{shareModalItem?.name}</DialogDescription>
+              </DialogHeader>
+              <div className="space-y-3">
+                <Field className="gap-1">
+                  <FieldLabel className="text-xs text-muted-foreground">访问密码（可选）</FieldLabel>
+                  <Input
+                    value={sharePassword}
+                    onChange={(event) => setSharePassword(event.target.value)}
+                    placeholder="留空表示无需密码"
+                  />
+                </Field>
+                <Field className="gap-1">
+                  <FieldLabel className="text-xs text-muted-foreground">过期分钟数（可选）</FieldLabel>
+                  <Input
+                    value={shareExpiresMinutes}
+                    onChange={(event) => setShareExpiresMinutes(event.target.value)}
+                    placeholder="留空表示永不过期"
+                  />
+                </Field>
               </div>
-            </div>
-          ) : null}
+              <DialogFooter>
+                <Button type="button" variant="outline" onClick={() => setShareModalItem(null)} disabled={loading}>取消</Button>
+                <Button type="button" onClick={() => void submitCreateShare()} disabled={loading}>创建</Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
 
-          {createFolderModalOpen ? (
-            <div
-              className="fixed inset-0 z-[75] flex items-center justify-center bg-black/45 p-4"
-              onClick={closeCreateFolderModal}
-            >
-              <div
-                className="w-full max-w-md rounded-2xl border border-white/70 bg-white p-4 shadow-[0_18px_48px_rgba(0,0,0,0.22)]"
-                onClick={(event) => event.stopPropagation()}
+          <Dialog open={createFolderModalOpen} onOpenChange={closeCreateFolderModal}>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>新建文件夹</DialogTitle>
+                <DialogDescription>输入目录名称后创建到当前目录。</DialogDescription>
+              </DialogHeader>
+              <form
+                className="space-y-4"
+                onSubmit={(event) => {
+                  event.preventDefault();
+                  void submitCreateFolder();
+                }}
               >
-                <h3 className="text-sm font-semibold">新建文件夹</h3>
-                <p className="mt-1 text-xs text-muted-foreground">输入目录名称后创建到当前目录。</p>
-                <form
-                  className="mt-4 space-y-4"
-                  onSubmit={(event) => {
-                    event.preventDefault();
-                    void submitCreateFolder();
-                  }}
-                >
-                  <input
+                <Field className="gap-0">
+                  <FieldLabel htmlFor="cloud-create-folder" className="sr-only">请输入文件夹名称</FieldLabel>
+                  <Input
+                    id="cloud-create-folder"
                     autoFocus
-                    className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-900 placeholder:text-slate-500 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/30"
                     value={createFolderName}
                     onChange={(event) => setCreateFolderName(event.target.value)}
                     placeholder="请输入文件夹名称"
                   />
-                  <div className="flex justify-end gap-2">
-                    <Button type="button" variant="outline" onClick={closeCreateFolderModal} disabled={loading}>取消</Button>
-                    <Button type="submit" disabled={loading || !createFolderName.trim()}>创建</Button>
-                  </div>
-                </form>
-              </div>
-            </div>
-          ) : null}
+                </Field>
+                <DialogFooter>
+                  <Button type="button" variant="outline" onClick={closeCreateFolderModal} disabled={loading}>取消</Button>
+                  <Button type="submit" disabled={loading || !createFolderName.trim()}>创建</Button>
+                </DialogFooter>
+              </form>
+            </DialogContent>
+          </Dialog>
 
           {previewItem ? (
             <div
@@ -1433,15 +1398,21 @@ export function CloudPage({ mode, onAuthExpired, onNotify }: CloudPageProps) {
               onClick={() => setPreviewItem(null)}
             >
               <div
-                className="w-full max-w-5xl rounded-2xl border border-white/70 bg-white p-4 shadow-[0_18px_48px_rgba(0,0,0,0.22)]"
+                className="w-full max-w-5xl rounded-2xl border bg-card p-4 shadow-sm"
                 onClick={(event) => event.stopPropagation()}
               >
-                <div className="mb-3 flex items-center justify-between gap-3">
+                <div className="mb-3 flex items-start justify-between gap-3">
                   <div className="min-w-0">
                     <p className="truncate text-sm font-semibold" title={previewItem.name}>{previewItem.name}</p>
-                    <p className="text-xs text-muted-foreground">点击遮罩关闭预览</p>
                   </div>
-                  <Button type="button" variant="outline" size="sm" onClick={() => setPreviewItem(null)}>关闭</Button>
+                  <button
+                    type="button"
+                    className="shrink-0 inline-flex items-center justify-center rounded-sm border-none bg-transparent p-0.5 text-muted-foreground/70 outline-none transition-colors hover:bg-muted hover:text-foreground"
+                    onClick={() => setPreviewItem(null)}
+                  >
+                    <X className="h-4 w-4" />
+                    <span className="sr-only">关闭</span>
+                  </button>
                 </div>
                 <div className="flex max-h-[72vh] items-center justify-center overflow-hidden rounded-xl border border-border/70 bg-muted/30 p-2">
                   {getCloudPreviewKind(previewItem) === "image" ? (
@@ -1449,10 +1420,10 @@ export function CloudPage({ mode, onAuthExpired, onNotify }: CloudPageProps) {
                   ) : getCloudPreviewKind(previewItem) === "video" ? (
                     <PlyrVideo src={buildCloudPreviewUrl(previewItem.id)} className="max-h-[68vh] w-full rounded" />
                   ) : getCloudPreviewKind(previewItem) === "pdf" ? (
-                    <iframe title={previewItem.name} src={buildCloudPreviewUrl(previewItem.id)} className="h-[68vh] w-full rounded border border-border/60 bg-white" />
+                    <iframe title={previewItem.name} src={buildCloudPreviewUrl(previewItem.id)} className="h-[68vh] w-full rounded border border-border/60 bg-card" />
                   ) : getCloudPreviewKind(previewItem) === "text" ? (
-                    <div className="theme-scrollbar h-[68vh] w-full overflow-auto rounded border border-border/60 bg-white p-4 text-left">
-                      {previewLoading ? <p className="text-sm text-muted-foreground">文本加载中...</p> : null}
+                    <div className="theme-scrollbar h-[68vh] w-full overflow-auto rounded border border-border/60 bg-card p-4 text-left">
+                      {previewLoading ? <p className="flex items-center gap-1.5 text-sm text-muted-foreground"><Spinner /> 文本加载中...</p> : null}
                       {previewError ? <p className="text-sm text-rose-600">{previewError}</p> : null}
                       {!previewLoading && !previewError ? (
                         <pre className="whitespace-pre-wrap break-words font-mono text-xs leading-6 text-foreground">{previewTextContent}</pre>
@@ -1469,56 +1440,40 @@ export function CloudPage({ mode, onAuthExpired, onNotify }: CloudPageProps) {
             </div>
           ) : null}
 
-          {deleteTarget ? (
-            <div
-              className="fixed inset-0 z-[75] flex items-center justify-center bg-black/45 p-4"
-              onClick={() => setDeleteTarget(null)}
-            >
-              <div
-                className="w-full max-w-md rounded-2xl border border-white/70 bg-white p-4 shadow-[0_18px_48px_rgba(0,0,0,0.22)]"
-                onClick={(event) => event.stopPropagation()}
-              >
-                <h3 className="text-sm font-semibold text-rose-700">确认删除</h3>
-                <p className="mt-2 text-xs text-muted-foreground">
-                  确认删除 <span className="font-semibold text-foreground">{deleteTarget.name}</span> 吗？此操作不可恢复。
-                </p>
-                <div className="mt-4 flex justify-end gap-2">
-                  <Button type="button" variant="outline" onClick={() => setDeleteTarget(null)} disabled={loading}>取消</Button>
-                  <Button type="button" onClick={() => void confirmDelete()} disabled={loading} className="bg-rose-600 text-white hover:bg-rose-700">
-                    删除
-                  </Button>
-                </div>
-              </div>
-            </div>
-          ) : null}
+          <Dialog open={Boolean(deleteTarget)} onOpenChange={() => setDeleteTarget(null)}>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle className="text-destructive">确认删除</DialogTitle>
+                <DialogDescription>
+                  确认删除 <span className="font-semibold text-foreground">{deleteTarget?.name}</span> 吗？此操作不可恢复。
+                </DialogDescription>
+              </DialogHeader>
+              <DialogFooter>
+                <Button type="button" variant="outline" onClick={() => setDeleteTarget(null)} disabled={loading}>取消</Button>
+                <Button type="button" variant="destructive" onClick={() => void confirmDelete()} disabled={loading}>删除</Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
 
-          {batchDeleteConfirmOpen ? (
-            <div
-              className="fixed inset-0 z-[75] flex items-center justify-center bg-black/45 p-4"
-              onClick={() => setBatchDeleteConfirmOpen(false)}
-            >
-              <div
-                className="w-full max-w-md rounded-2xl border border-white/70 bg-white p-4 shadow-[0_18px_48px_rgba(0,0,0,0.22)]"
-                onClick={(event) => event.stopPropagation()}
-              >
-                <h3 className="text-sm font-semibold text-rose-700">确认批量删除</h3>
-                <p className="mt-2 text-xs text-muted-foreground">
+          <Dialog open={batchDeleteConfirmOpen} onOpenChange={() => setBatchDeleteConfirmOpen(false)}>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle className="text-destructive">确认批量删除</DialogTitle>
+                <DialogDescription>
                   确认删除已选 <span className="font-semibold text-foreground">{selectedIds.length}</span> 项吗？此操作不可恢复。
-                </p>
-                <div className="mt-4 flex justify-end gap-2">
-                  <Button type="button" variant="outline" onClick={() => setBatchDeleteConfirmOpen(false)} disabled={loading}>取消</Button>
-                  <Button type="button" onClick={() => void confirmBatchDelete()} disabled={loading} className="bg-rose-600 text-white hover:bg-rose-700">
-                    批量删除
-                  </Button>
-                </div>
-              </div>
-            </div>
-          ) : null}
+                </DialogDescription>
+              </DialogHeader>
+              <DialogFooter>
+                <Button type="button" variant="outline" onClick={() => setBatchDeleteConfirmOpen(false)} disabled={loading}>取消</Button>
+                <Button type="button" variant="destructive" onClick={() => void confirmBatchDelete()} disabled={loading}>批量删除</Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
         </>
       ) : null}
 
       {mode === "shares" ? (
-        <div className="mt-0 rounded-2xl border border-border/70 bg-white/80 p-4">
+        <div className="mt-0 rounded-lg border bg-card p-4">
         <div className="mb-3 flex items-center justify-between gap-2">
           <h3 className="text-sm font-semibold">分享列表</h3>
           <span className="text-xs text-muted-foreground">共 {shares.length} 条</span>
@@ -1526,7 +1481,7 @@ export function CloudPage({ mode, onAuthExpired, onNotify }: CloudPageProps) {
         {shares.length > 0 ? (
           <div className="space-y-2">
             {shares.map((share) => (
-              <div key={share.id} className="rounded-xl border border-border/70 bg-white/85 p-3 shadow-[0_8px_18px_rgba(106,71,30,0.08)]">
+              <div key={share.id} className="rounded-lg border bg-card p-3">
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
                     <p className="truncate text-sm font-semibold" title={share.item_name || `项目 #${share.item_id}`}>
@@ -1565,32 +1520,29 @@ export function CloudPage({ mode, onAuthExpired, onNotify }: CloudPageProps) {
         </div>
       ) : null}
 
-      {copyPasswordShare ? (
-        <div
-          className="fixed inset-0 z-[75] flex items-center justify-center bg-black/45 p-4"
-          onClick={() => setCopyPasswordShare(null)}
-        >
-          <div
-            className="w-full max-w-md rounded-2xl border border-white/70 bg-white p-4 shadow-[0_18px_48px_rgba(0,0,0,0.22)]"
-            onClick={(event) => event.stopPropagation()}
-          >
-            <h3 className="text-sm font-semibold">输入分享密码</h3>
-            <p className="mt-1 text-xs text-muted-foreground">复制链接时将自动附带密码参数。</p>
-            <input
-              className="mt-4 w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-900 placeholder:text-slate-500 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/30"
+      <Dialog open={Boolean(copyPasswordShare)} onOpenChange={() => setCopyPasswordShare(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>输入分享密码</DialogTitle>
+            <DialogDescription>复制链接时将自动附带密码参数。</DialogDescription>
+          </DialogHeader>
+          <Field className="gap-0">
+            <FieldLabel htmlFor="cloud-copy-password" className="sr-only">请输入该分享的密码</FieldLabel>
+            <Input
+              id="cloud-copy-password"
               value={copyPasswordInput}
               onChange={(event) => setCopyPasswordInput(event.target.value)}
               placeholder="请输入该分享的密码"
             />
-            <div className="mt-4 flex justify-end gap-2">
-              <Button type="button" variant="outline" onClick={() => setCopyPasswordShare(null)}>取消</Button>
-              <Button type="button" onClick={() => void confirmCopyWithPassword()} disabled={!copyPasswordInput.trim()}>
-                复制带密码链接
-              </Button>
-            </div>
-          </div>
-        </div>
-      ) : null}
+          </Field>
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={() => setCopyPasswordShare(null)}>取消</Button>
+            <Button type="button" onClick={() => void confirmCopyWithPassword()} disabled={!copyPasswordInput.trim()}>
+              复制带密码链接
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {targetPickerAction ? (
         <div
@@ -1598,16 +1550,22 @@ export function CloudPage({ mode, onAuthExpired, onNotify }: CloudPageProps) {
           onClick={closeTargetPicker}
         >
           <div
-            className="w-full max-w-3xl rounded-2xl border border-white/70 bg-white p-4 shadow-[0_18px_48px_rgba(0,0,0,0.22)]"
+            className="w-full max-w-3xl rounded-2xl border bg-card p-4 shadow-sm"
             onClick={(event) => event.stopPropagation()}
           >
             <div className="flex flex-wrap items-center justify-between gap-2">
               <h3 className="text-sm font-semibold">
                 {targetPickerAction.mode === "move" ? "选择移动到的目录" : "选择复制到的目录"}
               </h3>
-              <Button type="button" variant="outline" size="sm" onClick={closeTargetPicker} disabled={targetPickerSubmitting}>
-                关闭
-              </Button>
+              <button
+                type="button"
+                className="shrink-0 inline-flex items-center justify-center rounded-sm border-none bg-transparent p-0.5 text-muted-foreground/70 outline-none transition-colors hover:bg-muted hover:text-foreground disabled:pointer-events-none"
+                onClick={closeTargetPicker}
+                disabled={targetPickerSubmitting}
+              >
+                <X className="h-4 w-4" />
+                <span className="sr-only">关闭</span>
+              </button>
             </div>
 
             <div className="mt-3 flex flex-wrap items-center justify-between gap-2 text-xs">
@@ -1616,20 +1574,18 @@ export function CloudPage({ mode, onAuthExpired, onNotify }: CloudPageProps) {
                   const isCurrent = index === targetPickerPathNodes.length - 1;
                   return (
                     <div key={`${node.id ?? "root"}-${index}`} className="flex items-center">
-                      <button
+                      <Button
                         type="button"
-                        className={
-                          isCurrent
-                            ? "rounded-md border border-primary/35 bg-primary/10 px-2.5 py-1 text-primary"
-                            : "rounded-md border border-border/70 bg-white px-2.5 py-1 hover:bg-muted/40"
-                        }
+                        size="sm"
+                        variant={isCurrent ? "secondary" : "ghost"}
+                        className="rounded-lg"
                         onClick={() => {
                           void jumpTargetPickerPath(index);
                         }}
                       >
                         {node.name}
-                      </button>
-                      {index < targetPickerPathNodes.length - 1 ? <ChevronRight className="mx-1 h-3.5 w-3.5 text-muted-foreground" /> : null}
+                      </Button>
+                      {index < targetPickerPathNodes.length - 1 ? <ChevronRight className="mx-0.5 h-3.5 w-3.5 text-muted-foreground" /> : null}
                     </div>
                   );
                 })}
@@ -1649,27 +1605,29 @@ export function CloudPage({ mode, onAuthExpired, onNotify }: CloudPageProps) {
 
             {targetPickerAction.mode === "copy" && targetPickerAction.scope === "single" ? (
               <div className="mt-3">
-                <label className="mb-1 block text-xs text-muted-foreground">复制后名称（可选）</label>
-                <input
-                  className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-900 placeholder:text-slate-500 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/30"
-                  value={targetPickerCopyName}
-                  onChange={(event) => setTargetPickerCopyName(event.target.value)}
-                  placeholder="留空将使用原名称"
-                  disabled={targetPickerSubmitting}
-                />
+                <Field className="gap-1">
+                  <FieldLabel className="text-xs text-muted-foreground">复制后名称（可选）</FieldLabel>
+                  <Input
+                    value={targetPickerCopyName}
+                    onChange={(event) => setTargetPickerCopyName(event.target.value)}
+                    placeholder="留空将使用原名称"
+                    disabled={targetPickerSubmitting}
+                  />
+                </Field>
               </div>
             ) : null}
 
             <div className="mt-3 h-[300px] overflow-auto rounded-xl border border-border/70 bg-muted/20 p-3">
               {targetPickerLoading ? (
-                <p className="text-xs text-muted-foreground">目录加载中...</p>
+                <p className="flex items-center gap-1.5 text-xs text-muted-foreground"><Spinner className="size-3" /> 目录加载中...</p>
               ) : targetPickerFolders.length > 0 ? (
                 <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">
                   {targetPickerFolders.map((folder) => (
-                    <button
+                    <Button
                       key={folder.id}
                       type="button"
-                      className="flex items-center gap-2 rounded-lg border border-border/70 bg-white px-2.5 py-2 text-left text-xs transition hover:bg-muted/40"
+                      variant="outline"
+                      className="h-auto w-full justify-start gap-2 px-2.5 py-2 text-left text-xs"
                       onClick={() => {
                         void enterTargetPickerFolder(folder);
                       }}
@@ -1677,7 +1635,7 @@ export function CloudPage({ mode, onAuthExpired, onNotify }: CloudPageProps) {
                     >
                       <Folder className="h-4 w-4 shrink-0 text-amber-700" />
                       <span className="truncate" title={folder.name}>{folder.name}</span>
-                    </button>
+                    </Button>
                   ))}
                 </div>
               ) : (
@@ -1701,7 +1659,7 @@ export function CloudPage({ mode, onAuthExpired, onNotify }: CloudPageProps) {
 
       {mode === "stats" ? (
         <div className="mt-0 grid gap-4 lg:grid-cols-2">
-          <article className="rounded-2xl border border-border/70 bg-white/80 p-4">
+          <article className="rounded-2xl border border-border/70 bg-card p-4">
             <h3 className="mb-3 text-sm font-semibold">容量概览</h3>
             <dl className="grid grid-cols-2 gap-2 text-xs">
               <InfoCell label="总条目" value={String(summary?.total_items ?? 0)} />
@@ -1713,7 +1671,7 @@ export function CloudPage({ mode, onAuthExpired, onNotify }: CloudPageProps) {
             </dl>
           </article>
 
-          <article className="rounded-2xl border border-border/70 bg-white/80 p-4">
+          <article className="rounded-2xl border border-border/70 bg-card p-4">
             <h3 className="mb-3 text-sm font-semibold">近期访问（Top 5）</h3>
             {(summary?.recent_top_visits ?? []).length > 0 ? (
               <div className="space-y-2">
@@ -1744,70 +1702,10 @@ export function CloudPage({ mode, onAuthExpired, onNotify }: CloudPageProps) {
 
 function CloudMetricCard({ title, value }: { title: string; value: string }) {
   return (
-    <article className="rounded-2xl border border-border/70 bg-white/72 p-4 shadow-[0_8px_18px_rgba(106,71,30,0.08)]">
+    <article className="rounded-lg border bg-muted p-4">
       <p className="text-[11px] uppercase tracking-[0.16em] text-muted-foreground">{title}</p>
       <p className="mt-2 text-lg font-semibold">{value}</p>
     </article>
-  );
-}
-
-function InlineSelect({
-  value,
-  options,
-  onChange,
-}: {
-  value: string;
-  options: Array<{ value: string; label: string }>;
-  onChange: (value: string) => void;
-}) {
-  const [open, setOpen] = useState(false);
-  const currentLabel = options.find((option) => option.value === value)?.label ?? value;
-
-  useEffect(() => {
-    if (!open) {
-      return;
-    }
-    const close = () => setOpen(false);
-    window.addEventListener("click", close);
-    window.addEventListener("scroll", close, true);
-    return () => {
-      window.removeEventListener("click", close);
-      window.removeEventListener("scroll", close, true);
-    };
-  }, [open]);
-
-  return (
-    <div className="relative" onClick={(event) => event.stopPropagation()}>
-      <button
-        type="button"
-        className="inline-flex h-10 min-w-28 items-center justify-between gap-2 rounded-xl border border-border/70 bg-white px-3 text-sm shadow-sm transition hover:bg-muted/40"
-        onClick={() => setOpen((state) => !state)}
-      >
-        <span>{currentLabel}</span>
-        <ChevronDown className="h-4 w-4 text-muted-foreground" />
-      </button>
-      {open ? (
-        <div className="absolute right-0 top-11 z-30 min-w-28 rounded-xl border border-border/80 bg-white p-1 shadow-lg">
-          {options.map((option) => (
-            <button
-              key={option.value}
-              type="button"
-              className={
-                value === option.value
-                  ? "mb-1 w-full rounded-md bg-primary/10 px-2.5 py-1.5 text-left text-xs font-semibold"
-                  : "mb-1 w-full rounded-md px-2.5 py-1.5 text-left text-xs transition hover:bg-muted"
-              }
-              onClick={() => {
-                onChange(option.value);
-                setOpen(false);
-              }}
-            >
-              {option.label}
-            </button>
-          ))}
-        </div>
-      ) : null}
-    </div>
   );
 }
 
@@ -1815,10 +1713,12 @@ function getCloudItemVisual(item: CloudItem): {
   icon: ReactNode;
   bgClass: string;
 } {
+  const iconClass = "h-8 w-8 text-foreground [&_*]:!fill-transparent";
+
   if (item.is_folder) {
     return {
-      icon: <Folder className="h-9 w-9 text-amber-700" />,
-      bgClass: "bg-amber-100",
+      icon: <Folder className={iconClass} />,
+      bgClass: "bg-secondary",
     };
   }
 
@@ -1838,122 +1738,43 @@ function getCloudItemVisual(item: CloudItem): {
   const subtitleExts = new Set(["srt", "ass", "ssa", "vtt", "sub"]);
 
   if (imageExts.has(ext) || mime.startsWith("image/")) {
-    return {
-      icon: <Image className="h-9 w-9 text-emerald-700" />,
-      bgClass: "bg-emerald-100",
-    };
+    return { icon: <Image className={iconClass} />, bgClass: "bg-secondary" };
   }
   if (videoExts.has(ext) || mime.startsWith("video/")) {
-    return {
-      icon: <Video className="h-9 w-9 text-cyan-700" />,
-      bgClass: "bg-cyan-100",
-    };
+    return { icon: <Video className={iconClass} />, bgClass: "bg-secondary" };
   }
   if (audioExts.has(ext) || mime.startsWith("audio/")) {
-    return {
-      icon: <Music className="h-9 w-9 text-violet-700" />,
-      bgClass: "bg-violet-100",
-    };
+    return { icon: <Music className={iconClass} />, bgClass: "bg-secondary" };
   }
   if (archiveExts.has(ext)) {
-    return {
-      icon: <Archive className="h-9 w-9 text-orange-700" />,
-      bgClass: "bg-orange-100",
-    };
+    return { icon: <Archive className={iconClass} />, bgClass: "bg-secondary" };
   }
   if (ext === "pdf") {
-    return {
-      icon: <ExtBadge ext="PDF" textClass="text-rose-700" />,
-      bgClass: "bg-rose-100",
-    };
+    return { icon: <FileText className={iconClass} />, bgClass: "bg-secondary" };
   }
   if (docExts.has(ext) || mime.includes("word") || mime.includes("powerpoint") || mime.startsWith("text/")) {
-    if (ext === "doc" || ext === "docx") {
-      return {
-        icon: <ExtBadge ext="DOC" textClass="text-blue-700" />,
-        bgClass: "bg-blue-100",
-      };
-    }
-    if (ext === "ppt" || ext === "pptx") {
-      return {
-        icon: <ExtBadge ext="PPT" textClass="text-orange-700" />,
-        bgClass: "bg-orange-100",
-      };
-    }
-    if (ext === "txt") {
-      return {
-        icon: <ExtBadge ext="TXT" textClass="text-slate-700" />,
-        bgClass: "bg-slate-100",
-      };
-    }
-    return {
-      icon: <FileText className="h-9 w-9 text-blue-700" />,
-      bgClass: "bg-blue-100",
-    };
+    return { icon: <FileText className={iconClass} />, bgClass: "bg-secondary" };
   }
   if (sheetExts.has(ext) || mime.includes("spreadsheet") || mime.includes("excel") || mime.includes("csv")) {
-    if (ext === "csv") {
-      return {
-        icon: <ExtBadge ext="CSV" textClass="text-emerald-700" />,
-        bgClass: "bg-emerald-100",
-      };
-    }
-    return {
-      icon: <FileSpreadsheet className="h-9 w-9 text-lime-700" />,
-      bgClass: "bg-lime-100",
-    };
+    return { icon: <FileSpreadsheet className={iconClass} />, bgClass: "bg-secondary" };
   }
   if (appExts.has(ext) || mime.includes("android") || mime.includes("x-msdownload")) {
-    if (ext === "apk") {
-      return {
-        icon: <ExtBadge ext="APK" textClass="text-fuchsia-700" />,
-        bgClass: "bg-fuchsia-100",
-      };
-    }
-    if (ext === "exe") {
-      return {
-        icon: <ExtBadge ext="EXE" textClass="text-red-700" />,
-        bgClass: "bg-red-100",
-      };
-    }
-    if (ext === "dmg") {
-      return {
-        icon: <ExtBadge ext="DMG" textClass="text-indigo-700" />,
-        bgClass: "bg-indigo-100",
-      };
-    }
-    return {
-      icon: <Package className="h-9 w-9 text-fuchsia-700" />,
-      bgClass: "bg-fuchsia-100",
-    };
+    return { icon: <Package className={iconClass} />, bgClass: "bg-secondary" };
   }
   if (fontExts.has(ext)) {
-    return {
-      icon: <ExtBadge ext="FONT" textClass="text-purple-700" />,
-      bgClass: "bg-purple-100",
-    };
+    return { icon: <File className={iconClass} />, bgClass: "bg-secondary" };
   }
   if (subtitleExts.has(ext)) {
-    return {
-      icon: <ExtBadge ext="SUB" textClass="text-teal-700" />,
-      bgClass: "bg-teal-100",
-    };
+    return { icon: <File className={iconClass} />, bgClass: "bg-secondary" };
   }
   if (codeExts.has(ext) || mime.includes("json") || mime.includes("xml") || mime.includes("javascript")) {
-    return {
-      icon: <FileCode2 className="h-9 w-9 text-sky-700" />,
-      bgClass: "bg-sky-100",
-    };
+    return { icon: <FileCode2 className={iconClass} />, bgClass: "bg-secondary" };
   }
 
   return {
-    icon: ext ? <ExtBadge ext={ext.toUpperCase().slice(0, 4)} textClass="text-slate-700" /> : <File className="h-9 w-9 text-slate-700" />,
-    bgClass: "bg-slate-100",
+    icon: <File className={iconClass} />,
+    bgClass: "bg-secondary",
   };
-}
-
-function ExtBadge({ ext, textClass }: { ext: string; textClass: string }) {
-  return <span className={`text-xs font-extrabold tracking-wide ${textClass}`}>{ext}</span>;
 }
 
 function ContextMenuButton({
@@ -1966,17 +1787,19 @@ function ContextMenuButton({
   danger?: boolean;
 }) {
   return (
-    <button
+    <Button
       type="button"
+      variant="ghost"
+      size="sm"
       className={
         danger
-          ? "flex w-full items-center gap-2 rounded-md px-2.5 py-1.5 text-left text-xs text-rose-600 transition hover:bg-rose-50"
-          : "flex w-full items-center gap-2 rounded-md px-2.5 py-1.5 text-left text-xs transition hover:bg-muted"
+          ? "h-auto w-full justify-start gap-2 px-2.5 py-1.5 text-left text-xs text-rose-600 hover:bg-rose-50"
+          : "h-auto w-full justify-start gap-2 px-2.5 py-1.5 text-left text-xs hover:bg-muted"
       }
       onClick={onClick}
     >
       {children}
-    </button>
+    </Button>
   );
 }
 

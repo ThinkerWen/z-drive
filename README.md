@@ -35,23 +35,10 @@
 
 ## 界面预览
 
-### 图库页面
 
-| 上传页 | 列表页 | 统计页 |
-| --- | --- | --- |
-| <img src="https://raw.githubusercontent.com/ThinkerWen/z-drive/refs/heads/main/images/gallery-upload.png" width="500" alt="gallery-upload" /> | <img src="https://raw.githubusercontent.com/ThinkerWen/z-drive/refs/heads/main/images/gallery-list.png" width="500" alt="gallery-list" /> | <img src="https://raw.githubusercontent.com/ThinkerWen/z-drive/refs/heads/main/images/gallery-stats.png" width="500" alt="gallery-stats" /> |
-
-### 云盘页面
-
-| 列表页 | 预览页 | 管理页 |
-| --- | --- | --- |
-| <img src="https://raw.githubusercontent.com/ThinkerWen/z-drive/refs/heads/main/images/cloud-list.png" width="500" alt="cloud-list" /> | <img src="https://raw.githubusercontent.com/ThinkerWen/z-drive/refs/heads/main/images/cloud-preview.png" width="500" alt="cloud-preview" /> | <img src="https://raw.githubusercontent.com/ThinkerWen/z-drive/refs/heads/main/images/cloud-share.png" width="500" alt="cloud-share" /> |
-
-### 代码片页面
-
-| 编辑页 | 列表页 | 分享页 |
-| --- | --- | --- |
-| <img src="https://raw.githubusercontent.com/ThinkerWen/z-drive/refs/heads/main/images/snippet-editor.png" width="500" alt="snippet-editor" /> | <img src="https://raw.githubusercontent.com/ThinkerWen/z-drive/refs/heads/main/images/snippet-list.png" width="500" alt="snippet-list" /> | <img src="https://raw.githubusercontent.com/ThinkerWen/z-drive/refs/heads/main/images/snippet-preview.png" width="500" alt="snippet-preview" /> |
+| 图库                                                                                                                             | 云盘                                                                                                                         | 代码片                                                                                                                              |
+|--------------------------------------------------------------------------------------------------------------------------------|----------------------------------------------------------------------------------------------------------------------------|----------------------------------------------------------------------------------------------------------------------------------|
+| <img src="https://raw.githubusercontent.com/ThinkerWen/z-drive/refs/heads/main/images/gallery.png" width="500" alt="gallery" /> | <img src="https://raw.githubusercontent.com/ThinkerWen/z-drive/refs/heads/main/images/cloud.png" width="500" alt="cloud" /> | <img src="https://raw.githubusercontent.com/ThinkerWen/z-drive/refs/heads/main/images/snippets.png" width="500" alt="snippets" /> |
 
 ## 快速启动
 

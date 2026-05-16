@@ -2,10 +2,36 @@ import { useEffect, useMemo, useState } from "react";
 import { XCircle } from "lucide-react";
 
 import { PlyrVideo } from "@/components/plyr-video";
+import { Field, FieldLabel } from "@/components/ui/field";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Spinner } from "@/components/ui/spinner";
 import { ApiError, accessCloudShare, accessSnippetShare, getImageInfo } from "@/lib/api";
-import { renderSnippetWithLineNumbers } from "@/lib/snippet-code";
+import { useSnippetHighlight } from "@/lib/snippet-code";
 import type { CloudShareAccessResponse, ImageInfoResponse, SnippetPublicAccessResponse } from "@/lib/types";
 import { copyText as copyToClipboard } from "@/lib/utils";
+
+function useForceLightTheme() {
+  useEffect(() => {
+    const el = document.documentElement;
+    const wasDark = el.classList.contains("dark");
+    el.classList.remove("dark");
+
+    const observer = new MutationObserver(() => {
+      if (el.classList.contains("dark")) {
+        el.classList.remove("dark");
+      }
+    });
+    observer.observe(el, { attributes: true, attributeFilter: ["class"] });
+
+    return () => {
+      observer.disconnect();
+      if (wasDark) {
+        el.classList.add("dark");
+      }
+    };
+  }, []);
+}
 
 export function parsePublicPreviewPath(pathname: string): { shortCode: string; ext: string } | null {
   const matched = pathname.match(/^\/gallery\/preview\/([^/.]+)\.([A-Za-z0-9]+)$/);
@@ -32,6 +58,7 @@ export function parsePublicSnippetPath(pathname: string): { shareCode: string } 
 }
 
 export function PublicErrorPage({ message }: { message?: string }) {
+  useForceLightTheme();
   const queryMessage = useMemo(() => {
     const search = new URLSearchParams(window.location.search);
     return search.get("message") || "";
@@ -41,7 +68,7 @@ export function PublicErrorPage({ message }: { message?: string }) {
 
   return (
     <div className="mx-auto flex min-h-screen w-full max-w-3xl items-center justify-center px-4 py-10 sm:px-8">
-      <div className="soft-panel w-full rounded-3xl border border-white/70 bg-white/90 p-8 text-center shadow-[0_18px_48px_rgba(0,0,0,0.18)]">
+      <div className="w-full rounded-xl border bg-card p-8 text-center shadow-sm">
         <div className="mx-auto mb-4 grid h-14 w-14 place-items-center rounded-full border border-orange-200 bg-orange-50 text-2xl font-bold text-orange-600">!</div>
         <h1 className="text-2xl font-semibold tracking-tight">访问失败</h1>
         <p className="mt-3 text-sm leading-6 text-muted-foreground">{finalMessage}</p>
@@ -54,6 +81,7 @@ export function PublicErrorPage({ message }: { message?: string }) {
 }
 
 export function PublicPreviewPage({ shortCode, ext }: { shortCode: string; ext: string }) {
+  useForceLightTheme();
   const [loading, setLoading] = useState(true);
   const [fatalError, setFatalError] = useState("");
   const [copyError, setCopyError] = useState("");
@@ -100,7 +128,7 @@ export function PublicPreviewPage({ shortCode, ext }: { shortCode: string; ext: 
   }
 
   if (loading) {
-    return <div className="flex min-h-screen items-center justify-center text-sm text-muted-foreground">加载中...</div>;
+    return <div className="flex min-h-screen items-center justify-center gap-2 text-sm text-muted-foreground"><Spinner /> 加载中...</div>;
   }
 
   if (fatalError || !info) {
@@ -113,7 +141,7 @@ export function PublicPreviewPage({ shortCode, ext }: { shortCode: string; ext: 
 
   return (
     <div className="mx-auto flex min-h-screen w-full max-w-5xl flex-col px-4 py-8 sm:px-8">
-      <div className="glass-panel mt-auto rounded-3xl border border-white/70 bg-white/90 p-6 shadow-[0_16px_40px_rgba(63,35,8,0.12)] sm:p-7">
+      <div className="mt-auto rounded-xl border bg-card p-6 shadow-sm sm:p-7">
         <h1 className="truncate text-xl font-semibold sm:text-2xl" title={info.file_name}>{info.file_name}</h1>
         <p className="mt-2 text-xs text-muted-foreground">
           大小 {formatFileSize(info.file_size)} · 类型 {info.file_type} · 访问 {info.view_count}
@@ -130,8 +158,12 @@ export function PublicPreviewPage({ shortCode, ext }: { shortCode: string; ext: 
         </div>
 
         <div className="mt-4 flex flex-wrap gap-2">
-          <a className="rounded-xl bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground" href={viewUrl} target="_blank" rel="noreferrer">直接访问</a>
-          <a className="rounded-xl border border-border/80 bg-white px-4 py-2 text-sm" href={downloadUrl}>下载文件</a>
+          <Button asChild className="rounded-xl">
+            <a href={viewUrl} target="_blank" rel="noreferrer">直接访问</a>
+          </Button>
+          <Button asChild variant="outline" className="rounded-xl">
+            <a href={downloadUrl}>下载文件</a>
+          </Button>
         </div>
 
         <div className="mt-5 space-y-2">
@@ -155,6 +187,7 @@ export function PublicPreviewPage({ shortCode, ext }: { shortCode: string; ext: 
 }
 
 export function PublicSharePage({ shareCode }: { shareCode: string }) {
+  useForceLightTheme();
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [fatalError, setFatalError] = useState("");
@@ -214,7 +247,7 @@ export function PublicSharePage({ shareCode }: { shareCode: string }) {
   }, [initialPassword, shareCode]);
 
   if (loading) {
-    return <div className="flex min-h-screen items-center justify-center text-sm text-muted-foreground">加载中...</div>;
+    return <div className="flex min-h-screen items-center justify-center gap-2 text-sm text-muted-foreground"><Spinner /> 加载中...</div>;
   }
 
   if (fatalError) {
@@ -232,7 +265,7 @@ export function PublicSharePage({ shareCode }: { shareCode: string }) {
             </div>
           </div>
         ) : null}
-        <div className="soft-panel w-full rounded-3xl border border-white/70 bg-white/90 p-8 shadow-[0_18px_48px_rgba(0,0,0,0.18)]">
+        <div className="w-full rounded-xl border bg-card p-8 shadow-sm">
           <h1 className="text-2xl font-semibold tracking-tight">访问分享</h1>
           <p className="mt-2 text-sm text-muted-foreground">该分享需要密码，请输入后继续。</p>
           <form
@@ -242,13 +275,18 @@ export function PublicSharePage({ shareCode }: { shareCode: string }) {
               void accessShare(password);
             }}
           >
-            <input
-              className="w-full rounded-xl border border-white/80 bg-white/80 px-3 py-2.5 text-sm outline-none ring-offset-2 transition focus-visible:ring-2 focus-visible:ring-primary"
-              placeholder="请输入分享密码"
-              value={password}
-              onChange={(event) => setPassword(event.target.value)}
-            />
-            <ButtonLike disabled={submitting || !password.trim()}>{submitting ? "验证中..." : "进入查看"}</ButtonLike>
+            <Field className="gap-0">
+              <FieldLabel htmlFor="public-share-password" className="sr-only">请输入分享密码</FieldLabel>
+              <Input
+                id="public-share-password"
+                placeholder="请输入分享密码"
+                value={password}
+                onChange={(event) => setPassword(event.target.value)}
+              />
+            </Field>
+            <Button type="submit" className="w-full" disabled={submitting || !password.trim()}>
+              {submitting ? "验证中..." : "进入查看"}
+            </Button>
           </form>
         </div>
       </div>
@@ -260,7 +298,7 @@ export function PublicSharePage({ shareCode }: { shareCode: string }) {
 
   return (
     <div className="mx-auto flex min-h-screen w-full max-w-5xl flex-col px-4 py-8 sm:px-8">
-      <div className="glass-panel mt-auto rounded-3xl border border-white/70 bg-white/90 p-6 shadow-[0_16px_40px_rgba(63,35,8,0.12)] sm:p-7">
+      <div className="mt-auto rounded-xl border bg-card p-6 shadow-sm sm:p-7">
         <h1 className="truncate text-xl font-semibold sm:text-2xl" title={item.name}>{item.name}</h1>
         <p className="mt-2 text-xs text-muted-foreground">
           分享码 {shareCode} · {item.is_folder ? "目录" : "文件"} · 仅支持通过分享下载
@@ -275,7 +313,11 @@ export function PublicSharePage({ shareCode }: { shareCode: string }) {
         </div>
 
         <div className="mt-4 flex flex-wrap gap-2">
-          {!item.is_folder ? <a className="rounded-xl bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground" href={downloadUrl}>下载文件</a> : null}
+          {!item.is_folder ? (
+            <Button asChild className="rounded-xl">
+              <a href={downloadUrl}>下载文件</a>
+            </Button>
+          ) : null}
         </div>
       </div>
       <p className="mt-auto pt-3 text-center text-xs text-muted-foreground">
@@ -286,6 +328,7 @@ export function PublicSharePage({ shareCode }: { shareCode: string }) {
 }
 
 export function PublicSnippetPage({ shareCode }: { shareCode: string }) {
+  useForceLightTheme();
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [fatalError, setFatalError] = useState("");
@@ -294,6 +337,8 @@ export function PublicSnippetPage({ shareCode }: { shareCode: string }) {
   const [password, setPassword] = useState("");
   const [data, setData] = useState<SnippetPublicAccessResponse | null>(null);
   const [copiedCode, setCopiedCode] = useState(false);
+
+  const renderedCode = useSnippetHighlight(data?.snippet?.code_content ?? "", data?.snippet?.effective_language ?? "text");
 
   const initialPassword = useMemo(() => {
     const search = new URLSearchParams(window.location.search);
@@ -346,7 +391,7 @@ export function PublicSnippetPage({ shareCode }: { shareCode: string }) {
   }, [initialPassword, shareCode]);
 
   if (loading) {
-    return <div className="flex min-h-screen items-center justify-center text-sm text-muted-foreground">加载中...</div>;
+    return <div className="flex min-h-screen items-center justify-center gap-2 text-sm text-muted-foreground"><Spinner /> 加载中...</div>;
   }
 
   if (fatalError) {
@@ -364,7 +409,7 @@ export function PublicSnippetPage({ shareCode }: { shareCode: string }) {
             </div>
           </div>
         ) : null}
-        <div className="soft-panel w-full rounded-3xl border border-white/70 bg-white/90 p-8 shadow-[0_18px_48px_rgba(0,0,0,0.18)]">
+        <div className="w-full rounded-xl border bg-card p-8 shadow-sm">
           <h1 className="text-2xl font-semibold tracking-tight">访问代码片分享</h1>
           <p className="mt-2 text-sm text-muted-foreground">该分享需要密码，请输入后继续。</p>
           <form
@@ -374,13 +419,18 @@ export function PublicSnippetPage({ shareCode }: { shareCode: string }) {
               void accessShare(password);
             }}
           >
-            <input
-              className="w-full rounded-xl border border-white/80 bg-white/80 px-3 py-2.5 text-sm outline-none ring-offset-2 transition focus-visible:ring-2 focus-visible:ring-primary"
-              placeholder="请输入分享密码"
-              value={password}
-              onChange={(event) => setPassword(event.target.value)}
-            />
-            <ButtonLike disabled={submitting || !password.trim()}>{submitting ? "验证中..." : "进入查看"}</ButtonLike>
+            <Field className="gap-0">
+              <FieldLabel htmlFor="public-snippet-password" className="sr-only">请输入分享密码</FieldLabel>
+              <Input
+                id="public-snippet-password"
+                placeholder="请输入分享密码"
+                value={password}
+                onChange={(event) => setPassword(event.target.value)}
+              />
+            </Field>
+            <Button type="submit" className="w-full" disabled={submitting || !password.trim()}>
+              {submitting ? "验证中..." : "进入查看"}
+            </Button>
           </form>
         </div>
       </div>
@@ -388,7 +438,6 @@ export function PublicSnippetPage({ shareCode }: { shareCode: string }) {
   }
 
   const snippet = data.snippet;
-  const renderedCode = renderSnippetWithLineNumbers(snippet.code_content, snippet.effective_language);
 
   async function copySnippetCode() {
     try {
@@ -405,7 +454,7 @@ export function PublicSnippetPage({ shareCode }: { shareCode: string }) {
 
   return (
     <div className="mx-auto flex min-h-screen w-full max-w-6xl flex-col px-4 py-8 sm:px-8">
-      <div className="mt-auto rounded-3xl border border-slate-200 bg-white p-6 shadow-[0_16px_40px_rgba(15,23,42,0.08)] sm:p-7">
+      <div className="mt-auto rounded-xl border border-slate-200 bg-card p-6 shadow-sm sm:p-7">
         <h1 className="truncate text-xl font-semibold sm:text-2xl" title={snippet.title}>{snippet.title}</h1>
         <p className="mt-2 text-xs text-muted-foreground">
           语言 {snippet.effective_language} · 行数 {snippet.line_count} · 更新时间 {snippet.updated_at}
@@ -418,14 +467,12 @@ export function PublicSnippetPage({ shareCode }: { shareCode: string }) {
         </div>
 
         <div className="mt-4 flex flex-wrap gap-2">
-          <a className="rounded-xl bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground" href={data.download_url}>下载代码文件</a>
-          <button
-            type="button"
-            className="rounded-xl border border-border bg-white px-4 py-2 text-sm font-semibold text-foreground hover:bg-muted/40"
-            onClick={() => void copySnippetCode()}
-          >
+          <Button asChild className="rounded-xl">
+            <a href={data.download_url}>下载代码文件</a>
+          </Button>
+          <Button variant="outline" className="rounded-xl" onClick={() => void copySnippetCode()}>
             {copiedCode ? "已复制" : "复制"}
-          </button>
+          </Button>
         </div>
       </div>
       <p className="mt-auto pt-3 text-center text-xs text-muted-foreground">
@@ -435,34 +482,23 @@ export function PublicSnippetPage({ shareCode }: { shareCode: string }) {
   );
 }
 
-function ButtonLike({ children, disabled }: { children: React.ReactNode; disabled?: boolean }) {
-  return (
-    <button
-      type="submit"
-      disabled={disabled}
-      className="w-full rounded-xl bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground disabled:cursor-not-allowed disabled:opacity-60"
-    >
-      {children}
-    </button>
-  );
-}
-
 function CopyItem({ label, value, copied, onCopy }: { label: string; value: string; copied: boolean; onCopy: () => void }) {
   return (
     <div className="grid grid-cols-[84px_1fr_auto] items-center gap-2 rounded-xl border border-border/70 bg-muted/35 px-3 py-2 text-xs">
       <span className="font-semibold text-muted-foreground">{label}</span>
       <span className="truncate font-mono" title={value}>{value}</span>
-      <button
+      <Button
         type="button"
+        size="sm"
         className={
           copied
-            ? "rounded-md bg-emerald-600 px-2.5 py-1 font-semibold text-white"
-            : "rounded-md bg-primary px-2.5 py-1 font-semibold text-white"
+            ? "h-7 bg-emerald-600 px-2.5 text-xs font-semibold text-white hover:bg-emerald-600"
+            : "h-7 px-2.5 text-xs font-semibold"
         }
         onClick={onCopy}
       >
         {copied ? "已复制" : "复制"}
-      </button>
+      </Button>
     </div>
   );
 }

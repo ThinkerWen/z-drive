@@ -1,8 +1,37 @@
 import { Suspense, lazy, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { BarChart3, CheckCircle2, Copy, ExternalLink, Loader2, LogOut, Palette, Shield, Trash2, Upload, XCircle } from "lucide-react";
+import { BarChart3, Copy, ExternalLink, Github, LogOut, Moon, Shield, Sun, Trash2, Upload } from "lucide-react";
 import { useLocation, useNavigate } from "react-router-dom";
 
+import { SidebarProvider, SidebarInset, SidebarTrigger } from "@/components/ui/sidebar";
+import { AppSidebar } from "@/components/app-sidebar";
+import { Breadcrumb, BreadcrumbItem, BreadcrumbList, BreadcrumbPage } from "@/components/ui/breadcrumb";
+import { Separator } from "@/components/ui/separator";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Field, FieldLabel } from "@/components/ui/field";
+import { Badge } from "@/components/ui/badge";
+import { Toaster } from "@/components/ui/sonner";
+import { Spinner } from "@/components/ui/spinner";
+import { toast } from "sonner";
+import { Progress } from "@/components/ui/progress";
+import { Pagination, PaginationContent, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from "@/components/ui/pagination";
+import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectLabel,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { CloudPage } from "@/components/cloud-page";
 import { SnippetPage } from "@/components/snippet-page";
 import { PlyrVideo } from "@/components/plyr-video";
@@ -19,22 +48,12 @@ import {
 } from "@/lib/api";
 import type { AccessMode, ImageListItem, StatsResponse, UploadResultItem } from "@/lib/types";
 
-const PAGE_SIZE = 8;
+const PAGE_SIZE = 24;
 type GallerySubPage = "upload" | "gallery" | "stats";
 type CloudSubPage = "upload" | "files" | "shares" | "stats";
 type SnippetSubPage = "editor" | "list" | "shares" | "stats";
 type ManageSection = "gallery" | "cloud" | "snippet";
 type UploadTaskStatus = "uploading" | "processing" | "success" | "error" | "cancelled";
-type ThemeName = "amber" | "ocean" | "forest" | "rose" | "midnight";
-type ToastKind = "success" | "error";
-
-const THEME_OPTIONS: Array<{ key: ThemeName; label: string; preview: string }> = [
-  { key: "amber", label: "琥珀", preview: "#ea580c" },
-  { key: "ocean", label: "海蓝", preview: "#0ea5e9" },
-  { key: "forest", label: "森林", preview: "#16a34a" },
-  { key: "rose", label: "玫红", preview: "#f43f5e" },
-  { key: "midnight", label: "黑夜", preview: "#111827" },
-];
 
 interface UploadTask {
   id: string;
@@ -145,7 +164,8 @@ export default function App() {
   const [activeCloudPage, setActiveCloudPage] = useState<CloudSubPage>("upload");
   const [activeSnippetPage, setActiveSnippetPage] = useState<SnippetSubPage>("editor");
   const [busy, setBusy] = useState(false);
-  const [toast, setToast] = useState<{ id: number; text: string; kind: ToastKind } | null>(null);
+  const [isDark, setIsDark] = useState(false);
+  const [githubStars, setGithubStars] = useState<number | null>(null);
 
   const [stats, setStats] = useState<StatsResponse | null>(null);
   const [items, setItems] = useState<ImageListItem[]>([]);
@@ -165,8 +185,6 @@ export default function App() {
   const [accessModalPassword, setAccessModalPassword] = useState("");
   const [accessModalKeepExisting, setAccessModalKeepExisting] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<ImageListItem | null>(null);
-  const [theme, setTheme] = useState<ThemeName>("amber");
-  const [themePickerOpen, setThemePickerOpen] = useState(false);
   const activeUploadsRef = useRef<Record<string, XMLHttpRequest>>({});
 
   const pageCount = useMemo(() => Math.max(Math.ceil(total / PAGE_SIZE), 1), [total]);
@@ -233,26 +251,64 @@ export default function App() {
     }
   }, [pathname]);
 
-  function notify(text: string, kind: ToastKind = "success") {
-    setToast({ id: Date.now(), text, kind });
-  }
-
-  function notifyAuto(text: string) {
-    const normalized = text.trim().toLowerCase();
-    const errorPattern = /失败|错误|异常|无效|失效|拒绝|不存在|未找到|超时|error|failed|exception|invalid|forbidden|unauthorized|not\s*found|timeout|500|404|403|401/i;
-    const successPattern = /成功|完成|已复制|已取消|已更新|上传完成|创建完成|删除完成|copied|success|done|completed/i;
-    const isError = errorPattern.test(normalized);
-    const isSuccess = successPattern.test(normalized);
-    notify(text, isError ? "error" : isSuccess ? "success" : "error");
-  }
-
   useEffect(() => {
-    if (!toast) {
+    if (isPublicPreviewRoute || isPublicShareRoute || isPublicSnippetRoute || isPublicErrorRoute) {
+      document.documentElement.classList.remove("dark");
+      setIsDark(false);
       return;
     }
-    const timer = window.setTimeout(() => setToast(null), 2200);
-    return () => window.clearTimeout(timer);
-  }, [toast]);
+    const stored = window.localStorage.getItem("theme");
+    const prefersDark = window.matchMedia?.("(prefers-color-scheme: dark)").matches ?? false;
+    const shouldDark = stored ? stored === "dark" : prefersDark;
+    document.documentElement.classList.toggle("dark", shouldDark);
+    setIsDark(shouldDark);
+  }, [isPublicErrorRoute, isPublicPreviewRoute, isPublicShareRoute, isPublicSnippetRoute]);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    void (async () => {
+      try {
+        const response = await fetch("https://api.github.com/repos/ThinkerWen/z-drive", {
+          signal: controller.signal,
+          headers: { Accept: "application/vnd.github+json" },
+        });
+        if (!response.ok) return;
+        const data = await response.json() as { stargazers_count?: number };
+        if (typeof data.stargazers_count === "number") {
+          setGithubStars(data.stargazers_count);
+        }
+      } catch {
+        // 获取失败则保持 null，不显示 star 数
+      }
+    })();
+    return () => controller.abort();
+  }, []);
+
+  function toggleTheme() {
+    const nextIsDark = !isDark;
+    document.documentElement.classList.toggle("dark", nextIsDark);
+    window.localStorage.setItem("theme", nextIsDark ? "dark" : "light");
+    setIsDark(nextIsDark);
+  }
+
+  function notify(text: string) {
+    const normalized = text.trim().toLowerCase();
+    const errorPattern = /失败|错误|异常|无效|失效|拒绝|不存在|未找到|超时|error|failed|exception|invalid|forbidden|unauthorized|not\s*found|timeout|500|404|403|401/i;
+    const isError = errorPattern.test(normalized);
+    if (isError) {
+      toast.error(text);
+    } else {
+      toast.success(text);
+    }
+  }
+
+  function notifySuccess(text: string) {
+    toast.success(text);
+  }
+
+  function notifyError(text: string) {
+    toast.error(text);
+  }
 
   async function refreshList(targetPage = page, nextQuery = query, nextFileType = fileType): Promise<void> {
     try {
@@ -269,10 +325,10 @@ export default function App() {
     } catch (error) {
       if (error instanceof ApiError && error.status === 401) {
         setIsAuthed(false);
-        notify("请先登录管理账号", "error");
+        notifyError("请先登录管理账号");
         return;
       }
-      notify(error instanceof Error ? error.message : "加载失败", "error");
+      notifyError(error instanceof Error ? error.message : "加载失败");
     }
   }
 
@@ -287,10 +343,10 @@ export default function App() {
         setActiveSection("gallery");
         setActiveGalleryPage("gallery");
         navigate("/login", { replace: true });
-        notify("请先登录管理账号", "error");
+        notifyError("请先登录管理账号");
         return;
       }
-      notify(error instanceof Error ? error.message : "统计加载失败", "error");
+      notifyError(error instanceof Error ? error.message : "统计加载失败");
     }
   }
 
@@ -313,9 +369,9 @@ export default function App() {
           if (error instanceof ApiError && error.status === 401) {
             setIsAuthed(false);
             navigate("/login", { replace: true });
-            notify("请先登录管理账号", "error");
+            notifyError("请先登录管理账号");
           } else {
-            notify(error instanceof Error ? error.message : "认证检查失败", "error");
+            notifyError(error instanceof Error ? error.message : "认证检查失败");
           }
         }
       } else {
@@ -325,20 +381,6 @@ export default function App() {
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isLoginRoute, isPublicErrorRoute, isPublicPreviewRoute, isPublicShareRoute, isPublicSnippetRoute, pathname]);
-
-  useEffect(() => {
-    if (isPublicPreviewRoute || isPublicShareRoute || isPublicSnippetRoute || isPublicErrorRoute || isLoginRoute) {
-      return;
-    }
-    const saved = localStorage.getItem("z-drive-theme") as ThemeName | null;
-    const normalized = saved && THEME_OPTIONS.some((option) => option.key === saved) ? saved : "amber";
-    setTheme(normalized);
-    if (normalized === "amber") {
-      document.documentElement.removeAttribute("data-theme");
-    } else {
-      document.documentElement.setAttribute("data-theme", normalized);
-    }
-  }, [isLoginRoute, isPublicErrorRoute, isPublicPreviewRoute, isPublicShareRoute, isPublicSnippetRoute]);
 
   if (isPublicPreviewRoute && previewPath) {
     return <PublicPreviewPage shortCode={previewPath.shortCode} ext={previewPath.ext} />;
@@ -356,17 +398,6 @@ export default function App() {
     return <PublicErrorPage />;
   }
 
-  function applyTheme(nextTheme: ThemeName) {
-    setTheme(nextTheme);
-    localStorage.setItem("z-drive-theme", nextTheme);
-    if (nextTheme === "amber") {
-      document.documentElement.removeAttribute("data-theme");
-    } else {
-      document.documentElement.setAttribute("data-theme", nextTheme);
-    }
-    setThemePickerOpen(false);
-  }
-
   async function handleLogin(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setBusy(true);
@@ -377,9 +408,9 @@ export default function App() {
       setActiveSection("gallery");
       setActiveGalleryPage("gallery");
       navigate("/gallery/index", { replace: true });
-      notify("登录成功", "success");
+      notifySuccess("登录成功");
     } catch (error) {
-      notify(error instanceof Error ? error.message : "登录失败", "error");
+      notifyError(error instanceof Error ? error.message : "登录失败");
     } finally {
       setBusy(false);
     }
@@ -387,7 +418,7 @@ export default function App() {
 
   async function runGalleryUpload(files: File[]) {
     if (files.length === 0) {
-      notify("请选择至少一个文件", "error");
+      notifyError("请选择至少一个文件");
       return;
     }
 
@@ -404,13 +435,17 @@ export default function App() {
 
       const settled = await Promise.allSettled(tasks.map((task) => uploadFileTask(task.id, task.file)));
       const successCount = settled.filter((item) => item.status === "fulfilled").length;
-      notify(`上传完成：成功 ${successCount} / ${tasks.length}`, successCount > 0 ? "success" : "error");
+      if (successCount > 0) {
+        notifySuccess(`上传完成：成功 ${successCount} / ${tasks.length}`);
+      } else {
+        notifyError(`上传完成：成功 ${successCount} / ${tasks.length}`);
+      }
 
       setGallerySelectedFiles([]);
       setSelectedFilesLabel("未选择文件");
       await Promise.all([refreshStats(), refreshList(1)]);
     } catch (error) {
-      notify(error instanceof Error ? error.message : "上传失败", "error");
+      notifyError(error instanceof Error ? error.message : "上传失败");
     } finally {
       setBusy(false);
     }
@@ -602,7 +637,7 @@ export default function App() {
         return;
       }
       window.prompt("当前环境不支持自动复制，请手动复制以下内容：", value);
-      notify("自动复制失败，已提供手动复制", "error");
+      notifyError("自动复制失败，已提供手动复制");
     }
   }
 
@@ -611,10 +646,10 @@ export default function App() {
     try {
       await deleteImage(shortCode);
       await Promise.all([refreshStats(), refreshList(page)]);
-      notify("删除成功", "success");
+      notifySuccess("删除成功");
       setDeleteTarget(null);
     } catch (error) {
-      notify(error instanceof Error ? error.message : "删除失败", "error");
+      notifyError(error instanceof Error ? error.message : "删除失败");
     } finally {
       setBusy(false);
     }
@@ -625,9 +660,9 @@ export default function App() {
     try {
       await updateAccessMode(item.short_code, nextMode);
       await refreshList(page);
-      notify("访问模式已更新", "success");
+      notifySuccess("访问模式已更新");
     } catch (error) {
-      notify(error instanceof Error ? error.message : "更新失败", "error");
+      notifyError(error instanceof Error ? error.message : "更新失败");
     } finally {
       setBusy(false);
     }
@@ -668,10 +703,10 @@ export default function App() {
 
       await updateAccessMode(accessModalItem.short_code, accessModalMode, sign);
       await refreshList(page);
-      notify("访问模式已更新", "success");
+      notifySuccess("访问模式已更新");
       setAccessModalItem(null);
     } catch (error) {
-      notify(error instanceof Error ? error.message : "更新失败", "error");
+      notifyError(error instanceof Error ? error.message : "更新失败");
     } finally {
       setBusy(false);
     }
@@ -706,13 +741,13 @@ export default function App() {
     setItems([]);
     setTotal(0);
     navigate("/login", { replace: true });
-    notify("已退出登录", "success");
+    notifySuccess("已退出登录");
   }
 
   if (authLoading) {
     return (
       <div className="flex min-h-screen items-center justify-center">
-        <Loader2 className="h-6 w-6 animate-spin text-primary" />
+        <Spinner className="size-6 text-primary" />
       </div>
     );
   }
@@ -722,170 +757,112 @@ export default function App() {
   if (isLoginView) {
     return (
       <div className="mx-auto flex min-h-screen w-full max-w-7xl items-center justify-center px-4 py-8 sm:px-8">
-        <section className="soft-panel w-full max-w-md rounded-3xl p-7">
+        <section className="w-full max-w-md rounded-lg border bg-card p-7">
           <p className="text-xs font-semibold uppercase tracking-[0.24em] text-primary/90">Z-Drive Gallery</p>
           <h2 className="mt-3 text-2xl font-semibold">管理员登录</h2>
           <p className="mt-1 text-sm text-muted-foreground">请输入管理凭据后进入工作台。</p>
           <form className="mt-5 space-y-3" onSubmit={handleLogin}>
-            <input
-              className="w-full rounded-xl border border-white/80 bg-white/80 px-3 py-2.5 text-sm outline-none ring-offset-2 transition focus-visible:ring-2 focus-visible:ring-primary"
-              placeholder="username"
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
-            />
-            <input
-              type="password"
-              className="w-full rounded-xl border border-white/80 bg-white/80 px-3 py-2.5 text-sm outline-none ring-offset-2 transition focus-visible:ring-2 focus-visible:ring-primary"
-              placeholder="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-            />
+            <Field className="gap-1">
+              <FieldLabel htmlFor="login-username">用户名</FieldLabel>
+              <Input
+                id="login-username"
+                placeholder="username"
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
+              />
+            </Field>
+            <Field className="gap-1">
+              <FieldLabel htmlFor="login-password">密码</FieldLabel>
+              <Input
+                id="login-password"
+                type="password"
+                placeholder="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+              />
+            </Field>
             <Button className="w-full" disabled={busy}>
               {busy ? "登录中..." : "登录"}
             </Button>
           </form>
         </section>
-        <ToastPopup toast={toast} />
+        <Toaster />
       </div>
     );
   }
 
   return (
-    <div className="mx-auto flex min-h-screen w-full max-w-7xl flex-col gap-6 px-4 py-8 sm:px-8">
-      <header className="glass-panel rounded-3xl p-7 sm:p-8">
-        <div className="flex flex-wrap items-center justify-between gap-4">
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.24em] text-primary/90">{activeBrand}</p>
-            <h1 className="mt-3 text-3xl font-semibold tracking-tight sm:text-4xl">管理控制台</h1>
-            <p className="mt-2 max-w-2xl text-sm text-muted-foreground">
-              专注个人使用的云工具平台
-            </p>
+    <SidebarProvider>
+      <AppSidebar />
+      <SidebarInset>
+        <header className="sticky top-0 z-50 flex h-14 shrink-0 items-center justify-between gap-2 border-b bg-background px-4">
+          <div className="flex items-center gap-2">
+            <SidebarTrigger className="-ml-1" />
+            <Separator orientation="vertical" className="mr-2 h-4" />
+            <Breadcrumb>
+              <BreadcrumbList>
+                <BreadcrumbItem>
+                  <BreadcrumbPage>{activeBrand}</BreadcrumbPage>
+                </BreadcrumbItem>
+              </BreadcrumbList>
+            </Breadcrumb>
           </div>
-          <div className="flex gap-2">
-            {isAuthed ? (
-              <>
-                <div className="relative">
-                  <Button
-                    variant="outline"
-                    onClick={() => setThemePickerOpen((value) => !value)}
-                    disabled={busy}
-                  >
-                    <Palette className="mr-2 h-4 w-4" />
-                    主题
-                  </Button>
-                  {themePickerOpen ? (
-                    <div className="absolute right-0 top-11 z-20 w-44 rounded-xl border border-border/70 bg-white/95 p-2 shadow-xl backdrop-blur">
-                      {THEME_OPTIONS.map((option) => (
-                        <button
-                          key={option.key}
-                          type="button"
-                          className={
-                            theme === option.key
-                              ? "mb-1 flex w-full items-center gap-2 rounded-lg bg-primary/10 px-2 py-1.5 text-left text-xs font-semibold"
-                              : "mb-1 flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left text-xs hover:bg-muted"
-                          }
-                          onClick={() => applyTheme(option.key)}
-                        >
-                          <span className="inline-block h-3 w-3 rounded-full border" style={{ background: option.preview }} />
-                          {option.label}
-                        </button>
-                      ))}
-                    </div>
+          {isAuthed ? (
+            <div className="flex items-center gap-1">
+              <Button
+                variant="ghost"
+                size="icon"
+                className="group/toggle extend-touch-target size-8"
+                onClick={toggleTheme}
+              >
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="24"
+                  height="24"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  className="size-4"
+                  aria-hidden="true"
+                >
+                  <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+                  <path d="M12 12m-9 0a9 9 0 1 0 18 0a9 9 0 1 0 -18 0" />
+                  <path d="M12 3l0 18" />
+                  <path d="M12 9l4.65 -4.65" />
+                  <path d="M12 14.3l7.37 -7.37" />
+                  <path d="M12 19.6l8.85 -8.85" />
+                </svg>
+                <span className="sr-only">Toggle theme</span>
+              </Button>
+              <Button variant="ghost" size="sm" className="h-8 gap-1.5 rounded-md px-3 shadow-none" asChild>
+                <a href="https://github.com/ThinkerWen/z-drive" target="_blank" rel="noreferrer">
+                  <Github className="size-4" />
+                  {githubStars !== null ? (
+                    <span className="w-fit text-xs text-muted-foreground tabular-nums">
+                      {githubStars >= 1000 ? `${(githubStars / 1000).toFixed(1)}k` : githubStars}
+                    </span>
                   ) : null}
-                </div>
-                <Button variant="outline" onClick={() => void handleLogout()} disabled={busy}>
-                  <LogOut className="mr-2 h-4 w-4" />
-                  退出
-                </Button>
-              </>
-            ) : null}
-          </div>
-        </div>
-        {isAuthed ? (
-          <>
-            <nav className="mt-5 flex flex-wrap gap-2 rounded-2xl border border-white/60 bg-white/55 p-2">
-              <TabButton current={activeSection} target="gallery" onClick={() => {
-                setActiveSection("gallery");
-                setActiveGalleryPage("gallery");
-                navigate("/gallery/index");
-              }}>图库</TabButton>
-              <TabButton current={activeSection} target="cloud" onClick={() => {
-                setActiveSection("cloud");
-                setActiveCloudPage("files");
-                navigate("/cloud/index");
-              }}>云盘</TabButton>
-              <TabButton current={activeSection} target="snippet" onClick={() => {
-                setActiveSection("snippet");
-                setActiveSnippetPage("editor");
-                navigate("/snippets/editor");
-              }}>代码片</TabButton>
-            </nav>
-            {activeSection === "gallery" ? (
-              <nav className="mt-3 flex flex-wrap gap-2 rounded-2xl border border-white/60 bg-white/55 p-2">
-                <TabButton current={activeGalleryPage} target="upload" onClick={() => {
-                  setActiveGalleryPage("upload");
-                  navigate("/gallery/upload");
-                }}>上传</TabButton>
-                <TabButton current={activeGalleryPage} target="gallery" onClick={() => {
-                  setActiveGalleryPage("gallery");
-                  navigate("/gallery/index");
-                }}>图库</TabButton>
-                <TabButton current={activeGalleryPage} target="stats" onClick={() => {
-                  setActiveGalleryPage("stats");
-                  navigate("/gallery/stats");
-                }}>统计</TabButton>
-              </nav>
-            ) : activeSection === "cloud" ? (
-              <nav className="mt-3 flex flex-wrap gap-2 rounded-2xl border border-white/60 bg-white/55 p-2">
-                <TabButton current={activeCloudPage} target="upload" onClick={() => {
-                  setActiveCloudPage("upload");
-                  navigate("/cloud/upload");
-                }}>上传</TabButton>
-                <TabButton current={activeCloudPage} target="files" onClick={() => {
-                  setActiveCloudPage("files");
-                  navigate("/cloud/index");
-                }}>文件管理</TabButton>
-                <TabButton current={activeCloudPage} target="shares" onClick={() => {
-                  setActiveCloudPage("shares");
-                  navigate("/cloud/shares");
-                }}>分享管理</TabButton>
-                <TabButton current={activeCloudPage} target="stats" onClick={() => {
-                  setActiveCloudPage("stats");
-                  navigate("/cloud/stats");
-                }}>数据统计</TabButton>
-              </nav>
-            ) : (
-              <nav className="mt-3 flex flex-wrap gap-2 rounded-2xl border border-white/60 bg-white/55 p-2">
-                <TabButton current={activeSnippetPage} target="editor" onClick={() => {
-                  setActiveSnippetPage("editor");
-                  navigate(getSnippetRoute("editor"));
-                }}>编辑器</TabButton>
-                <TabButton current={activeSnippetPage} target="list" onClick={() => {
-                  setActiveSnippetPage("list");
-                  navigate(getSnippetRoute("list"));
-                }}>代码片列表</TabButton>
-                <TabButton current={activeSnippetPage} target="shares" onClick={() => {
-                  setActiveSnippetPage("shares");
-                  navigate(getSnippetRoute("shares"));
-                }}>分享管理</TabButton>
-                <TabButton current={activeSnippetPage} target="stats" onClick={() => {
-                  setActiveSnippetPage("stats");
-                  navigate(getSnippetRoute("stats"));
-                }}>数据统计</TabButton>
-              </nav>
-            )}
-          </>
-        ) : null}
-      </header>
+                </a>
+              </Button>
+              <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => void handleLogout()} disabled={busy} title="退出">
+                <LogOut className="h-4 w-4 text-muted-foreground" />
+              </Button>
+            </div>
+          ) : null}
+        </header>
 
-      <>
+        <main className="flex flex-1 flex-col gap-4 p-4 pt-0">
+          <div className="flex-1 space-y-4">
           {activeSection === "gallery" && activeGalleryPage === "upload" ? (
-            <section className="soft-panel rounded-3xl p-5 sm:p-6">
+            <section className="rounded-lg border bg-card p-5 sm:p-6">
             <h2 className="mb-3 flex items-center text-lg font-semibold">
               <Upload className="mr-2 h-5 w-5" /> 上传页
             </h2>
             <form className="space-y-3" onSubmit={handleUpload}>
-              <input
+              <Input
                 id="upload-files"
                 name="files"
                 type="file"
@@ -897,8 +874,8 @@ export default function App() {
                 htmlFor="upload-files"
                 className={
                   galleryDropActive
-                    ? "flex min-h-40 cursor-pointer flex-col items-center justify-center rounded-2xl border-2 border-primary bg-primary/5 px-4 py-8 text-center"
-                    : "flex min-h-40 cursor-pointer flex-col items-center justify-center rounded-2xl border-2 border-dashed border-border/80 bg-white/70 px-4 py-8 text-center transition hover:border-primary/70 hover:bg-white"
+                    ? "flex min-h-40 cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-primary bg-primary/5 px-4 py-8 text-center"
+                    : "flex min-h-40 cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed border-border bg-muted px-4 py-8 text-center transition hover:border-primary/70 hover:bg-card"
                 }
                 onDragOver={(event) => {
                   event.preventDefault();
@@ -911,7 +888,7 @@ export default function App() {
               >
                 <p className="text-base font-semibold">拖拽文件到这里上传</p>
                 <p className="mt-1 text-sm text-muted-foreground">或点击此区域选择文件，可一次上传多个文件</p>
-                <p className="mt-3 max-w-full truncate rounded-lg bg-white/80 px-3 py-1.5 text-xs text-muted-foreground" title={selectedFilesLabel}>
+                <p className="mt-3 max-w-full truncate rounded-lg bg-card px-3 py-1.5 text-xs text-muted-foreground" title={selectedFilesLabel}>
                   {selectedFilesLabel}
                 </p>
               </label>
@@ -934,7 +911,7 @@ export default function App() {
                   return (
                     <article
                       key={task.id}
-                      className="rounded-2xl border border-border/70 bg-white/82 p-4 shadow-[0_8px_18px_rgba(106,71,30,0.08)]"
+                      className="rounded-lg border bg-card p-4"
                     >
                       <div className="flex flex-wrap items-start gap-3">
                         {result?.success && result.view_url ? (
@@ -966,16 +943,17 @@ export default function App() {
                           </p>
                         </div>
 
-                        <span
-                          className={
+                        <Badge
+                          variant={
                             task.status === "success"
-                              ? "rounded-md bg-emerald-100 px-2 py-1 text-xs font-semibold text-emerald-700"
+                              ? "default"
                               : task.status === "cancelled"
-                                ? "rounded-md bg-slate-200 px-2 py-1 text-xs font-semibold text-slate-700"
+                                ? "secondary"
                                 : task.status === "processing" || task.status === "uploading"
-                                  ? "rounded-md bg-amber-100 px-2 py-1 text-xs font-semibold text-amber-700"
-                              : "rounded-md bg-rose-100 px-2 py-1 text-xs font-semibold text-rose-700"
+                                  ? "secondary"
+                              : "destructive"
                           }
+                          className="text-xs"
                         >
                           {task.status === "success"
                             ? "上传成功"
@@ -986,25 +964,22 @@ export default function App() {
                                 : task.status === "uploading"
                                   ? `上传中 ${task.progress}%`
                                   : `上传失败: ${task.error ?? "unknown"}`}
-                        </span>
+                        </Badge>
                         {task.status === "uploading" || task.status === "processing" ? (
-                          <button
+                          <Button
                             type="button"
-                            className="rounded-md border border-border/80 bg-white px-2.5 py-1 text-xs text-muted-foreground transition hover:bg-muted"
+                            size="sm"
+                            variant="outline"
+                            className="h-7 px-2 text-xs"
                             onClick={() => cancelUpload(task.id)}
                           >
                             取消
-                          </button>
+                          </Button>
                         ) : null}
                       </div>
 
-                      {task.status === "uploading" || task.status === "processing" ? (
-                        <div className="mt-3 h-1.5 w-full overflow-hidden rounded-full bg-muted">
-                          <div
-                            className="h-full rounded-full bg-primary transition-all"
-                            style={{ width: `${task.progress}%` }}
-                          />
-                        </div>
+                      {(task.status === "uploading" || task.status === "processing") ? (
+                        <Progress value={task.progress} className="mt-3 h-1.5" />
                       ) : null}
 
                       {result?.success && result.view_url ? (
@@ -1046,7 +1021,7 @@ export default function App() {
                 })}
               </div>
             ) : (
-              <div className="mt-4 rounded-xl border border-dashed border-border/80 bg-white/55 px-4 py-6 text-center text-sm text-muted-foreground">
+              <div className="mt-4 rounded-lg border border-dashed bg-muted/50 px-4 py-6 text-center text-sm text-muted-foreground">
                 暂无上传记录
               </div>
             )}
@@ -1054,49 +1029,46 @@ export default function App() {
           ) : null}
 
           {activeSection === "gallery" && activeGalleryPage === "gallery" ? (
-            <section className="soft-panel rounded-3xl p-5 sm:p-6">
+            <section className="rounded-lg border bg-card p-5 sm:p-6">
             <h2 className="mb-3 text-lg font-semibold">图库页</h2>
-            <form className="mb-4 flex flex-wrap items-center gap-2 rounded-2xl border border-white/70 bg-white/70 p-3" onSubmit={applyFilters}>
-              <div className="flex gap-2">
-                <Button
-                  type="button"
-                  variant={fileType === "image" ? "default" : "outline"}
-                  size="sm"
-                  onClick={() => {
-                    setFileType("image");
-                    void refreshList(1, query, "image");
-                  }}
-                >
-                  图片
-                </Button>
-                <Button
-                  type="button"
-                  variant={fileType === "video" ? "default" : "outline"}
-                  size="sm"
-                  onClick={() => {
-                    setFileType("video");
-                    void refreshList(1, query, "video");
-                  }}
-                >
-                  视频
-                </Button>
-              </div>
-              <input
-                className="min-w-64 flex-1 rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-900 placeholder:text-slate-500 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/30"
-                placeholder="搜索文件名或短码"
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
-              />
+            <form className="mb-4 flex flex-wrap items-center gap-2 rounded-lg border bg-muted p-3" onSubmit={applyFilters}>
+              <Select
+                value={fileType}
+                onValueChange={(value) => {
+                  setFileType(value);
+                  void refreshList(1, query, value);
+                }}
+              >
+                <SelectTrigger className="w-full max-w-48">
+                  <SelectValue placeholder="全部类型" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectGroup>
+                    <SelectLabel>文件类型</SelectLabel>
+                    <SelectItem value="all">全部类型</SelectItem>
+                    <SelectItem value="image">图片</SelectItem>
+                    <SelectItem value="video">视频</SelectItem>
+                  </SelectGroup>
+                </SelectContent>
+              </Select>
+              <Field className="min-w-64 flex-1 gap-0">
+                <FieldLabel htmlFor="gallery-search" className="sr-only">搜索文件名或短码</FieldLabel>
+                <Input
+                  id="gallery-search"
+                  placeholder="搜索文件名或短码"
+                  value={query}
+                  onChange={(e) => setQuery(e.target.value)}
+                />
+              </Field>
               <Button disabled={busy}>查询</Button>
             </form>
 
             {items.length > 0 ? (
-              <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4">
+              <div className="grid grid-cols-4 gap-2 md:grid-cols-6 xl:grid-cols-8">
                 {items.map((item) => (
-                  <article key={item.id} className="overflow-hidden rounded-2xl border border-border/70 bg-white/85 shadow-[0_8px_18px_rgba(106,71,30,0.08)] transition hover:-translate-y-0.5">
-                    <button
-                      type="button"
-                      className="block h-40 w-full overflow-hidden bg-muted"
+                  <article key={item.id} className="group overflow-hidden rounded-lg bg-card p-1.5 transition">
+                    <div
+                      className="aspect-square cursor-pointer overflow-hidden rounded-md bg-muted"
                       onClick={() => setPreviewItem(item)}
                     >
                       {item.file_type === "video" ? (
@@ -1104,283 +1076,236 @@ export default function App() {
                       ) : (
                         <img src={item.view_url} alt={item.file_name} className="h-full w-full object-cover" />
                       )}
-                    </button>
-                    <div className="space-y-3 p-3">
+                    </div>
+                    <div className="space-y-1 p-1">
                       <p className="truncate text-xs font-semibold" title={item.file_name}>{item.file_name}</p>
                       <p className="text-[11px] text-muted-foreground">
                         {formatFileSize(item.file_size)} · {item.width}x{item.height} · 浏览 {item.view_count}
                       </p>
-                      <div className="grid gap-1.5">
-                        <div className="flex gap-2">
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            className="h-8 flex-1 px-2 text-[11px]"
-                            onClick={() => void copyText(buildSignedShortLink(item), `short-${item.short_code}`)}
-                          >
-                            <Copy className="mr-1 h-3.5 w-3.5" />
-                            {copiedKey === `short-${item.short_code}` ? "已复制" : "复制短链"}
-                          </Button>
-                          <Button size="sm" variant="outline" className="h-8 flex-1 px-2 text-[11px]" onClick={() => openPreviewPage(item)}>
-                            <ExternalLink className="mr-1 h-3.5 w-3.5" /> 预览页
-                          </Button>
-                        </div>
-                        <div className="flex gap-2">
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            className="h-8 flex-1 px-2 text-[11px]"
-                            onClick={() => openAccessModeModal(item)}
-                          >
-                            <Shield className="mr-1 h-3.5 w-3.5" /> 修改访问
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            className="h-8 flex-1 px-2 text-[11px]"
-                            onClick={() => {
-                              setDeleteTarget(item);
-                            }}
-                          >
-                            <Trash2 className="mr-1 h-3.5 w-3.5" /> 删除
-                          </Button>
-                        </div>
+                      <div className="flex gap-1.5 opacity-0 transition-opacity group-hover:opacity-100">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="h-7 flex-1 px-1.5 text-[10px]"
+                          onClick={() => void copyText(buildSignedShortLink(item), `short-${item.short_code}`)}
+                        >
+                          <Copy className="mr-0.5 h-3 w-3" />
+                          {copiedKey === `short-${item.short_code}` ? "已复制" : "短链"}
+                        </Button>
+                        <Button size="sm" variant="outline" className="h-7 flex-1 px-1.5 text-[10px]" onClick={() => openPreviewPage(item)}>
+                          <ExternalLink className="mr-0.5 h-3 w-3" /> 预览
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="h-7 flex-1 px-1.5 text-[10px]"
+                          onClick={() => openAccessModeModal(item)}
+                        >
+                          <Shield className="mr-0.5 h-3 w-3" /> 访问
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="h-7 flex-1 px-1.5 text-[10px]"
+                          onClick={() => setDeleteTarget(item)}
+                        >
+                          <Trash2 className="mr-0.5 h-3 w-3" /> 删除
+                        </Button>
                       </div>
                     </div>
                   </article>
                 ))}
               </div>
             ) : (
-              <div className="rounded-2xl border border-dashed border-border/80 bg-white/55 px-4 py-10 text-center text-sm text-muted-foreground">
+              <div className="rounded-lg border border-dashed bg-muted/50 px-4 py-10 text-center text-sm text-muted-foreground">
                 暂无符合条件的文件
               </div>
             )}
 
             <div className="mt-4 flex items-center justify-between">
-              <p className="text-sm text-muted-foreground">共 {total} 条，当前第 {page} / {pageCount} 页</p>
-              <div className="flex gap-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  disabled={busy || page <= 1}
-                  onClick={() => {
-                    void refreshList(page - 1);
-                  }}
-                >
-                  上一页
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  disabled={busy || page >= pageCount}
-                  onClick={() => {
-                    void refreshList(page + 1);
-                  }}
-                >
-                  下一页
-                </Button>
-              </div>
+              <p className="text-sm text-muted-foreground">共 {total} 条</p>
+              <Pagination className="w-auto">
+                <PaginationContent>
+                  <PaginationItem>
+                    <PaginationPrevious
+                      onClick={() => { if (page > 1) void refreshList(page - 1); }}
+                      className={page <= 1 || busy ? "pointer-events-none opacity-50" : "cursor-pointer"}
+                    />
+                  </PaginationItem>
+                  {Array.from({ length: pageCount }, (_, i) => i + 1).slice(
+                    Math.max(0, page - 3),
+                    Math.min(pageCount, page + 2)
+                  ).map((p) => (
+                    <PaginationItem key={p}>
+                      <PaginationLink
+                        isActive={p === page}
+                        onClick={() => { if (p !== page) void refreshList(p); }}
+                        className="cursor-pointer"
+                      >
+                        {p}
+                      </PaginationLink>
+                    </PaginationItem>
+                  ))}
+                  <PaginationItem>
+                    <PaginationNext
+                      onClick={() => { if (page < pageCount) void refreshList(page + 1); }}
+                      className={page >= pageCount || busy ? "pointer-events-none opacity-50" : "cursor-pointer"}
+                    />
+                  </PaginationItem>
+                </PaginationContent>
+              </Pagination>
             </div>
-            {previewItem ? (
-              <div
-                className="fixed inset-0 z-50 flex items-center justify-center bg-black/55 p-4"
-                onClick={() => setPreviewItem(null)}
-              >
-                <div
-                  className="w-full max-w-4xl rounded-3xl border border-white/70 bg-white p-4 shadow-[0_18px_48px_rgba(0,0,0,0.22)]"
-                  onClick={(event) => event.stopPropagation()}
-                >
-                  <div className="mb-4 flex items-center justify-between">
-                    <div>
-                      <p className="truncate text-base font-semibold">{previewItem.file_name}</p>
-                      <p className="mt-1 text-xs text-muted-foreground">点击遮罩可关闭预览</p>
-                    </div>
-                    <Button size="sm" variant="outline" onClick={() => setPreviewItem(null)}>关闭</Button>
-                  </div>
-
-                  <div className="grid gap-4 lg:grid-cols-[1.4fr_1fr]">
-                    <div className="flex max-h-[70vh] items-center justify-center overflow-hidden rounded-2xl border border-border/70 bg-muted/60">
-                    {previewItem.file_type === "video" ? (
+            <Dialog open={Boolean(previewItem)} onOpenChange={() => setPreviewItem(null)}>
+              <DialogContent className="max-w-4xl">
+                <DialogHeader>
+                  <DialogTitle className="truncate">{previewItem?.file_name}</DialogTitle>
+                  <DialogDescription>点击遮罩可关闭预览</DialogDescription>
+                </DialogHeader>
+                <div className="grid gap-4 lg:grid-cols-[1.4fr_1fr]">
+                  <div className="flex max-h-[70vh] items-center justify-center overflow-hidden rounded-lg border bg-muted/60">
+                    {previewItem?.file_type === "video" ? (
                       <PlyrVideo src={previewItem.view_url} className="max-h-[70vh] w-full" />
                     ) : (
-                      <img src={previewItem.view_url} alt={previewItem.file_name} className="max-h-[70vh] w-auto" />
+                      <img src={previewItem?.view_url} alt={previewItem?.file_name} className="max-h-[70vh] w-auto" />
                     )}
+                  </div>
+                  <aside className="space-y-3">
+                    <div className="rounded-lg border bg-muted/45 p-3">
+                      <p className="mb-2 text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">链接</p>
+                      <div className="space-y-2">
+                        <MiniCopyRow
+                          label="短链接"
+                          value={previewItem ? buildSignedShortLink(previewItem) : ""}
+                          copied={previewItem ? copiedKey === `preview-short-${previewItem.short_code}` : false}
+                          onCopy={() => previewItem ? void copyText(buildSignedShortLink(previewItem), `preview-short-${previewItem.short_code}`) : undefined}
+                        />
+                        <MiniCopyRow
+                          label="快速预览"
+                          value={previewItem?.preview_url || previewItem?.view_url || ""}
+                          copied={previewItem ? copiedKey === `preview-quick-${previewItem.short_code}` : false}
+                          onCopy={() => previewItem ? void copyText(previewItem.preview_url || previewItem.view_url, `preview-quick-${previewItem.short_code}`) : undefined}
+                        />
+                      </div>
                     </div>
-
-                    <aside className="space-y-3">
-                      <div className="rounded-2xl border border-border/70 bg-muted/45 p-3">
-                        <p className="mb-2 text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">链接</p>
-                        <div className="space-y-2">
-                          <MiniCopyRow
-                            label="短链接"
-                            value={buildSignedShortLink(previewItem)}
-                            copied={copiedKey === `preview-short-${previewItem.short_code}`}
-                            onCopy={() => void copyText(buildSignedShortLink(previewItem), `preview-short-${previewItem.short_code}`)}
-                          />
-                          <MiniCopyRow
-                            label="快速预览"
-                            value={previewItem.preview_url || previewItem.view_url}
-                            copied={copiedKey === `preview-quick-${previewItem.short_code}`}
-                            onCopy={() => void copyText(previewItem.preview_url || previewItem.view_url, `preview-quick-${previewItem.short_code}`)}
-                          />
-                        </div>
-                      </div>
-
-                      <div className="rounded-2xl border border-border/70 bg-white/80 p-3">
-                        <p className="mb-2 text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">基础信息</p>
-                        <dl className="grid grid-cols-2 gap-2 text-xs">
-                          <InfoCell label="短码" value={previewItem.short_code} />
-                          <InfoCell label="类型" value={previewItem.file_type} />
-                          <InfoCell label="MIME" value={previewItem.mime_type} />
-                          <InfoCell label="尺寸" value={`${previewItem.width} x ${previewItem.height}`} />
-                          <InfoCell label="浏览" value={String(previewItem.view_count)} />
-                          <InfoCell label="下载" value={String(previewItem.download_count)} />
-                        </dl>
-                      </div>
-
-                      <div className="rounded-2xl border border-border/70 bg-white/80 p-3 text-xs text-muted-foreground">
-                        <p className="font-semibold text-foreground">创建时间</p>
-                        <p className="mt-1">{previewItem.created_at}</p>
-                      </div>
-                    </aside>
-                  </div>
+                    <div className="rounded-lg border bg-card p-3">
+                      <p className="mb-2 text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">基础信息</p>
+                      <dl className="grid grid-cols-2 gap-2 text-xs">
+                        <InfoCell label="短码" value={previewItem?.short_code ?? ""} />
+                        <InfoCell label="类型" value={previewItem?.file_type ?? ""} />
+                        <InfoCell label="MIME" value={previewItem?.mime_type ?? ""} />
+                        <InfoCell label="尺寸" value={previewItem ? `${previewItem.width} x ${previewItem.height}` : ""} />
+                        <InfoCell label="浏览" value={String(previewItem?.view_count ?? 0)} />
+                        <InfoCell label="下载" value={String(previewItem?.download_count ?? 0)} />
+                      </dl>
+                    </div>
+                    <div className="rounded-lg border bg-card p-3 text-xs text-muted-foreground">
+                      <p className="font-semibold text-foreground">创建时间</p>
+                      <p className="mt-1">{previewItem?.created_at}</p>
+                    </div>
+                  </aside>
                 </div>
-              </div>
-            ) : null}
+              </DialogContent>
+            </Dialog>
 
-            {accessModalItem ? (
-              <div
-                className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 p-4"
-                onClick={() => setAccessModalItem(null)}
-              >
-                <div
-                  className="w-full max-w-lg rounded-3xl border border-white/70 bg-white p-5 shadow-[0_18px_48px_rgba(0,0,0,0.22)]"
-                  onClick={(event) => event.stopPropagation()}
-                >
-                  <h3 className="text-base font-semibold">设置访问模式</h3>
-                  <p className="mt-1 text-xs text-muted-foreground">文件: {accessModalItem.file_name}</p>
-
-                  <div className="mt-4 space-y-3">
-                    <button
-                      type="button"
-                      className={
+            <Dialog open={Boolean(accessModalItem)} onOpenChange={() => setAccessModalItem(null)}>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>设置访问模式</DialogTitle>
+                  <DialogDescription>文件: {accessModalItem?.file_name}</DialogDescription>
+                </DialogHeader>
+                <div className="space-y-3">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className={
+                      `h-auto w-full flex-col items-start gap-1 px-3 py-3 text-left ${
                         accessModalMode === "none"
-                          ? "w-full rounded-xl border-2 border-primary bg-primary/5 p-3 text-left"
-                          : "w-full rounded-xl border border-border/70 bg-white p-3 text-left"
-                      }
-                      onClick={() => {
-                        setAccessModalMode("none");
-                        setAccessModalKeepExisting(false);
-                      }}
-                    >
-                      <p className="text-sm font-semibold">公开访问</p>
-                      <p className="mt-1 text-xs text-muted-foreground">任何人都可以访问此文件</p>
-                    </button>
-
-                    <button
-                      type="button"
-                      className={
+                          ? "border-2 border-primary bg-primary/5"
+                          : "border"
+                      }`
+                    }
+                    onClick={() => {
+                      setAccessModalMode("none");
+                      setAccessModalKeepExisting(false);
+                    }}
+                  >
+                    <p className="text-sm font-semibold">公开访问</p>
+                    <p className="mt-1 text-xs text-muted-foreground">任何人都可以访问此文件</p>
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className={
+                      `h-auto w-full flex-col items-start gap-1 px-3 py-3 text-left ${
                         accessModalMode === "individual"
-                          ? "w-full rounded-xl border-2 border-primary bg-primary/5 p-3 text-left"
-                          : "w-full rounded-xl border border-border/70 bg-white p-3 text-left"
-                      }
-                      onClick={() => setAccessModalMode("individual")}
-                    >
-                      <p className="text-sm font-semibold">独立验证</p>
-                      <p className="mt-1 text-xs text-muted-foreground">为该文件设置独立访问密码</p>
-
-                      {accessModalMode === "individual" ? (
-                        <div className="mt-3 rounded-lg border border-border/70 bg-muted/40 p-3">
-                          <p className="text-[11px] font-semibold text-muted-foreground">访问密码</p>
-                          <p className="mt-1 truncate rounded bg-white px-2 py-1 font-mono text-xs" title={accessModalPassword || (accessModalKeepExisting ? "****** (已设置)" : "") }>
-                            {accessModalPassword || (accessModalKeepExisting ? "****** (已设置)" : "未生成")}
-                          </p>
-                          <div className="mt-2 flex gap-2">
-                            <Button
-                              type="button"
-                              size="sm"
-                              variant="outline"
-                              className="h-8 flex-1 text-[11px]"
-                              onClick={generatePassword}
-                            >
-                              重新生成
-                            </Button>
-                            <Button
-                              type="button"
-                              size="sm"
-                              className="h-8 flex-1 text-[11px]"
-                              onClick={() => {
-                                if (accessModalPassword) {
-                                  void copyText(accessModalPassword, "access-password");
-                                }
-                              }}
-                              disabled={!accessModalPassword}
-                            >
-                              {copiedKey === "access-password" ? "已复制" : "复制密码"}
-                            </Button>
-                          </div>
+                          ? "border-2 border-primary bg-primary/5"
+                          : "border"
+                      }`
+                    }
+                    onClick={() => setAccessModalMode("individual")}
+                  >
+                    <p className="text-sm font-semibold">独立验证</p>
+                    <p className="mt-1 text-xs text-muted-foreground">为该文件设置独立访问密码</p>
+                    {accessModalMode === "individual" ? (
+                      <div className="mt-3 rounded-lg border bg-muted/40 p-3">
+                        <p className="text-[11px] font-semibold text-muted-foreground">访问密码</p>
+                        <p className="mt-1 truncate rounded bg-white px-2 py-1 font-mono text-xs" title={accessModalPassword || (accessModalKeepExisting ? "****** (已设置)" : "")}>
+                          {accessModalPassword || (accessModalKeepExisting ? "****** (已设置)" : "未生成")}
+                        </p>
+                        <div className="mt-2 flex gap-2">
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="outline"
+                            className="h-8 flex-1 text-[11px]"
+                            onClick={generatePassword}
+                          >
+                            重新生成
+                          </Button>
+                          <Button
+                            type="button"
+                            size="sm"
+                            className="h-8 flex-1 text-[11px]"
+                            onClick={() => {
+                              if (accessModalPassword) {
+                                void copyText(accessModalPassword, "access-password");
+                              }
+                            }}
+                            disabled={!accessModalPassword}
+                          >
+                            {copiedKey === "access-password" ? "已复制" : "复制密码"}
+                          </Button>
                         </div>
-                      ) : null}
-                    </button>
-                  </div>
-
-                  <div className="mt-5 flex justify-end gap-2">
-                    <Button
-                      type="button"
-                      variant="outline"
-                      onClick={() => setAccessModalItem(null)}
-                      disabled={busy}
-                    >
-                      取消
-                    </Button>
-                    <Button type="button" onClick={() => void saveAccessMode()} disabled={busy}>
-                      保存
-                    </Button>
-                  </div>
+                      </div>
+                    ) : null}
+                  </Button>
                 </div>
-              </div>
-            ) : null}
+                <DialogFooter>
+                  <Button type="button" variant="outline" onClick={() => setAccessModalItem(null)} disabled={busy}>取消</Button>
+                  <Button type="button" onClick={() => void saveAccessMode()} disabled={busy}>保存</Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
 
-            {deleteTarget ? (
-              <div
-                className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 p-4"
-                onClick={() => setDeleteTarget(null)}
-              >
-                <div
-                  className="w-full max-w-md rounded-3xl border border-white/70 bg-white p-5 shadow-[0_18px_48px_rgba(0,0,0,0.22)]"
-                  onClick={(event) => event.stopPropagation()}
-                >
-                  <h3 className="text-base font-semibold">删除确认</h3>
-                  <p className="mt-2 text-sm text-muted-foreground">
-                    确定要删除 {deleteTarget.file_name} 吗？此操作不可恢复。
-                  </p>
-                  <div className="mt-5 flex justify-end gap-2">
-                    <Button
-                      type="button"
-                      variant="outline"
-                      onClick={() => setDeleteTarget(null)}
-                      disabled={busy}
-                    >
-                      取消
-                    </Button>
-                    <Button
-                      type="button"
-                      onClick={() => {
-                        void handleDelete(deleteTarget.short_code);
-                      }}
-                      disabled={busy}
-                    >
-                      确认删除
-                    </Button>
-                  </div>
-                </div>
-              </div>
-            ) : null}
+            <Dialog open={Boolean(deleteTarget)} onOpenChange={() => setDeleteTarget(null)}>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>删除确认</DialogTitle>
+                  <DialogDescription>
+                    确定要删除 {deleteTarget?.file_name} 吗？此操作不可恢复。
+                  </DialogDescription>
+                </DialogHeader>
+                <DialogFooter>
+                  <Button type="button" variant="outline" onClick={() => setDeleteTarget(null)} disabled={busy}>取消</Button>
+                  <Button type="button" variant="destructive" onClick={() => { if (deleteTarget) void handleDelete(deleteTarget.short_code); }} disabled={busy}>确认删除</Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
             </section>
           ) : null}
 
           {activeSection === "gallery" && activeGalleryPage === "stats" ? (
-            <section className="space-y-4 rounded-3xl border border-border/70 bg-white/74 p-5 shadow-[0_10px_26px_rgba(106,71,30,0.08)] sm:p-6">
+            <section className="space-y-4 rounded-lg border bg-card p-5 sm:p-6">
               <h2 className="text-lg font-semibold">统计页</h2>
               <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-6">
                 <MetricCard icon={<BarChart3 className="h-4 w-4" />} title="总图片" value={String(stats?.total_images ?? 0)} />
@@ -1392,11 +1317,11 @@ export default function App() {
               </div>
 
               <div className="grid gap-4 lg:grid-cols-2">
-                <article className="rounded-2xl border border-border/70 bg-white/80 p-4">
+                <article className="rounded-lg border bg-card p-4">
                   <h3 className="mb-3 font-semibold">访问趋势（近 14 天）</h3>
-                  <div className="h-72 rounded-xl border border-border/60 bg-muted/25 p-2">
+                  <div className="h-72 rounded-lg border bg-muted/25 p-2">
                     {(stats?.daily_stats ?? []).length > 0 ? (
-                      <Suspense fallback={<p className="flex h-full items-center justify-center text-sm text-muted-foreground">图表加载中...</p>}>
+                      <Suspense fallback={<div className="flex h-full items-center justify-center gap-2 text-sm text-muted-foreground"><Spinner /> 图表加载中...</div>}>
                         <TrendLineChart data={stats?.daily_stats ?? []} />
                       </Suspense>
                     ) : (
@@ -1405,12 +1330,12 @@ export default function App() {
                   </div>
                 </article>
 
-                <article className="rounded-2xl border border-border/70 bg-white/80 p-4">
+                <article className="rounded-lg border bg-card p-4">
                   <h3 className="mb-3 font-semibold">热门图片 Top 5</h3>
                   <div className="space-y-2">
                     {(stats?.top_images ?? []).length > 0 ? (
                       (stats?.top_images ?? []).map((item, idx) => (
-                        <div key={item.short_code} className="rounded-xl border border-border/60 bg-muted/35 px-3 py-2">
+                        <div key={item.short_code} className="rounded-lg border bg-muted/35 px-3 py-2">
                           <div className="flex items-center justify-between gap-3">
                             <div className="flex min-w-0 items-center gap-2">
                               <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-primary/15 text-[11px] font-bold text-primary">
@@ -1431,7 +1356,7 @@ export default function App() {
               </div>
 
               <div className="grid gap-4 lg:grid-cols-2">
-                <article className="rounded-2xl border border-border/70 bg-white/80 p-4">
+                <article className="rounded-lg border bg-card p-4">
                   <h3 className="mb-3 font-semibold">访问来源 Top 5</h3>
                   <div className="space-y-2">
                     {(stats?.top_refers ?? []).length > 0 ? (
@@ -1456,7 +1381,7 @@ export default function App() {
                   </div>
                 </article>
 
-                <article className="rounded-2xl border border-border/70 bg-white/80 p-4">
+                <article className="rounded-lg border bg-card p-4">
                   <h3 className="mb-3 font-semibold">访问 IP Top 5</h3>
                   <div className="space-y-2">
                     {(stats?.top_origins ?? []).length > 0 ? (
@@ -1492,9 +1417,9 @@ export default function App() {
                 setActiveSection("gallery");
                 setActiveGalleryPage("gallery");
                 navigate("/login", { replace: true });
-                notify("登录已过期，请重新登录", "error");
+                notifyError("登录已过期，请重新登录");
               }}
-              onNotify={notifyAuto}
+              onNotify={notify}
             />
           ) : null}
 
@@ -1506,29 +1431,16 @@ export default function App() {
                 setActiveSection("gallery");
                 setActiveGalleryPage("gallery");
                 navigate("/login", { replace: true });
-                notify("登录已过期，请重新登录", "error");
+                notifyError("登录已过期，请重新登录");
               }}
-              onNotify={notifyAuto}
+              onNotify={notify}
             />
           ) : null}
-      </>
-      <ToastPopup toast={toast} />
-    </div>
-  );
-}
-
-function ToastPopup({ toast }: { toast: { id: number; text: string; kind: ToastKind } | null }) {
-  if (!toast) {
-    return null;
-  }
-  const isSuccess = toast.kind === "success";
-  return (
-    <div className="pointer-events-none fixed right-6 top-6 z-[120]">
-      <div className={isSuccess ? "flex items-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50/95 px-4 py-2.5 text-sm text-emerald-700 shadow-lg" : "flex items-center gap-2 rounded-xl border border-rose-200 bg-rose-50/95 px-4 py-2.5 text-sm text-rose-700 shadow-lg"}>
-        {isSuccess ? <CheckCircle2 className="h-4 w-4" /> : <XCircle className="h-4 w-4" />}
-        <span>{toast.text}</span>
       </div>
-    </div>
+      </main>
+      </SidebarInset>
+      <Toaster />
+    </SidebarProvider>
   );
 }
 
@@ -1565,9 +1477,9 @@ function MetricCard({
   icon?: ReactNode;
 }) {
   return (
-    <article className="rounded-2xl border border-border/70 bg-white/72 p-4 shadow-[0_8px_18px_rgba(106,71,30,0.08)]">
-      <p className="text-[11px] uppercase tracking-[0.16em] text-muted-foreground">{title}</p>
-      <p className="mt-2 flex items-center gap-2 text-2xl font-semibold">
+    <article className="rounded-xl border bg-card p-4 shadow-sm">
+      <p className="text-xs font-medium text-muted-foreground">{title}</p>
+      <p className="mt-2 flex items-center gap-2 text-2xl font-bold">
         {icon}
         {value}
       </p>
@@ -1592,17 +1504,18 @@ function CopyRow({
       <span className="min-w-0 flex-1 truncate font-mono text-xs text-foreground/90" title={value}>
         {value}
       </span>
-      <button
+      <Button
         type="button"
+        size="sm"
         className={
           copied
-            ? "rounded-md bg-emerald-600 px-2.5 py-1 text-xs font-semibold text-white"
-            : "rounded-md bg-primary px-2.5 py-1 text-xs font-semibold text-white"
+            ? "h-7 bg-emerald-600 px-2.5 text-xs font-semibold text-white hover:bg-emerald-600"
+            : "h-7 px-2.5 text-xs font-semibold"
         }
         onClick={onCopy}
       >
         {copied ? "已复制" : "复制"}
-      </button>
+      </Button>
     </div>
   );
 }
@@ -1619,23 +1532,24 @@ function MiniCopyRow({
   onCopy: () => void;
 }) {
   return (
-    <div className="rounded-xl border border-border/70 bg-white/80 p-2">
+    <div className="rounded-xl border border-border/70 bg-card p-2">
       <p className="mb-1 text-[11px] font-semibold text-muted-foreground">{label}</p>
       <div className="flex items-center gap-2">
         <span className="min-w-0 flex-1 truncate font-mono text-[11px] text-foreground/90" title={value}>
           {value}
         </span>
-        <button
+        <Button
           type="button"
+          size="sm"
           className={
             copied
-              ? "rounded-md bg-emerald-600 px-2 py-1 text-[11px] font-semibold text-white"
-              : "rounded-md bg-primary px-2 py-1 text-[11px] font-semibold text-white"
+              ? "h-6 w-14 shrink-0 bg-emerald-600 px-2 text-[11px] font-semibold text-white hover:bg-emerald-600"
+              : "h-6 w-14 shrink-0 px-2 text-[11px] font-semibold"
           }
           onClick={onCopy}
         >
           {copied ? "已复制" : "复制"}
-        </button>
+        </Button>
       </div>
     </div>
   );
@@ -1661,3 +1575,4 @@ function formatFileSize(bytes: number) {
   const value = bytes / Math.pow(1024, index);
   return `${value.toFixed(2)} ${units[index]}`;
 }
+
