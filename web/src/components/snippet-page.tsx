@@ -871,9 +871,9 @@ export function SnippetPage({ mode, onAuthExpired, onNotify }: SnippetPageProps)
         ) : null}
 
         {previewItem ? (
-          <Modal onClose={() => setPreviewItem(null)} title={previewItem.title}>
+          <Modal onClose={() => setPreviewItem(null)} title={previewItem.title} maxWidthClass="w-fit max-w-[96vw]">
             <p className="mb-2 text-xs text-muted-foreground">{previewItem.effective_language} · {previewItem.line_count} 行</p>
-            <div className="group relative">
+            <div className="group relative min-w-0">
               <Button
                 type="button"
                 size="sm"
@@ -885,7 +885,7 @@ export function SnippetPage({ mode, onAuthExpired, onNotify }: SnippetPageProps)
               >
                 {previewCopied ? "已复制" : "复制"}
               </Button>
-              <div className="theme-scrollbar max-h-[68vh] overflow-auto rounded-xl border border-border/70 bg-card p-2 text-xs text-foreground">
+              <div className="theme-scrollbar max-h-[68vh] min-w-0 overflow-auto rounded-xl border border-border/70 bg-card p-2 text-xs text-foreground">
                 <div dangerouslySetInnerHTML={{ __html: previewItemHtml }} />
               </div>
             </div>
