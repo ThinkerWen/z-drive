@@ -4,9 +4,18 @@ from datetime import datetime
 from pathlib import Path
 from urllib.parse import quote
 
-from fastapi import APIRouter, BackgroundTasks, Depends, File, HTTPException, Query, Request, UploadFile
+from fastapi import (
+    APIRouter,
+    BackgroundTasks,
+    Depends,
+    File,
+    HTTPException,
+    Query,
+    Request,
+    UploadFile,
+)
 from fastapi.responses import FileResponse
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.core.config import get_settings
@@ -15,6 +24,7 @@ from app.core.security import build_admin_auth_dependency
 from app.core.urls import get_external_base_url
 from app.db.session import get_db
 from app.models.cloud_item import DriveItem
+from app.models.cloud_share import DriveShareAccessLog
 from app.schemas.cloud import (
     DriveBatchCopyRequest,
     DriveBatchDeleteRequest,
@@ -44,9 +54,9 @@ from app.schemas.cloud import (
     DriveUploadMultipleResponse,
     DriveVisibilityRequest,
 )
+from app.services.cloud import DriveService
 from app.services.cloud_chunk_upload import DriveChunkUploadService
 from app.services.cloud_share import DriveShareService
-from app.services.cloud import DriveService
 
 router = APIRouter(prefix="/cloud", tags=["cloud"])
 settings = get_settings()
@@ -81,7 +91,7 @@ def _to_item_payload(item, duplicate_of_id: int | None = None) -> DriveItemRespo
     )
 
 
-def _to_share_payload(share, base_url: str, item_name: str = "") -> DriveShareResponse:
+def _to_share_payload(share, base_url: str, item_name: str = "", access_count: int = 0) -> DriveShareResponse:
     return DriveShareResponse(
         id=int(share.id),
         item_id=int(share.item_id),
@@ -89,6 +99,7 @@ def _to_share_payload(share, base_url: str, item_name: str = "") -> DriveShareRe
         share_code=str(share.share_code),
         has_password=bool(share.password_hash),
         is_active=bool(share.is_active),
+        access_count=access_count,
         expires_at=format_app_datetime(share.expires_at),
         created_at=format_app_datetime(share.created_at) or "",
         share_url=f"{base_url}/f/{share.share_code}",
@@ -212,7 +223,18 @@ async def list_shares(request: Request, db: Session = Depends(get_db), _: str = 
         int(item.id): str(item.name)
         for item in db.scalars(select(DriveItem).where(DriveItem.id.in_(item_ids), DriveItem.is_delete.is_(False))).all()
     }
-    return [_to_share_payload(share, base_url, names.get(int(share.item_id), "")) for share in shares]
+    counts = (
+        dict(
+            db.execute(
+                select(DriveShareAccessLog.share_id, func.count(DriveShareAccessLog.id))
+                .where(DriveShareAccessLog.share_id.in_([share.id for share in shares]))
+                .group_by(DriveShareAccessLog.share_id)
+            ).all()
+        )
+        if shares
+        else {}
+    )
+    return [_to_share_payload(share, base_url, names.get(int(share.item_id), ""), counts.get(share.id, 0)) for share in shares]
 
 
 @router.delete("/shares/{share_id}")
@@ -277,7 +299,11 @@ async def preview_shared_item(share_code: str, password: str = "", db: Session =
         if not file_path.exists():
             raise LookupError("文件不存在")
         headers = {"Content-Disposition": _inline_content_disposition(str(item.name))}
-        return FileResponse(path=file_path, media_type=item.mime_type or "application/octet-stream", headers=headers)
+        return FileResponse(
+            path=file_path,
+            media_type=item.mime_type or "application/octet-stream",
+            headers=headers,
+        )
     except LookupError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
     except PermissionError as exc:
@@ -295,7 +321,11 @@ async def download_shared_item(share_code: str, password: str = "", db: Session 
         file_path = Path(settings.storage_path) / "cloud" / item.storage_path
         if not file_path.exists():
             raise LookupError("文件不存在")
-        return FileResponse(path=file_path, media_type=item.mime_type or "application/octet-stream", filename=item.name)
+        return FileResponse(
+            path=file_path,
+            media_type=item.mime_type or "application/octet-stream",
+            filename=item.name,
+        )
     except LookupError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
     except PermissionError as exc:
@@ -353,7 +383,11 @@ async def batch_copy_items(
 async def download_file(item_id: int, db: Session = Depends(get_db), _: str = Depends(admin_auth)) -> FileResponse:
     try:
         item, file_path = service.get_download_file(db, item_id)
-        return FileResponse(path=file_path, media_type=item.mime_type or "application/octet-stream", filename=item.name)
+        return FileResponse(
+            path=file_path,
+            media_type=item.mime_type or "application/octet-stream",
+            filename=item.name,
+        )
     except LookupError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
     except ValueError as exc:
@@ -365,7 +399,11 @@ async def preview_file(item_id: int, db: Session = Depends(get_db), _: str = Dep
     try:
         item, file_path = service.get_preview_file(db, item_id)
         headers = {"Content-Disposition": _inline_content_disposition(str(item.name))}
-        return FileResponse(path=file_path, media_type=item.mime_type or "application/octet-stream", headers=headers)
+        return FileResponse(
+            path=file_path,
+            media_type=item.mime_type or "application/octet-stream",
+            headers=headers,
+        )
     except LookupError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
     except ValueError as exc:
@@ -474,7 +512,11 @@ async def init_chunk_upload(
 ) -> DriveChunkInitResponse:
     chunk_service.ensure_directories()
     meta = chunk_service.init_upload(payload.parent_id, payload.file_name, payload.total_chunks, payload.mime_type)
-    return DriveChunkInitResponse(upload_id=meta["upload_id"], total_chunks=int(meta["total_chunks"]), uploaded_chunks=[])
+    return DriveChunkInitResponse(
+        upload_id=meta["upload_id"],
+        total_chunks=int(meta["total_chunks"]),
+        uploaded_chunks=[],
+    )
 
 
 @router.put("/uploads/chunk/{upload_id}/{index}")
@@ -516,7 +558,9 @@ async def chunk_status(upload_id: str, _: str = Depends(admin_auth)) -> DriveChu
 
 
 @router.get("/uploads/tasks", response_model=list[DriveChunkTaskResponse])
-async def list_upload_tasks(_: str = Depends(admin_auth)) -> list[DriveChunkTaskResponse]:
+async def list_upload_tasks(
+    _: str = Depends(admin_auth),
+) -> list[DriveChunkTaskResponse]:
     tasks = chunk_service.list_tasks()
     result: list[DriveChunkTaskResponse] = []
     for meta in tasks:

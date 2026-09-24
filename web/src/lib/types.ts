@@ -147,6 +147,7 @@ export interface CloudShareResponse {
   share_code: string;
   has_password: boolean;
   is_active: boolean;
+  access_count: number;
   expires_at: string | null;
   created_at: string;
   share_url: string;

@@ -1,18 +1,21 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import {
   Archive,
+  BarChart3,
   Check,
   CheckCheck,
   ChevronLeft,
   ChevronRight,
   Download,
   Eye,
+  Files,
   File,
   FileCode2,
   FileSpreadsheet,
   FileText,
   Folder,
   FolderOpen,
+  HardDrive,
   Image,
   Music,
   Package,
@@ -961,16 +964,22 @@ export function CloudPage({ mode, onAuthExpired, onNotify }: CloudPageProps) {
     <section className="rounded-lg border bg-card p-5 sm:p-6">
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
         <div>
+
           <h2 className="text-lg font-semibold">
             {mode === "upload"
               ? "云盘 · 上传"
               : mode === "files"
                 ? "云盘 · 文件管理"
                 : mode === "shares"
-                  ? "云盘 · 分享管理"
-                  : "云盘 · 数据统计"}
+                  ? "分享管理"
+                  : "数据统计"}
           </h2>
         </div>
+        {mode === "shares" ? (
+          <span className="rounded-full border border-border/70 bg-card px-3 py-1 text-xs">总计 {shares.length} 条分享</span>
+        ) : mode === "stats" ? (
+          <BarChart3 className="h-5 w-5 text-primary" />
+        ) : null}
         {mode === "upload" ? (
           <Input id="cloud-upload-files" ref={fileInputRef} type="file" multiple className="sr-only" onChange={handleUpload} />
         ) : null}
@@ -979,10 +988,10 @@ export function CloudPage({ mode, onAuthExpired, onNotify }: CloudPageProps) {
       {mode === "stats" ? (
         <>
           <div className="mb-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-            <CloudMetricCard title="总条目" value={String(summary?.total_items ?? 0)} />
-            <CloudMetricCard title="文件数" value={String(summary?.total_files ?? 0)} />
-            <CloudMetricCard title="目录数" value={String(summary?.total_folders ?? 0)} />
-            <CloudMetricCard title="已用空间" value={`${formatFileSize(summary?.total_size ?? 0)} / ${formatFileSize(summary?.total_space ?? 0)}`} />
+            <CloudMetricCard icon={<Files className="h-4 w-4" />} title="总条目" value={String(summary?.total_items ?? 0)} />
+            <CloudMetricCard icon={<File className="h-4 w-4" />} title="文件数" value={String(summary?.total_files ?? 0)} />
+            <CloudMetricCard icon={<Folder className="h-4 w-4" />} title="目录数" value={String(summary?.total_folders ?? 0)} />
+            <CloudMetricCard icon={<HardDrive className="h-4 w-4" />} title="已用空间" value={`${formatFileSize(summary?.total_size ?? 0)} / ${formatFileSize(summary?.total_space ?? 0)}`} />
           </div>
 
           <div className="mb-4 rounded-lg border bg-card p-3">
@@ -1473,50 +1482,40 @@ export function CloudPage({ mode, onAuthExpired, onNotify }: CloudPageProps) {
       ) : null}
 
       {mode === "shares" ? (
-        <div className="mt-0 rounded-lg border bg-card p-4">
-        <div className="mb-3 flex items-center justify-between gap-2">
-          <h3 className="text-sm font-semibold">分享列表</h3>
-          <span className="text-xs text-muted-foreground">共 {shares.length} 条</span>
-        </div>
-        {shares.length > 0 ? (
-          <div className="space-y-2">
-            {shares.map((share) => (
+        <div className="space-y-2">
+          {shares.map((share) => (
               <div key={share.id} className="rounded-lg border bg-card p-3">
-                <div className="flex items-start justify-between gap-3">
-                  <div className="min-w-0">
-                    <p className="truncate text-sm font-semibold" title={share.item_name || `项目 #${share.item_id}`}>
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate font-semibold" title={share.item_name || `项目 #${share.item_id}`}>
                       {share.item_name || `项目 #${share.item_id}`}
                     </p>
-                    <p className="mt-1 truncate text-xs font-mono text-foreground/90" title={share.share_url}>{share.share_url}</p>
+                    <p className="mt-1 truncate text-xs text-muted-foreground" title={share.share_url}>
+                      {share.share_url} · 访问 {share.access_count} · {share.is_active ? "有效" : "已关闭"}
+                    </p>
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      创建于 {share.created_at} · {share.expires_at ? `过期 ${share.expires_at}` : "永不过期"}
+                    </p>
                   </div>
-                  <span className={share.has_password ? "rounded-md bg-amber-100 px-2 py-1 text-[11px] font-semibold text-amber-700 dark:bg-amber-950 dark:text-amber-300" : "rounded-md bg-emerald-100 px-2 py-1 text-[11px] font-semibold text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300"}>
-                    {share.has_password ? "密码分享" : "公开分享"}
-                  </span>
-                </div>
-
-                <div className="mt-2 flex flex-wrap items-center gap-2 text-[11px] text-muted-foreground">
-                  <span>分享码 {share.share_code}</span>
-                  <span>{share.expires_at ? `过期: ${share.expires_at}` : "永不过期"}</span>
-                </div>
-                <div className="mt-2 flex gap-2">
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant="outline"
-                    onClick={() => void handleCopyShareLink(share)}
-                  >
-                    {copiedShareId === share.id ? "已复制" : "复制链接"}
-                  </Button>
-                  <Button type="button" size="sm" variant="outline" onClick={() => void handleCancelShare(share.id)}>
-                    取消分享
-                  </Button>
+                  <div className="flex flex-col items-end justify-end gap-2 self-stretch">
+                    <div className="flex flex-wrap justify-end gap-2">
+                      <Button type="button" size="sm" variant="outline" onClick={() => void handleCopyShareLink(share)}>
+                        {copiedShareId === share.id ? "已复制" : "复制链接"}
+                      </Button>
+                      <Button type="button" size="sm" variant="outline" onClick={() => void handleCancelShare(share.id)}>
+                        取消分享
+                      </Button>
+                    </div>
+                    <Badge className={share.has_password
+                      ? "border border-amber-200 bg-amber-100 text-amber-800 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-300"
+                      : "border border-emerald-200 bg-emerald-100 text-emerald-800 dark:border-emerald-800 dark:bg-emerald-950 dark:text-emerald-300"}>
+                      {share.has_password ? "密码分享" : "公开分享"}
+                    </Badge>
+                  </div>
                 </div>
               </div>
-            ))}
-          </div>
-        ) : (
-          <p className="text-sm text-muted-foreground">暂无分享记录</p>
-        )}
+          ))}
+          {shares.length === 0 ? <p className="text-sm text-muted-foreground">暂无分享记录</p> : null}
         </div>
       ) : null}
 
@@ -1700,11 +1699,12 @@ export function CloudPage({ mode, onAuthExpired, onNotify }: CloudPageProps) {
   );
 }
 
-function CloudMetricCard({ title, value }: { title: string; value: string }) {
+function CloudMetricCard({ icon, title, value }: { icon: ReactNode; title: string; value: string }) {
   return (
-    <article className="rounded-lg border bg-muted p-4">
-      <p className="text-[11px] uppercase tracking-[0.16em] text-muted-foreground">{title}</p>
-      <p className="mt-2 text-lg font-semibold">{value}</p>
+    <article className="min-w-0 rounded-2xl border border-border/70 bg-card p-3">
+      <div className="mb-2 inline-flex h-7 w-7 items-center justify-center rounded-full bg-primary/10 text-primary">{icon}</div>
+      <p className="text-xs text-muted-foreground">{title}</p>
+      <p className="mt-1 break-words text-xl font-semibold">{value}</p>
     </article>
   );
 }

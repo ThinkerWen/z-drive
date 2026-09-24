@@ -104,6 +104,7 @@ class DriveShareResponse(BaseModel):
     share_code: str
     has_password: bool
     is_active: bool
+    access_count: int
     expires_at: str | None
     created_at: str
     share_url: str

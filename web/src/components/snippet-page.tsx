@@ -598,8 +598,7 @@ export function SnippetPage({ mode, onAuthExpired, onNotify }: SnippetPageProps)
       <section className="rounded-lg border bg-card p-5 sm:p-6">
         <div className="mb-4 flex items-center justify-between gap-3">
           <div>
-            <p className="text-xs uppercase tracking-[0.22em] text-primary/90">Snippet Studio</p>
-            <h2 className="mt-1 text-xl font-semibold">编辑器</h2>
+            <h2 className="text-lg font-semibold">编辑器</h2>
           </div>
           <div className="flex gap-2">
             <Button variant="outline" size="sm" type="button" onClick={resetEditor}>清空</Button>
@@ -701,8 +700,7 @@ export function SnippetPage({ mode, onAuthExpired, onNotify }: SnippetPageProps)
       <section className="rounded-lg border bg-card p-5 sm:p-6">
         <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
           <div>
-            <p className="text-xs uppercase tracking-[0.22em] text-primary/90">Snippet Atlas</p>
-            <h2 className="mt-1 text-xl font-semibold">代码片列表</h2>
+            <h2 className="text-lg font-semibold">代码片列表</h2>
           </div>
           <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
             <span>代码片 {snippets.length}</span>
@@ -1042,8 +1040,7 @@ export function SnippetPage({ mode, onAuthExpired, onNotify }: SnippetPageProps)
       <section className="rounded-lg border bg-card p-5 sm:p-6">
         <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
           <div>
-            <p className="text-xs uppercase tracking-[0.22em] text-primary/90">Share Console</p>
-            <h2 className="mt-1 text-xl font-semibold">分享管理</h2>
+            <h2 className="text-lg font-semibold">分享管理</h2>
           </div>
           <span className="rounded-full border border-border/70 bg-card px-3 py-1 text-xs">总计 {shares.length} 条分享</span>
         </div>
@@ -1052,9 +1049,9 @@ export function SnippetPage({ mode, onAuthExpired, onNotify }: SnippetPageProps)
           {shares.map((share) => (
             <div key={share.id} className="rounded-lg border bg-card p-3">
               <div className="flex flex-wrap items-start justify-between gap-3">
-                <div>
-                  <p className="font-semibold">{share.snippet_title}</p>
-                  <p className="mt-1 text-xs text-muted-foreground">
+                <div className="min-w-0 flex-1">
+                  <p className="truncate font-semibold" title={share.snippet_title}>{share.snippet_title}</p>
+                  <p className="mt-1 truncate text-xs text-muted-foreground" title={share.share_url}>
                     {share.share_url} · 访问 {share.access_count}
                     {share.max_access_count ? ` / ${share.max_access_count}` : ""} · {share.is_active ? "有效" : "已关闭"}
                   </p>
@@ -1064,28 +1061,29 @@ export function SnippetPage({ mode, onAuthExpired, onNotify }: SnippetPageProps)
                     {share.is_one_time ? " · 一次性" : ""}
                   </p>
                 </div>
-                <div className="flex items-center gap-1">
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant="outline"
-                    onClick={(event) => {
-                      event.preventDefault();
-                      event.stopPropagation();
-                      void handleCopyShareUrl(share.share_url);
-                    }}
-                  >
-                    <Link2 className="mr-1 inline h-3.5 w-3.5" />复制
-                  </Button>
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant="outline"
-                    className="text-rose-600 hover:bg-rose-50"
-                    onClick={() => void handleCancelShare(share.id)}
-                  >
-                    <Type className="mr-1 inline h-3.5 w-3.5" />取消
-                  </Button>
+                <div className="flex flex-col items-end justify-end gap-2 self-stretch">
+                  <div className="flex flex-wrap justify-end gap-2">
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      onClick={(event) => {
+                        event.preventDefault();
+                        event.stopPropagation();
+                        void handleCopyShareUrl(share.share_url);
+                      }}
+                    >
+                      复制链接
+                    </Button>
+                    <Button type="button" size="sm" variant="outline" onClick={() => void handleCancelShare(share.id)}>
+                      取消分享
+                    </Button>
+                  </div>
+                  <Badge className={share.has_password
+                    ? "border border-amber-200 bg-amber-100 text-amber-800 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-300"
+                    : "border border-emerald-200 bg-emerald-100 text-emerald-800 dark:border-emerald-800 dark:bg-emerald-950 dark:text-emerald-300"}>
+                    {share.has_password ? "密码分享" : "公开分享"}
+                  </Badge>
                 </div>
               </div>
             </div>
@@ -1103,8 +1101,7 @@ export function SnippetPage({ mode, onAuthExpired, onNotify }: SnippetPageProps)
       <section className="rounded-lg border bg-card p-5 sm:p-6">
         <div className="mb-4 flex items-center justify-between gap-3">
           <div>
-            <p className="text-xs uppercase tracking-[0.22em] text-primary/90">Insight Board</p>
-            <h2 className="mt-1 text-xl font-semibold">数据统计</h2>
+            <h2 className="text-lg font-semibold">数据统计</h2>
           </div>
           <BarChart3 className="h-5 w-5 text-primary" />
         </div>
