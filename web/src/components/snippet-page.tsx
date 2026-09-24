@@ -879,7 +879,7 @@ export function SnippetPage({ mode, onAuthExpired, onNotify }: SnippetPageProps)
                 size="sm"
                 variant="outline"
                 className={previewCopied
-                  ? "absolute right-2 top-2 z-10 border-emerald-300 bg-emerald-50 text-xs text-emerald-700 opacity-100"
+                  ? "absolute right-2 top-2 z-10 border-emerald-300 bg-emerald-50 text-xs text-emerald-700 opacity-100 dark:border-emerald-800 dark:bg-emerald-950 dark:text-emerald-300"
                   : "absolute right-2 top-2 z-10 border-border/70 bg-card text-xs text-foreground opacity-0 transition group-hover:opacity-100"}
                 onClick={() => void handlePreviewCopy(previewItem.code_content)}
               >

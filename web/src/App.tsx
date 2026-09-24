@@ -1031,7 +1031,7 @@ export default function App() {
           {activeSection === "gallery" && activeGalleryPage === "gallery" ? (
             <section className="rounded-lg border bg-card p-5 sm:p-6">
             <h2 className="mb-3 text-lg font-semibold">图库页</h2>
-            <form className="mb-4 flex flex-wrap items-center gap-2 rounded-lg border bg-muted p-3" onSubmit={applyFilters}>
+            <form className="mb-4 flex flex-wrap items-center gap-2 rounded-lg border bg-card p-3" onSubmit={applyFilters}>
               <Select
                 value={fileType}
                 onValueChange={(value) => {
@@ -1039,7 +1039,7 @@ export default function App() {
                   void refreshList(1, query, value);
                 }}
               >
-                <SelectTrigger className="w-full max-w-48">
+                <SelectTrigger className="w-full max-w-48 bg-background dark:bg-background">
                   <SelectValue placeholder="全部类型" />
                 </SelectTrigger>
                 <SelectContent>
@@ -1055,6 +1055,7 @@ export default function App() {
                 <FieldLabel htmlFor="gallery-search" className="sr-only">搜索文件名或短码</FieldLabel>
                 <Input
                   id="gallery-search"
+                  className="bg-background dark:bg-background"
                   placeholder="搜索文件名或短码"
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
@@ -1156,7 +1157,7 @@ export default function App() {
               </Pagination>
             </div>
             <Dialog open={Boolean(previewItem)} onOpenChange={() => setPreviewItem(null)}>
-              <DialogContent className="max-w-4xl">
+              <DialogContent className="sm:max-w-4xl">
                 <DialogHeader>
                   <DialogTitle className="truncate">{previewItem?.file_name}</DialogTitle>
                   <DialogDescription>点击遮罩可关闭预览</DialogDescription>
@@ -1389,7 +1390,7 @@ export default function App() {
                         <div key={`${item.origin_ip}-${idx}`} className="rounded-xl border border-border/60 bg-muted/35 px-3 py-2">
                           <div className="flex items-center justify-between gap-3">
                             <div className="flex min-w-0 items-center gap-2">
-                              <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-orange-100 text-[11px] font-bold text-orange-700">
+                              <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-orange-100 text-[11px] font-bold text-orange-700 dark:bg-orange-950 dark:text-orange-300">
                                 {idx + 1}
                               </span>
                               <span className="truncate text-xs font-medium" title={item.origin_ip || "Unknown"}>

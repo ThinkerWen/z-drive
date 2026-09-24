@@ -4,7 +4,7 @@ import { cn } from "@/lib/utils"
 
 const Field = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(
   ({ className, ...props }, ref) => (
-    <div ref={ref} className={cn("grid gap-1.5", className)} {...props} />
+    <div ref={ref} data-slot="field" className={cn("grid gap-1.5", className)} {...props} />
   )
 )
 Field.displayName = "Field"
@@ -13,6 +13,7 @@ const FieldLabel = React.forwardRef<HTMLLabelElement, React.LabelHTMLAttributes<
   ({ className, ...props }, ref) => (
     <label
       ref={ref}
+      data-slot="field-label"
       className={cn("text-sm font-medium text-foreground", className)}
       {...props}
     />
@@ -22,7 +23,7 @@ FieldLabel.displayName = "FieldLabel"
 
 const FieldDescription = React.forwardRef<HTMLParagraphElement, React.HTMLAttributes<HTMLParagraphElement>>(
   ({ className, ...props }, ref) => (
-    <p ref={ref} className={cn("text-xs text-muted-foreground", className)} {...props} />
+    <p ref={ref} data-slot="field-description" className={cn("text-xs text-muted-foreground", className)} {...props} />
   )
 )
 FieldDescription.displayName = "FieldDescription"

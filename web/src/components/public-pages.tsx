@@ -454,7 +454,7 @@ export function PublicSnippetPage({ shareCode }: { shareCode: string }) {
 
   return (
     <div className="mx-auto flex min-h-screen w-full max-w-6xl flex-col px-4 py-8 sm:px-8">
-      <div className="mt-auto rounded-xl border border-slate-200 bg-card p-6 shadow-sm sm:p-7">
+      <div className="mt-auto rounded-xl border border-border bg-card p-6 shadow-sm sm:p-7">
         <h1 className="truncate text-xl font-semibold sm:text-2xl" title={snippet.title}>{snippet.title}</h1>
         <p className="mt-2 text-xs text-muted-foreground">
           语言 {snippet.effective_language} · 行数 {snippet.line_count} · 更新时间 {snippet.updated_at}
@@ -462,7 +462,7 @@ export function PublicSnippetPage({ shareCode }: { shareCode: string }) {
 
         {snippet.description ? <p className="mt-3 text-sm text-muted-foreground">{snippet.description}</p> : null}
 
-        <div className="theme-scrollbar mt-4 max-h-[66vh] min-w-0 overflow-auto rounded-2xl border border-slate-200 bg-slate-50 p-3 text-xs text-foreground">
+        <div className="theme-scrollbar mt-4 max-h-[66vh] min-w-0 overflow-auto rounded-2xl border border-border bg-muted/30 p-3 text-xs text-foreground">
           <div dangerouslySetInnerHTML={{ __html: renderedCode }} />
         </div>
 

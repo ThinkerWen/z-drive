@@ -1489,7 +1489,7 @@ export function CloudPage({ mode, onAuthExpired, onNotify }: CloudPageProps) {
                     </p>
                     <p className="mt-1 truncate text-xs font-mono text-foreground/90" title={share.share_url}>{share.share_url}</p>
                   </div>
-                  <span className={share.has_password ? "rounded-md bg-amber-100 px-2 py-1 text-[11px] font-semibold text-amber-700" : "rounded-md bg-emerald-100 px-2 py-1 text-[11px] font-semibold text-emerald-700"}>
+                  <span className={share.has_password ? "rounded-md bg-amber-100 px-2 py-1 text-[11px] font-semibold text-amber-700 dark:bg-amber-950 dark:text-amber-300" : "rounded-md bg-emerald-100 px-2 py-1 text-[11px] font-semibold text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300"}>
                     {share.has_password ? "密码分享" : "公开分享"}
                   </span>
                 </div>

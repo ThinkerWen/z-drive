@@ -22,11 +22,11 @@ interface TrendPoint {
 const chartConfig = {
   views: {
     label: "浏览",
-    color: "hsl(var(--chart-1))",
+    color: "var(--chart-1)",
   },
   downloads: {
     label: "下载",
-    color: "hsl(var(--chart-2))",
+    color: "var(--chart-2)",
   },
 } satisfies ChartConfig;
 
