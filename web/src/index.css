@@ -139,6 +139,7 @@
   color: var(--shiki-light, inherit);
   background: var(--shiki-light-bg, transparent);
 }
+.snippet-code-preview .snippet-highlight-wrap { line-height: 1.35; }
 .dark .snippet-highlight-wrap { color: var(--shiki-dark, inherit); background: var(--shiki-dark-bg, transparent); }
 .snippet-highlight-wrap span[style] { color: var(--shiki-light, inherit); }
 .dark .snippet-highlight-wrap span[style] { color: var(--shiki-dark, inherit); }

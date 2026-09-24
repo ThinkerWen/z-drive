@@ -462,7 +462,7 @@ export function PublicSnippetPage({ shareCode }: { shareCode: string }) {
 
         {snippet.description ? <p className="mt-3 text-sm text-muted-foreground">{snippet.description}</p> : null}
 
-        <div className="theme-scrollbar mt-4 max-h-[66vh] min-w-0 overflow-auto rounded-2xl border border-border bg-muted/30 p-3 text-xs text-foreground">
+        <div className="snippet-code-preview theme-scrollbar mt-4 max-h-[66vh] min-w-0 overflow-auto rounded-2xl border border-border bg-muted/30 p-3 text-xs text-foreground">
           <div dangerouslySetInnerHTML={{ __html: renderedCode }} />
         </div>
 

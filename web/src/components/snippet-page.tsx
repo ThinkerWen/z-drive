@@ -1,6 +1,6 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { BarChart3, Copy, Download, Link2, ListChecks, Save, Search, Share2, Tags, Trash2, Type } from "lucide-react";
+import { BarChart3, Check, Copy, Download, Link2, ListChecks, Save, Search, Share2, Tags, Trash2, Type } from "lucide-react";
 import CodeMirror from "@uiw/react-codemirror";
 
 import { Button } from "@/components/ui/button";
@@ -111,6 +111,9 @@ export function SnippetPage({ mode, onAuthExpired, onNotify }: SnippetPageProps)
   const [loading, setLoading] = useState(false);
   const [previewItem, setPreviewItem] = useState<SnippetItem | null>(null);
   const [previewCopied, setPreviewCopied] = useState(false);
+  const [copiedSnippetId, setCopiedSnippetId] = useState<number | null>(null);
+  const copiedSnippetTimer = useRef<number | null>(null);
+  const [copiedShareId, setCopiedShareId] = useState<number | null>(null);
   const [contextMenu, setContextMenu] = useState<SnippetContextMenuState | null>(null);
 
   const [renameTarget, setRenameTarget] = useState<SnippetItem | null>(null);
@@ -203,6 +206,10 @@ export function SnippetPage({ mode, onAuthExpired, onNotify }: SnippetPageProps)
   function closeMenusAndDialogs() {
     setContextMenu(null);
   }
+
+  useEffect(() => () => {
+    if (copiedSnippetTimer.current !== null) window.clearTimeout(copiedSnippetTimer.current);
+  }, []);
 
   useEffect(() => {
     function closeMenuOnWindowEvents() {
@@ -414,14 +421,18 @@ export function SnippetPage({ mode, onAuthExpired, onNotify }: SnippetPageProps)
     }
   }
 
-  async function handleCopyCode(content: string) {
+  async function handleCopyCode(item: SnippetItem) {
     try {
-      const copied = await copyText(content);
-      if (!copied) {
+      if (!(await copyText(item.code_content))) {
         onNotify("复制失败，请手动复制");
         return;
       }
-      onNotify("代码已复制");
+      if (copiedSnippetTimer.current !== null) window.clearTimeout(copiedSnippetTimer.current);
+      setCopiedSnippetId(item.id);
+      copiedSnippetTimer.current = window.setTimeout(() => {
+        setCopiedSnippetId(null);
+        copiedSnippetTimer.current = null;
+      }, 1500);
     } catch {
       onNotify("复制失败，请手动复制");
     }
@@ -441,12 +452,16 @@ export function SnippetPage({ mode, onAuthExpired, onNotify }: SnippetPageProps)
     }
   }
 
-  async function handleCopyShareUrl(url: string) {
+  async function handleCopyShareUrl(share: SnippetShare) {
     try {
-      const copied = await copyText(url);
-      onNotify(copied ? "分享链接已复制" : "复制失败，请手动复制链接");
+      if (!(await copyText(share.share_url))) {
+        onNotify("复制失败，请检查浏览器剪贴板权限");
+        return;
+      }
+      setCopiedShareId(share.id);
+      window.setTimeout(() => setCopiedShareId((current) => current === share.id ? null : current), 1500);
     } catch {
-      onNotify("复制失败，请手动复制链接");
+      onNotify("复制失败，请检查浏览器剪贴板权限");
     }
   }
 
@@ -792,11 +807,12 @@ export function SnippetPage({ mode, onAuthExpired, onNotify }: SnippetPageProps)
                   <Button
                     variant="ghost"
                     size="icon"
-                    className="h-8 w-8"
-                    onClick={() => void handleCopyCode(item.code_content)}
-                    title="复制代码"
+                    className={copiedSnippetId === item.id ? "h-8 w-8 bg-emerald-600 text-white hover:bg-emerald-600 hover:text-white dark:bg-emerald-600 dark:hover:bg-emerald-600" : "h-8 w-8"}
+                    onClick={() => void handleCopyCode(item)}
+                    title={copiedSnippetId === item.id ? "已复制" : "复制代码"}
+                    aria-label={copiedSnippetId === item.id ? "已复制" : "复制代码"}
                   >
-                    <Copy className="h-4 w-4" />
+                    {copiedSnippetId === item.id ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
                   </Button>
                   <Button asChild variant="ghost" size="icon" className="h-8 w-8">
                     <a href={buildDownloadUrl(item.id)} title="下载" target="_blank" rel="noreferrer">
@@ -869,7 +885,7 @@ export function SnippetPage({ mode, onAuthExpired, onNotify }: SnippetPageProps)
         ) : null}
 
         {previewItem ? (
-          <Modal onClose={() => setPreviewItem(null)} title={previewItem.title} maxWidthClass="w-fit max-w-[96vw]">
+          <Modal onClose={() => setPreviewItem(null)} title={previewItem.title} maxWidthClass="sm:max-w-6xl">
             <p className="mb-2 text-xs text-muted-foreground">{previewItem.effective_language} · {previewItem.line_count} 行</p>
             <div className="group relative min-w-0">
               <Button
@@ -883,7 +899,7 @@ export function SnippetPage({ mode, onAuthExpired, onNotify }: SnippetPageProps)
               >
                 {previewCopied ? "已复制" : "复制"}
               </Button>
-              <div className="theme-scrollbar max-h-[68vh] min-w-0 overflow-auto rounded-xl border border-border/70 bg-card p-2 text-xs text-foreground">
+              <div className="snippet-code-preview theme-scrollbar max-h-[68vh] min-w-0 overflow-auto rounded-xl border border-border/70 bg-card p-2 text-xs text-foreground">
                 <div dangerouslySetInnerHTML={{ __html: previewItemHtml }} />
               </div>
             </div>
@@ -921,7 +937,7 @@ export function SnippetPage({ mode, onAuthExpired, onNotify }: SnippetPageProps)
         ) : null}
 
         {editTarget ? (
-          <Modal onClose={() => setEditTarget(null)} title={`编辑代码片 · ${editTarget.title}`} maxWidthClass="max-w-4xl">
+          <Modal onClose={() => setEditTarget(null)} title={`编辑代码片 · ${editTarget.title}`} maxWidthClass="sm:max-w-6xl">
             <div className="space-y-2 min-w-0">
                 <div className="grid gap-2 sm:grid-cols-2">
                   <Field className="gap-0">
@@ -1067,13 +1083,14 @@ export function SnippetPage({ mode, onAuthExpired, onNotify }: SnippetPageProps)
                       type="button"
                       size="sm"
                       variant="outline"
+                      className={copiedShareId === share.id ? "border-emerald-600 bg-emerald-600 text-white hover:bg-emerald-600 hover:text-white dark:bg-emerald-600 dark:hover:bg-emerald-600" : ""}
                       onClick={(event) => {
                         event.preventDefault();
                         event.stopPropagation();
-                        void handleCopyShareUrl(share.share_url);
+                        void handleCopyShareUrl(share);
                       }}
                     >
-                      复制链接
+                      {copiedShareId === share.id ? <><Check className="size-4" />已复制</> : "复制链接"}
                     </Button>
                     <Button type="button" size="sm" variant="outline" onClick={() => void handleCancelShare(share.id)}>
                       取消分享

@@ -52,6 +52,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { PlyrVideo } from "@/components/plyr-video";
+import { copyText as copyToClipboard } from "@/lib/utils";
 import {
   batchCopyCloudItems,
   batchDeleteCloudItems,
@@ -123,8 +124,7 @@ export function CloudPage({ mode, onAuthExpired, onNotify }: CloudPageProps) {
   const [cloudUploadTasks, setCloudUploadTasks] = useState<CloudUploadTask[]>([]);
   const [copiedShareId, setCopiedShareId] = useState<number | null>(null);
   const [sharePasswords, setSharePasswords] = useState<Record<string, string>>({});
-  const [copyPasswordShare, setCopyPasswordShare] = useState<CloudShareResponse | null>(null);
-  const [copyPasswordInput, setCopyPasswordInput] = useState("");
+
   const [selectedIds, setSelectedIds] = useState<number[]>([]);
   const [createFolderModalOpen, setCreateFolderModalOpen] = useState(false);
   const [propertiesItem, setPropertiesItem] = useState<CloudItem | null>(null);
@@ -306,45 +306,13 @@ export function CloudPage({ mode, onAuthExpired, onNotify }: CloudPageProps) {
     };
   }, [previewItem]);
 
-  function fallbackCopyWithExecCommand(value: string): boolean {
-    const textArea = document.createElement("textarea");
-    textArea.value = value;
-    textArea.setAttribute("readonly", "readonly");
-    textArea.style.position = "fixed";
-    textArea.style.opacity = "0";
-    textArea.style.pointerEvents = "none";
-    document.body.appendChild(textArea);
-    textArea.focus();
-    textArea.select();
-    textArea.setSelectionRange(0, textArea.value.length);
-
-    let copied = false;
-    try {
-      copied = document.execCommand("copy");
-    } finally {
-      document.body.removeChild(textArea);
-    }
-    return copied;
-  }
-
   async function copyText(value: string, shareId: number) {
-    try {
-      if (navigator.clipboard?.writeText && window.isSecureContext) {
-        await navigator.clipboard.writeText(value);
-      } else if (!fallbackCopyWithExecCommand(value)) {
-        throw new Error("clipboard unavailable");
-      }
-      setCopiedShareId(shareId);
-      window.setTimeout(() => setCopiedShareId(null), 1500);
-    } catch {
-      if (fallbackCopyWithExecCommand(value)) {
-        setCopiedShareId(shareId);
-        window.setTimeout(() => setCopiedShareId(null), 1500);
-        return;
-      }
-      window.prompt("当前环境不支持自动复制，请手动复制以下内容：", value);
-      onNotify("自动复制失败，已提供手动复制");
+    if (!(await copyToClipboard(value))) {
+      onNotify("复制失败，请检查浏览器剪贴板权限");
+      return;
     }
+    setCopiedShareId(shareId);
+    window.setTimeout(() => setCopiedShareId((current) => current === shareId ? null : current), 1500);
   }
 
   function enterFolder(item: CloudItem) {
@@ -941,23 +909,7 @@ export function CloudPage({ mode, onAuthExpired, onNotify }: CloudPageProps) {
       return;
     }
     const stored = sharePasswords[share.share_code] || "";
-    if (stored) {
-      await copyText(buildShareCopyUrl(share, stored), share.id);
-      return;
-    }
-    setCopyPasswordShare(share);
-    setCopyPasswordInput("");
-  }
-
-  async function confirmCopyWithPassword() {
-    if (!copyPasswordShare || !copyPasswordInput.trim()) {
-      return;
-    }
-    const password = copyPasswordInput.trim();
-    saveSharePasswords({ ...sharePasswords, [copyPasswordShare.share_code]: password });
-    await copyText(buildShareCopyUrl(copyPasswordShare, password), copyPasswordShare.id);
-    setCopyPasswordShare(null);
-    setCopyPasswordInput("");
+    await copyText(buildShareCopyUrl(share, stored), share.id);
   }
 
   return (
@@ -1499,8 +1451,8 @@ export function CloudPage({ mode, onAuthExpired, onNotify }: CloudPageProps) {
                   </div>
                   <div className="flex flex-col items-end justify-end gap-2 self-stretch">
                     <div className="flex flex-wrap justify-end gap-2">
-                      <Button type="button" size="sm" variant="outline" onClick={() => void handleCopyShareLink(share)}>
-                        {copiedShareId === share.id ? "已复制" : "复制链接"}
+                      <Button type="button" size="sm" variant="outline" className={copiedShareId === share.id ? "border-emerald-600 bg-emerald-600 text-white hover:bg-emerald-600 hover:text-white dark:bg-emerald-600 dark:hover:bg-emerald-600" : ""} onClick={() => void handleCopyShareLink(share)}>
+                        {copiedShareId === share.id ? <><Check className="size-4" />已复制</> : "复制链接"}
                       </Button>
                       <Button type="button" size="sm" variant="outline" onClick={() => void handleCancelShare(share.id)}>
                         取消分享
@@ -1518,30 +1470,6 @@ export function CloudPage({ mode, onAuthExpired, onNotify }: CloudPageProps) {
           {shares.length === 0 ? <p className="text-sm text-muted-foreground">暂无分享记录</p> : null}
         </div>
       ) : null}
-
-      <Dialog open={Boolean(copyPasswordShare)} onOpenChange={() => setCopyPasswordShare(null)}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>输入分享密码</DialogTitle>
-            <DialogDescription>复制链接时将自动附带密码参数。</DialogDescription>
-          </DialogHeader>
-          <Field className="gap-0">
-            <FieldLabel htmlFor="cloud-copy-password" className="sr-only">请输入该分享的密码</FieldLabel>
-            <Input
-              id="cloud-copy-password"
-              value={copyPasswordInput}
-              onChange={(event) => setCopyPasswordInput(event.target.value)}
-              placeholder="请输入该分享的密码"
-            />
-          </Field>
-          <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => setCopyPasswordShare(null)}>取消</Button>
-            <Button type="button" onClick={() => void confirmCopyWithPassword()} disabled={!copyPasswordInput.trim()}>
-              复制带密码链接
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
 
       {targetPickerAction ? (
         <div

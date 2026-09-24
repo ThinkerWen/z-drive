@@ -1,5 +1,5 @@
 import { Suspense, lazy, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { BarChart3, Copy, ExternalLink, Github, LogOut, Moon, Shield, Sun, Trash2, Upload } from "lucide-react";
+import { BarChart3, Check, Copy, ExternalLink, Github, LogOut, Moon, Shield, Sun, Trash2, Upload } from "lucide-react";
 import { useLocation, useNavigate } from "react-router-dom";
 
 import { SidebarProvider, SidebarInset, SidebarTrigger } from "@/components/ui/sidebar";
@@ -1083,34 +1083,39 @@ export default function App() {
                       <p className="text-[11px] text-muted-foreground">
                         {formatFileSize(item.file_size)} · {item.width}x{item.height} · 浏览 {item.view_count}
                       </p>
-                      <div className="flex gap-1.5 opacity-0 transition-opacity group-hover:opacity-100">
+                      <div className="grid grid-cols-4 gap-0.5 opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100">
                         <Button
-                          size="sm"
+                          size="icon-xs"
                           variant="outline"
-                          className="h-7 flex-1 px-1.5 text-[10px]"
+                          className={`h-6 w-full min-w-0 p-0 [&_svg]:size-3 ${copiedKey === `short-${item.short_code}` ? "border-emerald-600 bg-emerald-600 text-white hover:bg-emerald-600 hover:text-white dark:bg-emerald-600 dark:hover:bg-emerald-600" : ""}`}
+                          aria-label={copiedKey === `short-${item.short_code}` ? "已复制短链" : "复制短链"}
+                          title={copiedKey === `short-${item.short_code}` ? "已复制短链" : "复制短链"}
                           onClick={() => void copyText(buildSignedShortLink(item), `short-${item.short_code}`)}
                         >
-                          <Copy className="mr-0.5 h-3 w-3" />
-                          {copiedKey === `short-${item.short_code}` ? "已复制" : "短链"}
+                          {copiedKey === `short-${item.short_code}` ? <Check /> : <Copy />}
                         </Button>
-                        <Button size="sm" variant="outline" className="h-7 flex-1 px-1.5 text-[10px]" onClick={() => openPreviewPage(item)}>
-                          <ExternalLink className="mr-0.5 h-3 w-3" /> 预览
+                        <Button size="icon-xs" variant="outline" className="h-6 w-full min-w-0 p-0 [&_svg]:size-3" aria-label="预览" title="预览" onClick={() => openPreviewPage(item)}>
+                          <ExternalLink />
                         </Button>
                         <Button
-                          size="sm"
+                          size="icon-xs"
                           variant="outline"
-                          className="h-7 flex-1 px-1.5 text-[10px]"
+                          className="h-6 w-full min-w-0 p-0 [&_svg]:size-3"
+                          aria-label="访问设置"
+                          title="访问设置"
                           onClick={() => openAccessModeModal(item)}
                         >
-                          <Shield className="mr-0.5 h-3 w-3" /> 访问
+                          <Shield />
                         </Button>
                         <Button
-                          size="sm"
+                          size="icon-xs"
                           variant="outline"
-                          className="h-7 flex-1 px-1.5 text-[10px]"
+                          className="h-6 w-full min-w-0 p-0 [&_svg]:size-3"
+                          aria-label="删除"
+                          title="删除"
                           onClick={() => setDeleteTarget(item)}
                         >
-                          <Trash2 className="mr-0.5 h-3 w-3" /> 删除
+                          <Trash2 />
                         </Button>
                       </div>
                     </div>
